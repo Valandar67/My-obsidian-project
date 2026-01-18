@@ -6,95 +6,191 @@ cssclasses:
 
 ```dataviewjs
 // ==========================================
-// DRAWING SESSION - SKILL TREE EDITION
+// DRAWING SESSION - SKILL TREE (AMOLED)
 // ==========================================
 
 const VAULT_NAME = "Alt society";
 
 const THEME = {
     primary: "#ffffff",
-    primaryGlow: "rgba(255, 255, 255, 0.8)",
-    secondary: "#3a7a9e",
-    accent: "#5a9ace",
-    border: "#2a3a4d",
-    borderHover: "#3a5a7d",
-    muted: "#7a8a9d",
-    bg: "#1a1d2e",
-    bgLight: "#252838",
-    bgCard: "#2a2d3e",
-    connection: "#3a5a7d"
+    primaryGlow: "rgba(255, 255, 255, 0.6)",
+    connection: "#444444",
+    bg: "#000000",
+    bgCard: "#000000"
 };
 
 // ==========================================
-// SESSION DATA STORAGE
+// FIXED SKILL TREE STRUCTURE
 // ==========================================
-let sessionData = {
-    totalMileage: 0,
-    thisWeek: 0,
-    lastSession: null,
-    currentStreak: 0
-};
-
-// Try to load from localStorage
-try {
-    const saved = localStorage.getItem('drawingSessionData');
-    if (saved) {
-        sessionData = JSON.parse(saved);
-    }
-} catch(e) {
-    console.log('No saved session data');
-}
-
-function saveSessionData() {
-    try {
-        localStorage.setItem('drawingSessionData', JSON.stringify(sessionData));
-    } catch(e) {
-        console.error('Failed to save session data');
-    }
-}
-
-// ==========================================
-// SKILL TREE DATA
-// ==========================================
+// Geometric positions based on the reference image
 let skillTree = {
     center: {
         id: 'core',
         name: 'Core Basics',
-        image: 'pencil',
+        file: 'Drawing/Core Basics',
         x: 0,
         y: 0,
-        connections: ['line-form', 'observation', 'value-light']
+        slots: [
+            { angle: 0, distance: 280, occupied: 'line-form' },      // Top
+            { angle: 120, distance: 320, occupied: 'observation' },   // Left
+            { angle: 240, distance: 320, occupied: 'value-light' },   // Right
+            { angle: 180, distance: 280, occupied: 'anatomy' }        // Bottom
+        ]
     },
-    skills: [
+    skills: {
         // TOP BRANCH - Line & Form
-        { id: 'line-form', name: 'Line & Form', image: 'pyramid', x: 0, y: -280, connections: ['basic-shapes-1', 'contour', 'geometric'] },
-        { id: 'basic-shapes-1', name: 'Basic Shapes', image: 'shapes', x: -180, y: -420, connections: ['still-life'] },
-        { id: 'still-life', name: 'Still Life', image: 'apple', x: -280, y: -560, connections: [] },
-        { id: 'contour', name: 'Contour Lines', image: 'contour', x: 0, y: -450, connections: [] },
-        { id: 'geometric', name: 'Geometric Forms', image: 'cube', x: 180, y: -420, connections: [] },
+        'line-form': {
+            id: 'line-form',
+            name: 'Line & Form',
+            file: 'Drawing/Line & Form',
+            x: 0,
+            y: -280,
+            slots: [
+                { angle: -30, distance: 180, occupied: 'basic-shapes' },
+                { angle: 0, distance: 200, occupied: 'contour' },
+                { angle: 30, distance: 180, occupied: 'geometric' }
+            ]
+        },
+        'basic-shapes': {
+            id: 'basic-shapes',
+            name: 'Basic Shapes',
+            file: 'Drawing/Basic Shapes',
+            x: -155,
+            y: -370,
+            slots: [
+                { angle: -60, distance: 150, occupied: 'still-life' }
+            ]
+        },
+        'still-life': {
+            id: 'still-life',
+            name: 'Still Life',
+            file: 'Drawing/Still Life',
+            x: -230,
+            y: -500,
+            slots: []
+        },
+        'contour': {
+            id: 'contour',
+            name: 'Contour Lines',
+            file: 'Drawing/Contour Lines',
+            x: 0,
+            y: -480,
+            slots: []
+        },
+        'geometric': {
+            id: 'geometric',
+            name: 'Geometric Forms',
+            file: 'Drawing/Geometric Forms',
+            x: 155,
+            y: -370,
+            slots: []
+        },
 
         // LEFT BRANCH - Observation
-        { id: 'observation', name: 'Observation', image: 'eye', x: -320, y: -80, connections: ['negative-space', 'perspective'] },
-        { id: 'negative-space', name: 'Negative Space', image: 'negative', x: -480, y: -220, connections: [] },
-        { id: 'perspective', name: 'Perspective Grids', image: 'grid', x: -480, y: 60, connections: ['cross-hatching'] },
-        { id: 'cross-hatching', name: 'Cross-Hatching', image: 'hatch', x: -380, y: 180, connections: [] },
+        'observation': {
+            id: 'observation',
+            name: 'Observation',
+            file: 'Drawing/Observation',
+            x: -277,
+            y: 160,
+            slots: [
+                { angle: 150, distance: 200, occupied: 'negative-space' },
+                { angle: 180, distance: 180, occupied: 'perspective' }
+            ]
+        },
+        'negative-space': {
+            id: 'negative-space',
+            name: 'Negative Space',
+            file: 'Drawing/Negative Space',
+            x: -450,
+            y: 260,
+            slots: []
+        },
+        'perspective': {
+            id: 'perspective',
+            name: 'Perspective Grids',
+            file: 'Drawing/Perspective Grids',
+            x: -457,
+            y: 160,
+            slots: [
+                { angle: 210, distance: 150, occupied: 'cross-hatching' }
+            ]
+        },
+        'cross-hatching': {
+            id: 'cross-hatching',
+            name: 'Cross-Hatching',
+            file: 'Drawing/Cross-Hatching',
+            x: -587,
+            y: 235,
+            slots: []
+        },
 
         // RIGHT BRANCH - Value & Light
-        { id: 'value-light', name: 'Value & Light', image: 'gradient', x: 320, y: -80, connections: ['light-source', 'sphere-shading'] },
-        { id: 'light-source', name: 'Light Source', image: 'bulb', x: 480, y: -220, connections: [] },
-        { id: 'sphere-shading', name: 'Sphere Shading', image: 'sphere', x: 480, y: 60, connections: ['cast-shadows'] },
-        { id: 'cast-shadows', name: 'Cast Shadows', image: 'shadow', x: 380, y: 180, connections: [] },
+        'value-light': {
+            id: 'value-light',
+            name: 'Value & Light',
+            file: 'Drawing/Value & Light',
+            x: 277,
+            y: 160,
+            slots: [
+                { angle: 30, distance: 200, occupied: 'light-source' },
+                { angle: 0, distance: 180, occupied: 'sphere-shading' }
+            ]
+        },
+        'light-source': {
+            id: 'light-source',
+            name: 'Light Source',
+            file: 'Drawing/Light Source',
+            x: 450,
+            y: 60,
+            slots: []
+        },
+        'sphere-shading': {
+            id: 'sphere-shading',
+            name: 'Sphere Shading',
+            file: 'Drawing/Sphere Shading',
+            x: 457,
+            y: 160,
+            slots: [
+                { angle: -30, distance: 150, occupied: 'cast-shadows' }
+            ]
+        },
+        'cast-shadows': {
+            id: 'cast-shadows',
+            name: 'Cast Shadows',
+            file: 'Drawing/Cast Shadows',
+            x: 587,
+            y: 85,
+            slots: []
+        },
 
         // BOTTOM BRANCH - Anatomy
-        { id: 'anatomy', name: 'Anatomy Basics', image: 'body', x: 0, y: 280, connections: [] }
-    ]
+        'anatomy': {
+            id: 'anatomy',
+            name: 'Anatomy Basics',
+            file: 'Drawing/Anatomy Basics',
+            x: 0,
+            y: 280,
+            slots: []
+        }
+    }
 };
 
 // Try to load from localStorage
 try {
     const saved = localStorage.getItem('skillTreeData');
     if (saved) {
-        skillTree = JSON.parse(saved);
+        const savedData = JSON.parse(saved);
+        // Merge saved data with default structure
+        if (savedData.skills) {
+            Object.keys(savedData.skills).forEach(id => {
+                if (skillTree.skills[id]) {
+                    skillTree.skills[id] = { ...skillTree.skills[id], ...savedData.skills[id] };
+                } else {
+                    skillTree.skills[id] = savedData.skills[id];
+                }
+            });
+        }
     }
 } catch(e) {
     console.log('Using default skill tree');
@@ -120,22 +216,7 @@ if (!document.getElementById('drawing-session-styles')) {
             user-select: none !important;
             -webkit-user-select: none !important;
             -webkit-user-drag: none !important;
-        }
-
-        @keyframes glow-pulse {
-            0%, 100% {
-                box-shadow: 0 0 10px ${THEME.primary}, 0 0 20px ${THEME.primary}, 0 0 30px ${THEME.primary};
-                filter: brightness(1.2);
-            }
-            50% {
-                box-shadow: 0 0 20px ${THEME.primaryHover}, 0 0 40px ${THEME.primaryHover}, 0 0 60px ${THEME.primaryHover};
-                filter: brightness(1.5);
-            }
-        }
-
-        @keyframes blood-drip {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(100px); opacity: 0; }
+            -webkit-touch-callout: none !important;
         }
 
         @keyframes fade-in {
@@ -145,57 +226,43 @@ if (!document.getElementById('drawing-session-styles')) {
 
         .skill-tree-canvas {
             cursor: grab;
+            touch-action: none;
         }
 
         .skill-tree-canvas:active {
             cursor: grabbing;
         }
 
-        .decorative-skull {
-            position: absolute;
-            opacity: 0.15;
-            pointer-events: none;
-            filter: grayscale(1) contrast(1.2);
-            mix-blend-mode: overlay;
+        .skill-action-menu {
+            position: fixed;
+            display: flex;
+            gap: 20px;
+            z-index: 10000;
+            animation: fade-in 0.3s ease;
+            pointer-events: all;
+        }
+
+        .skill-action-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: ${THEME.primary};
+            border: 2px solid ${THEME.primary};
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px ${THEME.primaryGlow};
+            touch-action: manipulation;
+        }
+
+        .skill-action-btn:active {
+            transform: scale(0.9);
         }
     `;
     document.head.appendChild(style);
-}
-
-// ==========================================
-// UTILITY FUNCTIONS
-// ==========================================
-function createCorners(container, color, size = 18) {
-    const corners = [];
-    ['TL', 'TR', 'BL', 'BR'].forEach(pos => {
-        const corner = document.createElement('div');
-        const isTop = pos.includes('T');
-        const isLeft = pos.includes('L');
-        corner.style.cssText = `
-            position: absolute;
-            ${isTop ? 'top: 0' : 'bottom: 0'};
-            ${isLeft ? 'left: 0' : 'right: 0'};
-            width: ${size}px;
-            height: ${size}px;
-            border-${isTop ? 'top' : 'bottom'}: 2px solid ${color};
-            border-${isLeft ? 'left' : 'right'}: 2px solid ${color};
-            z-index: 10;
-            pointer-events: none;
-            transition: all 0.4s ease;
-        `;
-        corner.dataset.corner = pos;
-        corner.dataset.baseSize = size;
-        container.appendChild(corner);
-        corners.push(corner);
-    });
-    return corners;
-}
-
-function loadDecorativeImage(imageName, onLoad, onError) {
-    const img = new Image();
-    img.onload = () => onLoad(img);
-    img.onerror = () => onError(imageName);
-    img.src = app.vault.adapter.getResourcePath(`Obsidian/Images/${imageName}.jpg`);
 }
 
 // ==========================================
@@ -208,263 +275,21 @@ mainContainer.style.cssText = `
     background: ${THEME.bg};
     position: relative;
     overflow: hidden;
-    padding: 20px;
+    padding: 0;
+    margin: 0;
 `;
-
-// ==========================================
-// DECORATIVE IMAGES
-// ==========================================
-function addDecorativeImage(name, styles) {
-    loadDecorativeImage(name,
-        (img) => {
-            const decorative = document.createElement('img');
-            decorative.src = img.src;
-            decorative.className = 'decorative-skull drawing-no-drag';
-            decorative.style.cssText += styles;
-            mainContainer.appendChild(decorative);
-        },
-        (imageName) => {
-            const errorMsg = document.createElement('div');
-            errorMsg.textContent = `"${imageName}" image is not found`;
-            errorMsg.style.cssText = `
-                ${styles}
-                color: ${THEME.muted};
-                font-size: 10px;
-                font-family: monospace;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-            `;
-            mainContainer.appendChild(errorMsg);
-        }
-    );
-}
-
-// Add decorative images
-addDecorativeImage('skull-left', `top: 50px; left: -80px; width: 300px; height: 300px; transform: rotate(-15deg);`);
-addDecorativeImage('skull-right', `bottom: 50px; right: -80px; width: 300px; height: 300px; transform: rotate(15deg);`);
-
-// ==========================================
-// HEADER - SESSION STATS
-// ==========================================
-const statsContainer = document.createElement('div');
-statsContainer.style.cssText = `
-    max-width: 1200px;
-    margin: 0 auto 30px auto;
-    background: linear-gradient(135deg, ${THEME.bgCard} 0%, ${THEME.bgLight} 100%);
-    border: 2px solid ${THEME.border};
-    padding: 30px;
-    position: relative;
-    box-shadow: 0 0 30px rgba(139, 0, 0, 0.3);
-`;
-
-createCorners(statsContainer, THEME.primary, 25);
-
-// Title
-const title = document.createElement('h1');
-title.textContent = 'DRAWING FUNDAMENTALS';
-title.style.cssText = `
-    margin: 0 0 25px 0;
-    color: ${THEME.primary};
-    font-size: 28px;
-    font-weight: 700;
-    font-family: "Arial", sans-serif;
-    letter-spacing: 6px;
-    text-align: center;
-    text-transform: uppercase;
-    text-shadow: 0 0 15px ${THEME.primaryGlow};
-`;
-statsContainer.appendChild(title);
-
-// Stats grid
-const statsGrid = document.createElement('div');
-statsGrid.style.cssText = `
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid ${THEME.border};
-    position: relative;
-`;
-statsContainer.appendChild(statsGrid);
-
-function createStatBox(label, value, icon) {
-    const box = document.createElement('div');
-    box.style.cssText = `
-        text-align: center;
-        padding: 15px;
-        background: ${THEME.bgLight};
-        border: 1px solid ${THEME.border};
-        position: relative;
-        transition: all 0.3s ease;
-    `;
-
-    const iconEl = document.createElement('div');
-    iconEl.textContent = icon;
-    iconEl.style.cssText = `
-        font-size: 32px;
-        margin-bottom: 10px;
-        filter: grayscale(0.3);
-    `;
-    box.appendChild(iconEl);
-
-    const valueEl = document.createElement('div');
-    valueEl.textContent = value;
-    valueEl.style.cssText = `
-        font-size: 32px;
-        font-weight: bold;
-        color: ${THEME.primary};
-        font-family: "Arial", sans-serif;
-        margin-bottom: 5px;
-        text-shadow: 0 0 10px ${THEME.primaryGlow};
-    `;
-    box.appendChild(valueEl);
-
-    const labelEl = document.createElement('div');
-    labelEl.textContent = label;
-    labelEl.style.cssText = `
-        font-size: 11px;
-        color: ${THEME.muted};
-        font-family: "Arial", sans-serif;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-    `;
-    box.appendChild(labelEl);
-
-    box.onmouseenter = () => {
-        box.style.borderColor = THEME.accent;
-        box.style.transform = 'translateY(-3px)';
-        box.style.boxShadow = `0 5px 15px ${THEME.accent}`;
-    };
-
-    box.onmouseleave = () => {
-        box.style.borderColor = THEME.border;
-        box.style.transform = 'translateY(0)';
-        box.style.boxShadow = 'none';
-    };
-
-    return box;
-}
-
-statsGrid.appendChild(createStatBox('TOTAL MILEAGE', `${sessionData.totalMileage}h`, '🎨'));
-statsGrid.appendChild(createStatBox('THIS WEEK', `${sessionData.thisWeek}h`, '📅'));
-statsGrid.appendChild(createStatBox('LAST SESSION', sessionData.lastSession || 'Never', '⏱️'));
-statsGrid.appendChild(createStatBox('STREAK', `${sessionData.currentStreak} days`, '🔥'));
-
-mainContainer.appendChild(statsContainer);
-
-// ==========================================
-// START SESSION SECTION (UNSCROLLABLE)
-// ==========================================
-const startSessionContainer = document.createElement('div');
-startSessionContainer.style.cssText = `
-    max-width: 600px;
-    margin: 0 auto 40px auto;
-    background: ${THEME.bgCard};
-    border: 2px solid ${THEME.border};
-    position: relative;
-    overflow: hidden;
-    height: 200px;
-`;
-
-createCorners(startSessionContainer, THEME.primary, 20);
-
-// Fixed content (no scroll)
-const fixedContent = document.createElement('div');
-fixedContent.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 30px;
-`;
-startSessionContainer.appendChild(fixedContent);
-
-const sessionTitle = document.createElement('h2');
-sessionTitle.textContent = 'START SESSION';
-sessionTitle.style.cssText = `
-    margin: 0 0 20px 0;
-    color: ${THEME.primary};
-    font-size: 20px;
-    font-weight: 700;
-    font-family: "Arial", sans-serif;
-    letter-spacing: 4px;
-    text-shadow: 0 0 15px ${THEME.primaryGlow};
-`;
-fixedContent.appendChild(sessionTitle);
-
-// Start button
-const startBtn = document.createElement('button');
-startBtn.textContent = 'BEGIN';
-startBtn.style.cssText = `
-    padding: 15px 50px;
-    background: ${THEME.primary};
-    border: 2px solid ${THEME.accent};
-    color: ${THEME.bg};
-    font-size: 18px;
-    font-weight: bold;
-    font-family: "Arial", sans-serif;
-    letter-spacing: 3px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    border-radius: 50px;
-    box-shadow: 0 0 20px ${THEME.primaryGlow};
-`;
-
-startBtn.onmouseenter = () => {
-    startBtn.style.transform = 'scale(1.1)';
-    startBtn.style.boxShadow = `0 0 30px ${THEME.primary}`;
-    startBtn.style.borderColor = THEME.accent;
-};
-
-startBtn.onmouseleave = () => {
-    startBtn.style.transform = 'scale(1)';
-    startBtn.style.boxShadow = `0 0 20px ${THEME.primaryGlow}`;
-    startBtn.style.borderColor = THEME.accent;
-};
-
-startBtn.onclick = () => {
-    const now = new Date();
-    const hours = prompt('Enter session duration (hours):');
-    if (hours && !isNaN(hours)) {
-        sessionData.totalMileage += parseFloat(hours);
-        sessionData.thisWeek += parseFloat(hours);
-        sessionData.lastSession = now.toLocaleDateString();
-        sessionData.currentStreak += 1;
-        saveSessionData();
-        location.reload();
-    }
-};
-
-fixedContent.appendChild(startBtn);
-
-mainContainer.appendChild(startSessionContainer);
 
 // ==========================================
 // SKILL TREE CANVAS
 // ==========================================
 const skillTreeSection = document.createElement('div');
 skillTreeSection.style.cssText = `
-    max-width: 1400px;
-    margin: 0 auto;
-    background: ${THEME.bgCard};
-    border: 2px solid ${THEME.border};
+    width: 100%;
+    height: 100vh;
+    background: ${THEME.bg};
     position: relative;
-    height: 800px;
     overflow: hidden;
-    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
 `;
-
-createCorners(skillTreeSection, THEME.primary, 25);
 
 const canvas = document.createElement('canvas');
 canvas.className = 'skill-tree-canvas';
@@ -489,6 +314,7 @@ let holdTimer = null;
 let holdingSkill = null;
 let touchDistance = 0;
 let lastTouchPosition = { x: 0, y: 0 };
+let activeMenu = null;
 
 // Update canvas transform
 function updateCanvasTransform() {
@@ -506,44 +332,38 @@ function drawSkillTree() {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Draw connections first (glowing blue lines)
+    // Draw connections first
     ctx.strokeStyle = THEME.connection;
     ctx.lineWidth = 2;
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = THEME.accent;
 
     // Draw connections from center
-    skillTree.center.connections.forEach(targetId => {
-        const target = skillTree.skills.find(s => s.id === targetId);
-        if (target) {
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + target.x, centerY + target.y);
-            ctx.stroke();
-        }
+    Object.values(skillTree.skills).forEach(skill => {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + skill.x, centerY + skill.y);
+        ctx.stroke();
     });
 
     // Draw connections between skills
-    skillTree.skills.forEach(skill => {
-        skill.connections.forEach(targetId => {
-            const target = skillTree.skills.find(s => s.id === targetId);
-            if (target) {
-                ctx.beginPath();
-                ctx.moveTo(centerX + skill.x, centerY + skill.y);
-                ctx.lineTo(centerX + target.x, centerY + target.y);
-                ctx.stroke();
-            }
-        });
+    Object.values(skillTree.skills).forEach(skill => {
+        if (skill.slots) {
+            skill.slots.forEach(slot => {
+                if (slot.occupied && skillTree.skills[slot.occupied]) {
+                    const target = skillTree.skills[slot.occupied];
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + skill.x, centerY + skill.y);
+                    ctx.lineTo(centerX + target.x, centerY + target.y);
+                    ctx.stroke();
+                }
+            });
+        }
     });
-
-    // Reset shadow for skills
-    ctx.shadowBlur = 0;
 
     // Draw center skill
     drawSkill(centerX, centerY, skillTree.center, true);
 
     // Draw all other skills
-    skillTree.skills.forEach(skill => {
+    Object.values(skillTree.skills).forEach(skill => {
         drawSkill(centerX + skill.x, centerY + skill.y, skill, false);
     });
 }
@@ -552,10 +372,10 @@ function drawSkill(x, y, skill, isCenter) {
     const radius = isCenter ? 60 : 45;
 
     // Draw outer glow
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 15;
     ctx.shadowColor = THEME.primaryGlow;
 
-    // Draw filled circle (white with glow)
+    // Draw filled circle (white)
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fillStyle = THEME.primary;
@@ -573,12 +393,12 @@ function drawSkill(x, y, skill, isCenter) {
 
     // Draw label
     ctx.fillStyle = THEME.primary;
-    ctx.font = `${isCenter ? 14 : 11}px Arial`;
+    ctx.font = `${isCenter ? 12 : 10}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     const words = skill.name.split(' ');
     words.forEach((word, i) => {
-        ctx.fillText(word, x, y + radius + 10 + (i * 15));
+        ctx.fillText(word, x, y + radius + 10 + (i * 14));
     });
 }
 
@@ -588,9 +408,20 @@ drawSkillTree();
 // INTERACTION HANDLERS
 // ==========================================
 
+// Remove any existing action menu
+function removeActionMenu() {
+    if (activeMenu) {
+        activeMenu.remove();
+        activeMenu = null;
+    }
+    drawSkillTree();
+}
+
 // Mouse events
 canvas.addEventListener('mousedown', (e) => {
     e.preventDefault();
+    removeActionMenu();
+
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
     const y = (e.clientY - rect.top - rect.height / 2 - pan.y) / zoom;
@@ -667,12 +498,19 @@ canvas.addEventListener('wheel', (e) => {
     updateCanvasTransform();
 });
 
-// Touch events for mobile
+// Touch events for mobile (improved)
+let touchStartTime = 0;
+let touchMoved = false;
+
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
+    removeActionMenu();
+
+    touchStartTime = Date.now();
+    touchMoved = false;
 
     if (e.touches.length === 1) {
-        // Single touch - start hold timer or pan
+        // Single touch
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
         const x = (touch.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
@@ -682,7 +520,7 @@ canvas.addEventListener('touchstart', (e) => {
 
         if (clicked) {
             holdTimer = setTimeout(() => {
-                if (!isDragging) {
+                if (!touchMoved) {
                     holdingSkill = clicked;
                     showSkillActions(clicked, touch.clientX, touch.clientY);
                 }
@@ -694,7 +532,7 @@ canvas.addEventListener('touchstart', (e) => {
 
         lastTouchPosition = { x: touch.clientX, y: touch.clientY };
     } else if (e.touches.length === 2) {
-        // Two touches - prepare for pinch zoom
+        // Two touches - pinch zoom
         isDragging = false;
         if (holdTimer) {
             clearTimeout(holdTimer);
@@ -717,6 +555,7 @@ canvas.addEventListener('touchstart', (e) => {
 
 canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
+    touchMoved = true;
 
     if (e.touches.length === 1 && isDragging) {
         // Single touch pan
@@ -764,6 +603,7 @@ canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
 
     if (e.touches.length === 0) {
+        const touchDuration = Date.now() - touchStartTime;
         const wasDragging = isDragging;
         isDragging = false;
         touchDistance = 0;
@@ -772,8 +612,8 @@ canvas.addEventListener('touchend', (e) => {
             clearTimeout(holdTimer);
             holdTimer = null;
 
-            // Quick tap - open file
-            if (!wasDragging && e.changedTouches.length > 0) {
+            // Quick tap (< 300ms, not moved much)
+            if (!touchMoved && touchDuration < 300 && e.changedTouches.length > 0) {
                 const touch = e.changedTouches[0];
                 const rect = canvas.getBoundingClientRect();
                 const x = (touch.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
@@ -789,21 +629,17 @@ canvas.addEventListener('touchend', (e) => {
 });
 
 function openSkillFile(skill) {
-    // Try to open the skill's MD file
-    const fileName = `Drawing/${skill.name}`;
+    const fileName = skill.file || `Drawing/${skill.name}`;
     window.location.href = `obsidian://open?vault=${encodeURIComponent(VAULT_NAME)}&file=${encodeURIComponent(fileName)}`;
 }
 
 function getSkillAtPosition(x, y) {
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
     // Check center
     const distCenter = Math.sqrt(x ** 2 + y ** 2);
     if (distCenter < 60) return skillTree.center;
 
     // Check skills
-    for (let skill of skillTree.skills) {
+    for (let skill of Object.values(skillTree.skills)) {
         const dx = x - skill.x;
         const dy = y - skill.y;
         const dist = Math.sqrt(dx ** 2 + dy ** 2);
@@ -817,38 +653,36 @@ function getSkillAtPosition(x, y) {
 // SKILL ACTIONS (EDIT/ADD)
 // ==========================================
 function showSkillActions(skill, clientX, clientY) {
-    // Remove any existing action menus
-    document.querySelectorAll('.skill-action-menu').forEach(el => el.remove());
+    // Remove any existing menu
+    removeActionMenu();
 
     const actionMenu = document.createElement('div');
     actionMenu.className = 'skill-action-menu';
     actionMenu.style.cssText = `
-        position: fixed;
         left: ${clientX}px;
         top: ${clientY}px;
-        transform: translate(-50%, -50%);
-        display: flex;
-        gap: 20px;
-        z-index: 10000;
-        animation: fade-in 0.3s ease;
+        transform: translate(-50%, -120%);
     `;
 
     // Edit button
-    const editBtn = createCircleButton('✏️', 'Edit', () => {
+    const editBtn = createActionButton('✏️', () => {
+        removeActionMenu();
         showEditModal(skill);
-        actionMenu.remove();
     });
 
-    // Add button (only show for skills that can have connections)
-    const addBtn = createCircleButton('➕', 'Add', () => {
-        addNewSkill(skill);
-        actionMenu.remove();
-    });
+    // Add button (only if skill has available slots)
+    const hasSlots = skill.slots && skill.slots.some(s => !s.occupied);
+    if (hasSlots) {
+        const addBtn = createActionButton('➕', () => {
+            removeActionMenu();
+            addNewSkill(skill);
+        });
+        actionMenu.appendChild(addBtn);
+    }
 
     actionMenu.appendChild(editBtn);
-    actionMenu.appendChild(addBtn);
-
     document.body.appendChild(actionMenu);
+    activeMenu = actionMenu;
 
     // Add glow effect to canvas skill
     const centerX = canvas.width / 2 + (skill.x || 0);
@@ -856,73 +690,48 @@ function showSkillActions(skill, clientX, clientY) {
     const radius = skill === skillTree.center ? 60 : 45;
 
     ctx.save();
-    ctx.shadowBlur = 40;
-    ctx.shadowColor = THEME.accent;
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = THEME.primary;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = THEME.accent;
-    ctx.lineWidth = 5;
+    ctx.arc(centerX, centerY, radius + 10, 0, Math.PI * 2);
+    ctx.strokeStyle = THEME.primary;
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
 
     // Remove menu on click outside
     setTimeout(() => {
-        const removeMenu = (e) => {
-            if (!actionMenu.contains(e.target)) {
-                actionMenu.remove();
-                drawSkillTree();
-                document.removeEventListener('click', removeMenu);
+        const removeOnOutsideClick = (e) => {
+            if (activeMenu && !actionMenu.contains(e.target) && e.target !== canvas) {
+                removeActionMenu();
+                document.removeEventListener('click', removeOnOutsideClick);
+                document.removeEventListener('touchstart', removeOnOutsideClick);
             }
         };
-        document.addEventListener('click', removeMenu);
+        document.addEventListener('click', removeOnOutsideClick);
+        document.addEventListener('touchstart', removeOnOutsideClick);
     }, 100);
 }
 
-function createCircleButton(icon, label, onClick) {
+function createActionButton(icon, onClick) {
     const btn = document.createElement('div');
-    btn.style.cssText = `
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: ${THEME.primary};
-        border: 3px solid ${THEME.accent};
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 0 20px ${THEME.primaryGlow};
-    `;
+    btn.className = 'skill-action-btn';
 
     const iconEl = document.createElement('div');
     iconEl.textContent = icon;
-    iconEl.style.cssText = `font-size: 28px;`;
+    iconEl.style.cssText = `font-size: 32px;`;
     btn.appendChild(iconEl);
 
-    const labelEl = document.createElement('div');
-    labelEl.textContent = label;
-    labelEl.style.cssText = `
-        font-size: 10px;
-        color: ${THEME.bg};
-        font-weight: bold;
-        font-family: Arial, sans-serif;
-        letter-spacing: 1px;
-        margin-top: 4px;
-    `;
-    btn.appendChild(labelEl);
-
-    btn.onmouseenter = () => {
-        btn.style.transform = 'scale(1.2)';
-        btn.style.boxShadow = `0 0 30px ${THEME.primary}`;
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        onClick();
     };
 
-    btn.onmouseleave = () => {
-        btn.style.transform = 'scale(1)';
-        btn.style.boxShadow = `0 0 20px ${THEME.primaryGlow}`;
+    btn.ontouchend = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClick();
     };
-
-    btn.onclick = onClick;
 
     return btn;
 }
@@ -949,58 +758,35 @@ function showEditModal(skill) {
 
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
-        background: ${THEME.bgCard};
-        border: 3px solid ${THEME.primary};
-        padding: 50px;
-        max-width: 500px;
+        background: #111111;
+        border: 2px solid ${THEME.primary};
+        padding: 30px;
+        max-width: 400px;
         width: 90%;
-        position: relative;
-        box-shadow: 0 0 50px ${THEME.primary};
+        border-radius: 10px;
     `;
     modal.appendChild(modalContent);
-
-    createCorners(modalContent, THEME.secondary, 30);
 
     // Title
     const title = document.createElement('h2');
     title.textContent = 'EDIT SKILL';
     title.style.cssText = `
-        margin: 0 0 30px 0;
+        margin: 0 0 20px 0;
         color: ${THEME.primary};
-        font-size: 24px;
+        font-size: 18px;
         font-weight: 700;
-        font-family: "Impact", sans-serif;
-        letter-spacing: 4px;
+        font-family: "Arial", sans-serif;
         text-align: center;
     `;
     modalContent.appendChild(title);
 
-    // Display enlarged skill
-    const skillDisplay = document.createElement('div');
-    skillDisplay.style.cssText = `
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        background: ${THEME.primary};
-        border: 4px solid ${THEME.accent};
-        margin: 0 auto 30px auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 60px;
-        box-shadow: 0 0 30px ${THEME.primaryGlow};
-    `;
-    skillDisplay.textContent = '🎨';
-    modalContent.appendChild(skillDisplay);
-
     // Name input
     const nameLabel = document.createElement('div');
-    nameLabel.textContent = 'Skill Name:';
+    nameLabel.textContent = 'Name:';
     nameLabel.style.cssText = `
         color: ${THEME.primary};
-        font-size: 14px;
-        font-weight: bold;
-        margin-bottom: 8px;
+        font-size: 12px;
+        margin-bottom: 5px;
         font-family: Arial, sans-serif;
     `;
     modalContent.appendChild(nameLabel);
@@ -1010,48 +796,49 @@ function showEditModal(skill) {
     nameInput.value = skill.name;
     nameInput.style.cssText = `
         width: 100%;
-        padding: 12px;
-        background: ${THEME.bgLight};
-        border: 2px solid ${THEME.border};
+        padding: 10px;
+        background: #000000;
+        border: 1px solid #333333;
         color: ${THEME.primary};
-        font-size: 16px;
-        margin-bottom: 20px;
+        font-size: 14px;
+        margin-bottom: 15px;
         font-family: Arial, sans-serif;
+        border-radius: 5px;
     `;
     modalContent.appendChild(nameInput);
 
-    // Image input
-    const imageLabel = document.createElement('div');
-    imageLabel.textContent = 'Image Name:';
-    imageLabel.style.cssText = `
+    // File path input
+    const fileLabel = document.createElement('div');
+    fileLabel.textContent = 'File Path:';
+    fileLabel.style.cssText = `
+        color: ${THEME.primary};
+        font-size: 12px;
+        margin-bottom: 5px;
+        font-family: Arial, sans-serif;
+    `;
+    modalContent.appendChild(fileLabel);
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'text';
+    fileInput.value = skill.file || `Drawing/${skill.name}`;
+    fileInput.style.cssText = `
+        width: 100%;
+        padding: 10px;
+        background: #000000;
+        border: 1px solid #333333;
         color: ${THEME.primary};
         font-size: 14px;
-        font-weight: bold;
-        margin-bottom: 8px;
+        margin-bottom: 20px;
         font-family: Arial, sans-serif;
+        border-radius: 5px;
     `;
-    modalContent.appendChild(imageLabel);
-
-    const imageInput = document.createElement('input');
-    imageInput.type = 'text';
-    imageInput.value = skill.image;
-    imageInput.style.cssText = `
-        width: 100%;
-        padding: 12px;
-        background: ${THEME.bgLight};
-        border: 2px solid ${THEME.border};
-        color: ${THEME.primary};
-        font-size: 16px;
-        margin-bottom: 30px;
-        font-family: Arial, sans-serif;
-    `;
-    modalContent.appendChild(imageInput);
+    modalContent.appendChild(fileInput);
 
     // Buttons
     const btnContainer = document.createElement('div');
     btnContainer.style.cssText = `
         display: flex;
-        gap: 15px;
+        gap: 10px;
         justify-content: center;
     `;
     modalContent.appendChild(btnContainer);
@@ -1060,84 +847,43 @@ function showEditModal(skill) {
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'SAVE';
     saveBtn.style.cssText = `
-        padding: 12px 30px;
+        padding: 10px 25px;
         background: ${THEME.primary};
-        border: 2px solid ${THEME.accent};
+        border: none;
         color: ${THEME.bg};
-        font-size: 14px;
+        font-size: 12px;
         font-weight: bold;
         cursor: pointer;
         font-family: "Arial", sans-serif;
-        letter-spacing: 2px;
-        transition: all 0.3s ease;
+        border-radius: 5px;
+        touch-action: manipulation;
     `;
     saveBtn.onclick = () => {
         skill.name = nameInput.value;
-        skill.image = imageInput.value;
+        skill.file = fileInput.value;
         saveSkillTree();
         drawSkillTree();
         modal.remove();
     };
     btnContainer.appendChild(saveBtn);
 
-    // Delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'DELETE';
-    deleteBtn.style.cssText = `
-        padding: 12px 30px;
-        background: #663333;
-        border: 2px solid #aa6666;
-        color: ${THEME.primary};
-        font-size: 14px;
-        font-weight: bold;
-        cursor: pointer;
-        font-family: "Arial", sans-serif;
-        letter-spacing: 2px;
-        transition: all 0.3s ease;
-    `;
-    deleteBtn.onclick = () => {
-        if (confirm(`Delete "${skill.name}"?`)) {
-            if (skill === skillTree.center) {
-                alert('Cannot delete center skill');
-            } else {
-                skillTree.skills = skillTree.skills.filter(s => s.id !== skill.id);
-                saveSkillTree();
-                drawSkillTree();
-            }
-            modal.remove();
-        }
-    };
-    btnContainer.appendChild(deleteBtn);
-
     // Cancel button
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'CANCEL';
     cancelBtn.style.cssText = `
-        padding: 12px 30px;
+        padding: 10px 25px;
         background: transparent;
-        border: 2px solid ${THEME.border};
-        color: ${THEME.muted};
-        font-size: 14px;
+        border: 1px solid #333333;
+        color: ${THEME.primary};
+        font-size: 12px;
         font-weight: bold;
         cursor: pointer;
         font-family: "Arial", sans-serif;
-        letter-spacing: 2px;
-        transition: all 0.3s ease;
+        border-radius: 5px;
+        touch-action: manipulation;
     `;
     cancelBtn.onclick = () => modal.remove();
     btnContainer.appendChild(cancelBtn);
-
-    // Hover effects
-    [saveBtn, deleteBtn, cancelBtn].forEach(btn => {
-        btn.onmouseenter = () => {
-            btn.style.transform = 'scale(1.05)';
-            btn.style.boxShadow = `0 0 15px ${THEME.accent}`;
-        };
-        btn.onmouseleave = () => {
-            btn.style.transform = 'scale(1)';
-            btn.style.boxShadow = 'none';
-        };
-    });
 
     document.body.appendChild(modal);
 }
@@ -1149,24 +895,33 @@ function addNewSkill(parentSkill) {
     const name = prompt('Enter skill name:');
     if (!name) return;
 
-    const image = prompt('Enter image name:', 'icon');
-
-    const newSkill = {
-        id: `skill-${Date.now()}`,
-        name: name,
-        image: image,
-        x: (parentSkill.x || 0) + (Math.random() - 0.5) * 200,
-        y: (parentSkill.y || 0) + (Math.random() - 0.5) * 200,
-        connections: []
-    };
-
-    if (parentSkill === skillTree.center) {
-        skillTree.center.connections.push(newSkill.id);
-    } else {
-        parentSkill.connections.push(newSkill.id);
+    // Find first available slot
+    const availableSlot = parentSkill.slots?.find(s => !s.occupied);
+    if (!availableSlot) {
+        alert('No available slots for new skills');
+        return;
     }
 
-    skillTree.skills.push(newSkill);
+    // Calculate position based on slot
+    const angleRad = (availableSlot.angle * Math.PI) / 180;
+    const parentX = parentSkill.x || 0;
+    const parentY = parentSkill.y || 0;
+    const newX = parentX + Math.cos(angleRad) * availableSlot.distance;
+    const newY = parentY + Math.sin(angleRad) * availableSlot.distance;
+
+    const newId = `skill-${Date.now()}`;
+    const newSkill = {
+        id: newId,
+        name: name,
+        file: `Drawing/${name}`,
+        x: newX,
+        y: newY,
+        slots: []
+    };
+
+    skillTree.skills[newId] = newSkill;
+    availableSlot.occupied = newId;
+
     saveSkillTree();
     drawSkillTree();
 }
@@ -1193,22 +948,19 @@ function createControlButton(text, onClick) {
         height: 50px;
         border-radius: 50%;
         background: ${THEME.primary};
-        border: 2px solid ${THEME.accent};
+        border: none;
         color: ${THEME.bg};
         font-size: 24px;
         font-weight: bold;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         box-shadow: 0 0 15px ${THEME.primaryGlow};
+        touch-action: manipulation;
     `;
     btn.onclick = onClick;
-    btn.onmouseenter = () => {
-        btn.style.transform = 'scale(1.2)';
-        btn.style.boxShadow = `0 0 25px ${THEME.primary}`;
-    };
-    btn.onmouseleave = () => {
-        btn.style.transform = 'scale(1)';
-        btn.style.boxShadow = `0 0 15px ${THEME.primaryGlow}`;
+    btn.ontouchend = (e) => {
+        e.preventDefault();
+        onClick();
     };
     return btn;
 }
@@ -1230,30 +982,5 @@ controls.appendChild(createControlButton('⟲', () => {
 }));
 
 skillTreeSection.appendChild(controls);
-
 mainContainer.appendChild(skillTreeSection);
-
-// ==========================================
-// INSTRUCTIONS
-// ==========================================
-const instructions = document.createElement('div');
-instructions.style.cssText = `
-    max-width: 1200px;
-    margin: 30px auto;
-    padding: 20px;
-    text-align: center;
-    color: ${THEME.muted};
-    font-size: 13px;
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
-`;
-instructions.innerHTML = `
-    <strong style="color: ${THEME.primary};">CONTROLS:</strong><br>
-    <span style="color: ${THEME.accent};">• CLICK</span> on a skill to open its notes<br>
-    <span style="color: ${THEME.accent};">• HOLD</span> on a skill (0.5s) to edit or add new skills<br>
-    <span style="color: ${THEME.accent};">• DRAG</span> to pan around the skill tree<br>
-    <span style="color: ${THEME.accent};">• SCROLL</span> or pinch to zoom in/out<br>
-    <span style="color: ${THEME.accent};">• USE BUTTONS</span> in bottom right to reset view
-`;
-mainContainer.appendChild(instructions);
 ```
