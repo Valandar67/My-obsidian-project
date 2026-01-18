@@ -6,7 +6,7 @@ cssclasses:
 
 ```dataviewjs
 // ==========================================
-// DRAWING SESSION - SKILL TREE (AMOLED)
+// DRAWING SESSION - SKILL TREE MAP (AMOLED)
 // ==========================================
 
 const VAULT_NAME = "Alt society";
@@ -14,193 +14,286 @@ const VAULT_NAME = "Alt society";
 const THEME = {
     primary: "#ffffff",
     primaryGlow: "rgba(255, 255, 255, 0.6)",
-    connection: "#444444",
-    bg: "#000000",
-    bgCard: "#000000"
+    connection: "#3a5a7d",
+    bg: "#000000"
 };
 
 // ==========================================
-// FIXED SKILL TREE STRUCTURE
+// GEOMETRIC MAP STRUCTURE
 // ==========================================
-// Geometric positions based on the reference image
-let skillTree = {
-    center: {
+// Hierarchical radial system with exact positions
+// Level 0: Center, Level 1: 280px radius, Level 2: 450px, Level 3: 600px
+
+const MAP_STRUCTURE = {
+    // Center node - Level 0
+    'core': {
         id: 'core',
         name: 'Core Basics',
         file: 'Drawing/Core Basics',
+        level: 0,
+        angle: 0,
         x: 0,
         y: 0,
-        slots: [
-            { angle: 0, distance: 280, occupied: 'line-form' },      // Top
-            { angle: 120, distance: 320, occupied: 'observation' },   // Left
-            { angle: 240, distance: 320, occupied: 'value-light' },   // Right
-            { angle: 180, distance: 280, occupied: 'anatomy' }        // Bottom
-        ]
+        parent: null,
+        children: ['line-form', 'observation', 'value-light', 'anatomy']
     },
-    skills: {
-        // TOP BRANCH - Line & Form
-        'line-form': {
-            id: 'line-form',
-            name: 'Line & Form',
-            file: 'Drawing/Line & Form',
-            x: 0,
-            y: -280,
-            slots: [
-                { angle: -30, distance: 180, occupied: 'basic-shapes' },
-                { angle: 0, distance: 200, occupied: 'contour' },
-                { angle: 30, distance: 180, occupied: 'geometric' }
-            ]
-        },
-        'basic-shapes': {
-            id: 'basic-shapes',
-            name: 'Basic Shapes',
-            file: 'Drawing/Basic Shapes',
-            x: -155,
-            y: -370,
-            slots: [
-                { angle: -60, distance: 150, occupied: 'still-life' }
-            ]
-        },
-        'still-life': {
-            id: 'still-life',
-            name: 'Still Life',
-            file: 'Drawing/Still Life',
-            x: -230,
-            y: -500,
-            slots: []
-        },
-        'contour': {
-            id: 'contour',
-            name: 'Contour Lines',
-            file: 'Drawing/Contour Lines',
-            x: 0,
-            y: -480,
-            slots: []
-        },
-        'geometric': {
-            id: 'geometric',
-            name: 'Geometric Forms',
-            file: 'Drawing/Geometric Forms',
-            x: 155,
-            y: -370,
-            slots: []
-        },
 
-        // LEFT BRANCH - Observation
-        'observation': {
-            id: 'observation',
-            name: 'Observation',
-            file: 'Drawing/Observation',
-            x: -277,
-            y: 160,
-            slots: [
-                { angle: 150, distance: 200, occupied: 'negative-space' },
-                { angle: 180, distance: 180, occupied: 'perspective' }
-            ]
-        },
-        'negative-space': {
-            id: 'negative-space',
-            name: 'Negative Space',
-            file: 'Drawing/Negative Space',
-            x: -450,
-            y: 260,
-            slots: []
-        },
-        'perspective': {
-            id: 'perspective',
-            name: 'Perspective Grids',
-            file: 'Drawing/Perspective Grids',
-            x: -457,
-            y: 160,
-            slots: [
-                { angle: 210, distance: 150, occupied: 'cross-hatching' }
-            ]
-        },
-        'cross-hatching': {
-            id: 'cross-hatching',
-            name: 'Cross-Hatching',
-            file: 'Drawing/Cross-Hatching',
-            x: -587,
-            y: 235,
-            slots: []
-        },
+    // Level 1 - Main branches (280px from center)
+    'line-form': {
+        id: 'line-form',
+        name: 'Line & Form',
+        file: 'Drawing/Line & Form',
+        level: 1,
+        angle: -90, // Top
+        x: 0,
+        y: -280,
+        parent: 'core',
+        children: ['basic-shapes', 'contour', 'geometric']
+    },
+    'observation': {
+        id: 'observation',
+        name: 'Observation',
+        file: 'Drawing/Observation',
+        level: 1,
+        angle: 150, // Bottom-left
+        x: -242,
+        y: 140,
+        parent: 'core',
+        children: ['eye-obs', 'negative-space', 'perspective']
+    },
+    'value-light': {
+        id: 'value-light',
+        name: 'Value & Light',
+        file: 'Drawing/Value & Light',
+        level: 1,
+        angle: 30, // Bottom-right
+        x: 242,
+        y: 140,
+        parent: 'core',
+        children: ['light-source', 'sphere-shading']
+    },
+    'anatomy': {
+        id: 'anatomy',
+        name: 'Anatomy Basics',
+        file: 'Drawing/Anatomy Basics',
+        level: 1,
+        angle: 90, // Bottom
+        x: 0,
+        y: 280,
+        parent: 'core',
+        children: ['anatomy-basics-1', 'anatomy-basics-2']
+    },
 
-        // RIGHT BRANCH - Value & Light
-        'value-light': {
-            id: 'value-light',
-            name: 'Value & Light',
-            file: 'Drawing/Value & Light',
-            x: 277,
-            y: 160,
-            slots: [
-                { angle: 30, distance: 200, occupied: 'light-source' },
-                { angle: 0, distance: 180, occupied: 'sphere-shading' }
-            ]
-        },
-        'light-source': {
-            id: 'light-source',
-            name: 'Light Source',
-            file: 'Drawing/Light Source',
-            x: 450,
-            y: 60,
-            slots: []
-        },
-        'sphere-shading': {
-            id: 'sphere-shading',
-            name: 'Sphere Shading',
-            file: 'Drawing/Sphere Shading',
-            x: 457,
-            y: 160,
-            slots: [
-                { angle: -30, distance: 150, occupied: 'cast-shadows' }
-            ]
-        },
-        'cast-shadows': {
-            id: 'cast-shadows',
-            name: 'Cast Shadows',
-            file: 'Drawing/Cast Shadows',
-            x: 587,
-            y: 85,
-            slots: []
-        },
+    // Level 2 - Secondary branches
+    // Top branch
+    'basic-shapes': {
+        id: 'basic-shapes',
+        name: 'Basic Shapes',
+        file: 'Drawing/Basic Shapes',
+        level: 2,
+        angle: -120,
+        x: -194,
+        y: -417,
+        parent: 'line-form',
+        children: ['still-life', 'basic-shapes-2']
+    },
+    'contour': {
+        id: 'contour',
+        name: 'Contour Lines',
+        file: 'Drawing/Contour Lines',
+        level: 2,
+        angle: -90,
+        x: 0,
+        y: -460,
+        parent: 'line-form',
+        children: ['contour-advanced']
+    },
+    'geometric': {
+        id: 'geometric',
+        name: 'Geometric Forms',
+        file: 'Drawing/Geometric Forms',
+        level: 2,
+        angle: -60,
+        x: 194,
+        y: -417,
+        parent: 'line-form',
+        children: ['geometric-advanced']
+    },
 
-        // BOTTOM BRANCH - Anatomy
-        'anatomy': {
-            id: 'anatomy',
-            name: 'Anatomy Basics',
-            file: 'Drawing/Anatomy Basics',
-            x: 0,
-            y: 280,
-            slots: []
-        }
+    // Left branch
+    'eye-obs': {
+        id: 'eye-obs',
+        name: 'Eye',
+        file: 'Drawing/Eye',
+        level: 2,
+        angle: 140,
+        x: -389,
+        y: 56,
+        parent: 'observation',
+        children: []
+    },
+    'negative-space': {
+        id: 'negative-space',
+        name: 'Negative Space',
+        file: 'Drawing/Negative Space',
+        level: 2,
+        angle: 160,
+        x: -415,
+        y: 225,
+        parent: 'observation',
+        children: ['negative-space-adv']
+    },
+    'perspective': {
+        id: 'perspective',
+        name: 'Perspective Grids',
+        file: 'Drawing/Perspective Grids',
+        level: 2,
+        angle: 180,
+        x: -422,
+        y: 140,
+        parent: 'observation',
+        children: ['cross-hatching']
+    },
+
+    // Right branch
+    'light-source': {
+        id: 'light-source',
+        name: 'Light Source',
+        file: 'Drawing/Light Source',
+        level: 2,
+        angle: 20,
+        x: 415,
+        y: 40,
+        parent: 'value-light',
+        children: ['light-source-adv']
+    },
+    'sphere-shading': {
+        id: 'sphere-shading',
+        name: 'Sphere Shading',
+        file: 'Drawing/Sphere Shading',
+        level: 2,
+        angle: 40,
+        x: 389,
+        y: 225,
+        parent: 'value-light',
+        children: ['cast-shadows']
+    },
+
+    // Level 3 - Tertiary branches
+    'still-life': {
+        id: 'still-life',
+        name: 'Still Life',
+        file: 'Drawing/Still Life',
+        level: 3,
+        angle: -140,
+        x: -340,
+        y: -520,
+        parent: 'basic-shapes',
+        children: []
+    },
+    'basic-shapes-2': {
+        id: 'basic-shapes-2',
+        name: 'Basic Shapes II',
+        file: 'Drawing/Basic Shapes II',
+        level: 3,
+        angle: -100,
+        x: -100,
+        y: -550,
+        parent: 'basic-shapes',
+        children: []
+    },
+    'cross-hatching': {
+        id: 'cross-hatching',
+        name: 'Cross-Hatching',
+        file: 'Drawing/Cross-Hatching',
+        level: 3,
+        angle: 200,
+        x: -560,
+        y: 240,
+        parent: 'perspective',
+        children: []
+    },
+    'cast-shadows': {
+        id: 'cast-shadows',
+        name: 'Cast Shadows',
+        file: 'Drawing/Cast Shadows',
+        level: 3,
+        angle: 50,
+        x: 520,
+        y: 300,
+        parent: 'sphere-shading',
+        children: []
+    },
+    'anatomy-basics-1': {
+        id: 'anatomy-basics-1',
+        name: 'Anatomy I',
+        file: 'Drawing/Anatomy I',
+        level: 3,
+        angle: 75,
+        x: 260,
+        y: 470,
+        parent: 'anatomy',
+        children: []
+    },
+    'anatomy-basics-2': {
+        id: 'anatomy-basics-2',
+        name: 'Anatomy II',
+        file: 'Drawing/Anatomy II',
+        level: 3,
+        angle: 105,
+        x: -260,
+        y: 470,
+        parent: 'anatomy',
+        children: []
     }
 };
 
-// Try to load from localStorage
-try {
-    const saved = localStorage.getItem('skillTreeData');
-    if (saved) {
-        const savedData = JSON.parse(saved);
-        // Merge saved data with default structure
-        if (savedData.skills) {
-            Object.keys(savedData.skills).forEach(id => {
-                if (skillTree.skills[id]) {
-                    skillTree.skills[id] = { ...skillTree.skills[id], ...savedData.skills[id] };
-                } else {
-                    skillTree.skills[id] = savedData.skills[id];
-                }
-            });
-        }
+// Algorithmic placement system
+const LEVEL_RADII = [0, 280, 450, 600, 750, 900]; // Distance for each level
+const ANGLE_SPREAD = 35; // Degrees between children
+
+function calculateNewNodePosition(parentId) {
+    const parent = MAP_STRUCTURE[parentId];
+    if (!parent) return null;
+
+    const childCount = parent.children.length;
+    const level = parent.level + 1;
+    const baseRadius = LEVEL_RADII[level] || (level * 150);
+
+    // Calculate angle based on existing children
+    const existingAngles = parent.children.map(childId => MAP_STRUCTURE[childId]?.angle || 0);
+    let newAngle = parent.angle;
+
+    if (childCount > 0) {
+        // Spread children evenly around parent
+        const angleStep = ANGLE_SPREAD;
+        const startOffset = -(childCount * angleStep) / 2;
+        newAngle = parent.angle + startOffset + (childCount * angleStep);
     }
-} catch(e) {
-    console.log('Using default skill tree');
+
+    const angleRad = (newAngle * Math.PI) / 180;
+    const x = parent.x + Math.cos(angleRad) * baseRadius;
+    const y = parent.y + Math.sin(angleRad) * baseRadius;
+
+    return { x, y, angle: newAngle, level };
 }
 
-function saveSkillTree() {
+// Load saved customizations
+let customNodes = {};
+try {
+    const saved = localStorage.getItem('skillTreeCustom');
+    if (saved) {
+        customNodes = JSON.parse(saved);
+    }
+} catch(e) {
+    console.log('No custom nodes');
+}
+
+function saveCustomNodes() {
     try {
-        localStorage.setItem('skillTreeData', JSON.stringify(skillTree));
+        localStorage.setItem('skillTreeCustom', JSON.stringify(customNodes));
     } catch(e) {
-        console.error('Failed to save skill tree');
+        console.error('Failed to save');
     }
 }
 
@@ -211,12 +304,12 @@ if (!document.getElementById('drawing-session-styles')) {
     const style = document.createElement('style');
     style.id = 'drawing-session-styles';
     style.textContent = `
-        .drawing-no-drag {
-            pointer-events: none !important;
-            user-select: none !important;
-            -webkit-user-select: none !important;
-            -webkit-user-drag: none !important;
-            -webkit-touch-callout: none !important;
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: ${THEME.bg};
         }
 
         @keyframes fade-in {
@@ -236,30 +329,30 @@ if (!document.getElementById('drawing-session-styles')) {
         .skill-action-menu {
             position: fixed;
             display: flex;
-            gap: 20px;
+            gap: 15px;
             z-index: 10000;
-            animation: fade-in 0.3s ease;
+            animation: fade-in 0.2s ease;
             pointer-events: all;
         }
 
         .skill-action-btn {
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background: ${THEME.primary};
-            border: 2px solid ${THEME.primary};
+            border: none;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: transform 0.1s ease;
             box-shadow: 0 0 20px ${THEME.primaryGlow};
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .skill-action-btn:active {
-            transform: scale(0.9);
+            transform: scale(0.85);
         }
     `;
     document.head.appendChild(style);
@@ -271,52 +364,45 @@ if (!document.getElementById('drawing-session-styles')) {
 const mainContainer = dv.el("div", "");
 mainContainer.style.cssText = `
     width: 100%;
-    min-height: 100vh;
-    background: ${THEME.bg};
-    position: relative;
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-`;
-
-// ==========================================
-// SKILL TREE CANVAS
-// ==========================================
-const skillTreeSection = document.createElement('div');
-skillTreeSection.style.cssText = `
-    width: 100%;
     height: 100vh;
     background: ${THEME.bg};
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
 `;
 
+// ==========================================
+// CANVAS
+// ==========================================
 const canvas = document.createElement('canvas');
 canvas.className = 'skill-tree-canvas';
-canvas.width = 2000;
-canvas.height = 2000;
+canvas.width = 2400;
+canvas.height = 2400;
 canvas.style.cssText = `
     position: absolute;
     top: 50%;
     left: 50%;
     transform-origin: center;
 `;
-skillTreeSection.appendChild(canvas);
+mainContainer.appendChild(canvas);
 
 const ctx = canvas.getContext('2d');
 
-// Pan and zoom state
+// State
 let pan = { x: 0, y: 0 };
 let zoom = 0.5;
 let isDragging = false;
 let dragStart = { x: 0, y: 0 };
 let holdTimer = null;
-let holdingSkill = null;
 let touchDistance = 0;
 let lastTouchPosition = { x: 0, y: 0 };
 let activeMenu = null;
+let touchStartTime = 0;
+let touchMoved = false;
 
-// Update canvas transform
 function updateCanvasTransform() {
     canvas.style.transform = `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
 }
@@ -324,81 +410,113 @@ function updateCanvasTransform() {
 updateCanvasTransform();
 
 // ==========================================
-// SKILL TREE RENDERING
+// DRAWING FUNCTIONS
 // ==========================================
+function drawCurvedLine(x1, y1, x2, y2) {
+    // Calculate control point for curved line
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+
+    // Create curve that bends away from center
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Perpendicular offset for curve
+    const offsetX = -dy * 0.15;
+    const offsetY = dx * 0.15;
+
+    const cpX = midX + offsetX;
+    const cpY = midY + offsetY;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.quadraticCurveTo(cpX, cpY, x2, y2);
+    ctx.stroke();
+}
+
 function drawSkillTree() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Draw connections first
+    // Draw connections with curved lines
     ctx.strokeStyle = THEME.connection;
     ctx.lineWidth = 2;
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = THEME.connection;
 
-    // Draw connections from center
-    Object.values(skillTree.skills).forEach(skill => {
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.lineTo(centerX + skill.x, centerY + skill.y);
-        ctx.stroke();
-    });
-
-    // Draw connections between skills
-    Object.values(skillTree.skills).forEach(skill => {
-        if (skill.slots) {
-            skill.slots.forEach(slot => {
-                if (slot.occupied && skillTree.skills[slot.occupied]) {
-                    const target = skillTree.skills[slot.occupied];
-                    ctx.beginPath();
-                    ctx.moveTo(centerX + skill.x, centerY + skill.y);
-                    ctx.lineTo(centerX + target.x, centerY + target.y);
-                    ctx.stroke();
-                }
-            });
+    Object.values(MAP_STRUCTURE).forEach(skill => {
+        if (skill.parent) {
+            const parent = MAP_STRUCTURE[skill.parent];
+            if (parent) {
+                drawCurvedLine(
+                    centerX + parent.x,
+                    centerY + parent.y,
+                    centerX + skill.x,
+                    centerY + skill.y
+                );
+            }
         }
     });
 
-    // Draw center skill
-    drawSkill(centerX, centerY, skillTree.center, true);
+    ctx.shadowBlur = 0;
 
-    // Draw all other skills
-    Object.values(skillTree.skills).forEach(skill => {
-        drawSkill(centerX + skill.x, centerY + skill.y, skill, false);
+    // Draw nodes
+    Object.values(MAP_STRUCTURE).forEach(skill => {
+        const isCenter = skill.level === 0;
+        drawSkill(centerX + skill.x, centerY + skill.y, skill, isCenter);
     });
 }
 
 function drawSkill(x, y, skill, isCenter) {
     const radius = isCenter ? 60 : 45;
 
-    // Draw outer glow
-    ctx.shadowBlur = 15;
+    // Outer glow
+    ctx.shadowBlur = isCenter ? 25 : 15;
     ctx.shadowColor = THEME.primaryGlow;
 
-    // Draw filled circle (white)
+    // White circle
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fillStyle = THEME.primary;
     ctx.fill();
 
-    // Reset shadow
     ctx.shadowBlur = 0;
 
-    // Draw icon placeholder
+    // Icon
     ctx.fillStyle = THEME.bg;
-    ctx.font = `${isCenter ? 28 : 20}px Arial`;
+    ctx.font = `${isCenter ? 28 : 22}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🎨', x, y - 5);
+    ctx.fillText('🎨', x, y - 3);
 
-    // Draw label
+    // Label
     ctx.fillStyle = THEME.primary;
     ctx.font = `${isCenter ? 12 : 10}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
+
     const words = skill.name.split(' ');
+    const maxWidth = 3;
+    let lines = [];
+    let currentLine = '';
+
     words.forEach((word, i) => {
-        ctx.fillText(word, x, y + radius + 10 + (i * 14));
+        if (currentLine.length + word.length <= maxWidth || currentLine === '') {
+            currentLine = currentLine ? currentLine + ' ' + word : word;
+        } else {
+            lines.push(currentLine);
+            currentLine = word;
+        }
+        if (i === words.length - 1) {
+            lines.push(currentLine);
+        }
+    });
+
+    lines.forEach((line, i) => {
+        ctx.fillText(line, x, y + radius + 12 + (i * 13));
     });
 }
 
@@ -407,14 +525,23 @@ drawSkillTree();
 // ==========================================
 // INTERACTION HANDLERS
 // ==========================================
-
-// Remove any existing action menu
 function removeActionMenu() {
     if (activeMenu) {
         activeMenu.remove();
         activeMenu = null;
     }
     drawSkillTree();
+}
+
+function getSkillAtPosition(x, y) {
+    for (let skill of Object.values(MAP_STRUCTURE)) {
+        const dx = x - skill.x;
+        const dy = y - skill.y;
+        const dist = Math.sqrt(dx ** 2 + dy ** 2);
+        const radius = skill.level === 0 ? 60 : 45;
+        if (dist < radius) return skill;
+    }
+    return null;
 }
 
 // Mouse events
@@ -429,15 +556,12 @@ canvas.addEventListener('mousedown', (e) => {
     const clicked = getSkillAtPosition(x, y);
 
     if (clicked) {
-        // Start hold timer for skill
         holdTimer = setTimeout(() => {
             if (!isDragging) {
-                holdingSkill = clicked;
                 showSkillActions(clicked, e.clientX, e.clientY);
             }
         }, 500);
     } else {
-        // Start panning
         isDragging = true;
         dragStart = { x: e.clientX - pan.x, y: e.clientY - pan.y };
         canvas.style.cursor = 'grabbing';
@@ -450,7 +574,6 @@ canvas.addEventListener('mousemove', (e) => {
         pan.y = e.clientY - dragStart.y;
         updateCanvasTransform();
 
-        // Cancel hold timer if we started dragging
         if (holdTimer) {
             clearTimeout(holdTimer);
             holdTimer = null;
@@ -467,7 +590,6 @@ canvas.addEventListener('mouseup', (e) => {
         clearTimeout(holdTimer);
         holdTimer = null;
 
-        // If not dragging and timer was active, this was a click
         if (!wasDragging) {
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
@@ -475,7 +597,6 @@ canvas.addEventListener('mouseup', (e) => {
             const clicked = getSkillAtPosition(x, y);
 
             if (clicked) {
-                // Open skill MD file
                 openSkillFile(clicked);
             }
         }
@@ -498,10 +619,7 @@ canvas.addEventListener('wheel', (e) => {
     updateCanvasTransform();
 });
 
-// Touch events for mobile (improved)
-let touchStartTime = 0;
-let touchMoved = false;
-
+// Touch events
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     removeActionMenu();
@@ -510,7 +628,6 @@ canvas.addEventListener('touchstart', (e) => {
     touchMoved = false;
 
     if (e.touches.length === 1) {
-        // Single touch
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
         const x = (touch.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
@@ -521,7 +638,6 @@ canvas.addEventListener('touchstart', (e) => {
         if (clicked) {
             holdTimer = setTimeout(() => {
                 if (!touchMoved) {
-                    holdingSkill = clicked;
                     showSkillActions(clicked, touch.clientX, touch.clientY);
                 }
             }, 500);
@@ -532,7 +648,6 @@ canvas.addEventListener('touchstart', (e) => {
 
         lastTouchPosition = { x: touch.clientX, y: touch.clientY };
     } else if (e.touches.length === 2) {
-        // Two touches - pinch zoom
         isDragging = false;
         if (holdTimer) {
             clearTimeout(holdTimer);
@@ -558,7 +673,6 @@ canvas.addEventListener('touchmove', (e) => {
     touchMoved = true;
 
     if (e.touches.length === 1 && isDragging) {
-        // Single touch pan
         const touch = e.touches[0];
         pan.x = touch.clientX - dragStart.x;
         pan.y = touch.clientY - dragStart.y;
@@ -569,7 +683,6 @@ canvas.addEventListener('touchmove', (e) => {
             holdTimer = null;
         }
     } else if (e.touches.length === 2) {
-        // Two touch pinch and pan
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
 
@@ -583,13 +696,11 @@ canvas.addEventListener('touchmove', (e) => {
             y: (touch1.clientY + touch2.clientY) / 2
         };
 
-        // Pinch zoom
         if (touchDistance > 0) {
             const zoomDelta = newDistance / touchDistance;
             zoom = Math.max(0.3, Math.min(2, zoom * zoomDelta));
         }
 
-        // Pan
         pan.x += newCenter.x - lastTouchPosition.x;
         pan.y += newCenter.y - lastTouchPosition.y;
 
@@ -604,7 +715,6 @@ canvas.addEventListener('touchend', (e) => {
 
     if (e.touches.length === 0) {
         const touchDuration = Date.now() - touchStartTime;
-        const wasDragging = isDragging;
         isDragging = false;
         touchDistance = 0;
 
@@ -612,7 +722,6 @@ canvas.addEventListener('touchend', (e) => {
             clearTimeout(holdTimer);
             holdTimer = null;
 
-            // Quick tap (< 300ms, not moved much)
             if (!touchMoved && touchDuration < 300 && e.changedTouches.length > 0) {
                 const touch = e.changedTouches[0];
                 const rect = canvas.getBoundingClientRect();
@@ -633,46 +742,26 @@ function openSkillFile(skill) {
     window.location.href = `obsidian://open?vault=${encodeURIComponent(VAULT_NAME)}&file=${encodeURIComponent(fileName)}`;
 }
 
-function getSkillAtPosition(x, y) {
-    // Check center
-    const distCenter = Math.sqrt(x ** 2 + y ** 2);
-    if (distCenter < 60) return skillTree.center;
-
-    // Check skills
-    for (let skill of Object.values(skillTree.skills)) {
-        const dx = x - skill.x;
-        const dy = y - skill.y;
-        const dist = Math.sqrt(dx ** 2 + dy ** 2);
-        if (dist < 45) return skill;
-    }
-
-    return null;
-}
-
 // ==========================================
-// SKILL ACTIONS (EDIT/ADD)
+// SKILL ACTIONS
 // ==========================================
 function showSkillActions(skill, clientX, clientY) {
-    // Remove any existing menu
     removeActionMenu();
 
     const actionMenu = document.createElement('div');
     actionMenu.className = 'skill-action-menu';
-    actionMenu.style.cssText = `
-        left: ${clientX}px;
-        top: ${clientY}px;
-        transform: translate(-50%, -120%);
-    `;
+    actionMenu.style.left = clientX + 'px';
+    actionMenu.style.top = (clientY - 80) + 'px';
 
     // Edit button
     const editBtn = createActionButton('✏️', () => {
         removeActionMenu();
         showEditModal(skill);
     });
+    actionMenu.appendChild(editBtn);
 
-    // Add button (only if skill has available slots)
-    const hasSlots = skill.slots && skill.slots.some(s => !s.occupied);
-    if (hasSlots) {
+    // Add button (only if has children array)
+    if (skill.children) {
         const addBtn = createActionButton('➕', () => {
             removeActionMenu();
             addNewSkill(skill);
@@ -680,14 +769,13 @@ function showSkillActions(skill, clientX, clientY) {
         actionMenu.appendChild(addBtn);
     }
 
-    actionMenu.appendChild(editBtn);
     document.body.appendChild(actionMenu);
     activeMenu = actionMenu;
 
-    // Add glow effect to canvas skill
-    const centerX = canvas.width / 2 + (skill.x || 0);
-    const centerY = canvas.height / 2 + (skill.y || 0);
-    const radius = skill === skillTree.center ? 60 : 45;
+    // Glow effect
+    const centerX = canvas.width / 2 + skill.x;
+    const centerY = canvas.height / 2 + skill.y;
+    const radius = skill.level === 0 ? 60 : 45;
 
     ctx.save();
     ctx.shadowBlur = 30;
@@ -699,39 +787,32 @@ function showSkillActions(skill, clientX, clientY) {
     ctx.stroke();
     ctx.restore();
 
-    // Remove menu on click outside
     setTimeout(() => {
-        const removeOnOutsideClick = (e) => {
+        const removeOnClick = (e) => {
             if (activeMenu && !actionMenu.contains(e.target) && e.target !== canvas) {
                 removeActionMenu();
-                document.removeEventListener('click', removeOnOutsideClick);
-                document.removeEventListener('touchstart', removeOnOutsideClick);
+                document.removeEventListener('click', removeOnClick);
+                document.removeEventListener('touchstart', removeOnClick);
             }
         };
-        document.addEventListener('click', removeOnOutsideClick);
-        document.addEventListener('touchstart', removeOnOutsideClick);
+        document.addEventListener('click', removeOnClick);
+        document.addEventListener('touchstart', removeOnClick);
     }, 100);
 }
 
 function createActionButton(icon, onClick) {
     const btn = document.createElement('div');
     btn.className = 'skill-action-btn';
+    btn.innerHTML = `<div style="font-size: 28px;">${icon}</div>`;
 
-    const iconEl = document.createElement('div');
-    iconEl.textContent = icon;
-    iconEl.style.cssText = `font-size: 32px;`;
-    btn.appendChild(iconEl);
-
-    btn.onclick = (e) => {
-        e.stopPropagation();
-        onClick();
-    };
-
-    btn.ontouchend = (e) => {
+    const handler = (e) => {
         e.stopPropagation();
         e.preventDefault();
         onClick();
     };
+
+    btn.addEventListener('click', handler);
+    btn.addEventListener('touchend', handler);
 
     return btn;
 }
@@ -752,44 +833,34 @@ function showEditModal(skill) {
         align-items: center;
         justify-content: center;
         z-index: 10001;
-        backdrop-filter: blur(10px);
-        animation: fade-in 0.3s ease;
+        animation: fade-in 0.2s ease;
     `;
 
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
+    const content = document.createElement('div');
+    content.style.cssText = `
         background: #111111;
         border: 2px solid ${THEME.primary};
-        padding: 30px;
-        max-width: 400px;
-        width: 90%;
-        border-radius: 10px;
+        padding: 25px;
+        max-width: 350px;
+        width: 85%;
+        border-radius: 8px;
     `;
-    modal.appendChild(modalContent);
+    modal.appendChild(content);
 
-    // Title
     const title = document.createElement('h2');
     title.textContent = 'EDIT SKILL';
     title.style.cssText = `
         margin: 0 0 20px 0;
         color: ${THEME.primary};
-        font-size: 18px;
-        font-weight: 700;
-        font-family: "Arial", sans-serif;
+        font-size: 16px;
         text-align: center;
     `;
-    modalContent.appendChild(title);
+    content.appendChild(title);
 
-    // Name input
     const nameLabel = document.createElement('div');
     nameLabel.textContent = 'Name:';
-    nameLabel.style.cssText = `
-        color: ${THEME.primary};
-        font-size: 12px;
-        margin-bottom: 5px;
-        font-family: Arial, sans-serif;
-    `;
-    modalContent.appendChild(nameLabel);
+    nameLabel.style.cssText = `color: ${THEME.primary}; font-size: 11px; margin-bottom: 5px;`;
+    content.appendChild(nameLabel);
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -802,21 +873,14 @@ function showEditModal(skill) {
         color: ${THEME.primary};
         font-size: 14px;
         margin-bottom: 15px;
-        font-family: Arial, sans-serif;
         border-radius: 5px;
     `;
-    modalContent.appendChild(nameInput);
+    content.appendChild(nameInput);
 
-    // File path input
     const fileLabel = document.createElement('div');
-    fileLabel.textContent = 'File Path:';
-    fileLabel.style.cssText = `
-        color: ${THEME.primary};
-        font-size: 12px;
-        margin-bottom: 5px;
-        font-family: Arial, sans-serif;
-    `;
-    modalContent.appendChild(fileLabel);
+    fileLabel.textContent = 'File:';
+    fileLabel.style.cssText = `color: ${THEME.primary}; font-size: 11px; margin-bottom: 5px;`;
+    content.appendChild(fileLabel);
 
     const fileInput = document.createElement('input');
     fileInput.type = 'text';
@@ -829,58 +893,47 @@ function showEditModal(skill) {
         color: ${THEME.primary};
         font-size: 14px;
         margin-bottom: 20px;
-        font-family: Arial, sans-serif;
         border-radius: 5px;
     `;
-    modalContent.appendChild(fileInput);
+    content.appendChild(fileInput);
 
-    // Buttons
     const btnContainer = document.createElement('div');
-    btnContainer.style.cssText = `
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-    `;
-    modalContent.appendChild(btnContainer);
+    btnContainer.style.cssText = `display: flex; gap: 10px; justify-content: center;`;
+    content.appendChild(btnContainer);
 
-    // Save button
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'SAVE';
     saveBtn.style.cssText = `
-        padding: 10px 25px;
+        padding: 10px 20px;
         background: ${THEME.primary};
         border: none;
         color: ${THEME.bg};
         font-size: 12px;
         font-weight: bold;
-        cursor: pointer;
-        font-family: "Arial", sans-serif;
         border-radius: 5px;
-        touch-action: manipulation;
+        cursor: pointer;
     `;
     saveBtn.onclick = () => {
         skill.name = nameInput.value;
         skill.file = fileInput.value;
-        saveSkillTree();
+        customNodes[skill.id] = { name: skill.name, file: skill.file };
+        saveCustomNodes();
         drawSkillTree();
         modal.remove();
     };
     btnContainer.appendChild(saveBtn);
 
-    // Cancel button
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'CANCEL';
     cancelBtn.style.cssText = `
-        padding: 10px 25px;
+        padding: 10px 20px;
         background: transparent;
         border: 1px solid #333333;
         color: ${THEME.primary};
         font-size: 12px;
         font-weight: bold;
-        cursor: pointer;
-        font-family: "Arial", sans-serif;
         border-radius: 5px;
-        touch-action: manipulation;
+        cursor: pointer;
     `;
     cancelBtn.onclick = () => modal.remove();
     btnContainer.appendChild(cancelBtn);
@@ -891,38 +944,31 @@ function showEditModal(skill) {
 // ==========================================
 // ADD NEW SKILL
 // ==========================================
-function addNewSkill(parentSkill) {
+function addNewSkill(parent) {
     const name = prompt('Enter skill name:');
     if (!name) return;
 
-    // Find first available slot
-    const availableSlot = parentSkill.slots?.find(s => !s.occupied);
-    if (!availableSlot) {
-        alert('No available slots for new skills');
-        return;
-    }
+    const position = calculateNewNodePosition(parent.id);
+    if (!position) return;
 
-    // Calculate position based on slot
-    const angleRad = (availableSlot.angle * Math.PI) / 180;
-    const parentX = parentSkill.x || 0;
-    const parentY = parentSkill.y || 0;
-    const newX = parentX + Math.cos(angleRad) * availableSlot.distance;
-    const newY = parentY + Math.sin(angleRad) * availableSlot.distance;
-
-    const newId = `skill-${Date.now()}`;
+    const newId = `custom-${Date.now()}`;
     const newSkill = {
         id: newId,
         name: name,
         file: `Drawing/${name}`,
-        x: newX,
-        y: newY,
-        slots: []
+        level: position.level,
+        angle: position.angle,
+        x: position.x,
+        y: position.y,
+        parent: parent.id,
+        children: []
     };
 
-    skillTree.skills[newId] = newSkill;
-    availableSlot.occupied = newId;
+    MAP_STRUCTURE[newId] = newSkill;
+    parent.children.push(newId);
 
-    saveSkillTree();
+    customNodes[newId] = newSkill;
+    saveCustomNodes();
     drawSkillTree();
 }
 
@@ -931,7 +977,7 @@ function addNewSkill(parentSkill) {
 // ==========================================
 const controls = document.createElement('div');
 controls.style.cssText = `
-    position: absolute;
+    position: fixed;
     bottom: 20px;
     right: 20px;
     display: flex;
@@ -940,7 +986,7 @@ controls.style.cssText = `
     z-index: 100;
 `;
 
-function createControlButton(text, onClick) {
+function createControlBtn(text, onClick) {
     const btn = document.createElement('button');
     btn.textContent = text;
     btn.style.cssText = `
@@ -950,12 +996,10 @@ function createControlButton(text, onClick) {
         background: ${THEME.primary};
         border: none;
         color: ${THEME.bg};
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
         cursor: pointer;
-        transition: all 0.2s ease;
         box-shadow: 0 0 15px ${THEME.primaryGlow};
-        touch-action: manipulation;
     `;
     btn.onclick = onClick;
     btn.ontouchend = (e) => {
@@ -965,22 +1009,21 @@ function createControlButton(text, onClick) {
     return btn;
 }
 
-controls.appendChild(createControlButton('+', () => {
+controls.appendChild(createControlBtn('+', () => {
     zoom = Math.min(2, zoom * 1.2);
     updateCanvasTransform();
 }));
 
-controls.appendChild(createControlButton('-', () => {
+controls.appendChild(createControlBtn('-', () => {
     zoom = Math.max(0.3, zoom * 0.8);
     updateCanvasTransform();
 }));
 
-controls.appendChild(createControlButton('⟲', () => {
+controls.appendChild(createControlBtn('⟲', () => {
     pan = { x: 0, y: 0 };
     zoom = 0.5;
     updateCanvasTransform();
 }));
 
-skillTreeSection.appendChild(controls);
-mainContainer.appendChild(skillTreeSection);
+mainContainer.appendChild(controls);
 ```
