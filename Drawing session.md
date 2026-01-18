@@ -12,16 +12,17 @@ cssclasses:
 const VAULT_NAME = "Alt society";
 
 const THEME = {
-    primary: "#8b0000",
-    primaryHover: "#a01010",
-    secondary: "#d4af37",
-    accent: "#c9a961",
-    border: "#3a1a1a",
-    borderHover: "#5a2a2a",
-    muted: "#6a4a4a",
-    bg: "#0a0000",
-    bgLight: "#150505",
-    bgCard: "#1a0a0a"
+    primary: "#ffffff",
+    primaryGlow: "rgba(255, 255, 255, 0.8)",
+    secondary: "#3a7a9e",
+    accent: "#5a9ace",
+    border: "#2a3a4d",
+    borderHover: "#3a5a7d",
+    muted: "#7a8a9d",
+    bg: "#1a1d2e",
+    bgLight: "#252838",
+    bgCard: "#2a2d3e",
+    connection: "#3a5a7d"
 };
 
 // ==========================================
@@ -268,11 +269,11 @@ title.style.cssText = `
     color: ${THEME.primary};
     font-size: 28px;
     font-weight: 700;
-    font-family: "Impact", "Arial Black", sans-serif;
+    font-family: "Arial", sans-serif;
     letter-spacing: 6px;
     text-align: center;
     text-transform: uppercase;
-    text-shadow: 0 0 10px rgba(139, 0, 0, 0.5);
+    text-shadow: 0 0 15px ${THEME.primaryGlow};
 `;
 statsContainer.appendChild(title);
 
@@ -314,10 +315,10 @@ function createStatBox(label, value, icon) {
     valueEl.style.cssText = `
         font-size: 32px;
         font-weight: bold;
-        color: ${THEME.secondary};
-        font-family: "Impact", sans-serif;
+        color: ${THEME.primary};
+        font-family: "Arial", sans-serif;
         margin-bottom: 5px;
-        text-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+        text-shadow: 0 0 10px ${THEME.primaryGlow};
     `;
     box.appendChild(valueEl);
 
@@ -333,9 +334,9 @@ function createStatBox(label, value, icon) {
     box.appendChild(labelEl);
 
     box.onmouseenter = () => {
-        box.style.borderColor = THEME.primary;
+        box.style.borderColor = THEME.accent;
         box.style.transform = 'translateY(-3px)';
-        box.style.boxShadow = `0 5px 15px rgba(139, 0, 0, 0.3)`;
+        box.style.boxShadow = `0 5px 15px ${THEME.accent}`;
     };
 
     box.onmouseleave = () => {
@@ -393,9 +394,9 @@ sessionTitle.style.cssText = `
     color: ${THEME.primary};
     font-size: 20px;
     font-weight: 700;
-    font-family: "Impact", sans-serif;
+    font-family: "Arial", sans-serif;
     letter-spacing: 4px;
-    text-shadow: 0 0 10px rgba(139, 0, 0, 0.5);
+    text-shadow: 0 0 15px ${THEME.primaryGlow};
 `;
 fixedContent.appendChild(sessionTitle);
 
@@ -404,31 +405,31 @@ const startBtn = document.createElement('button');
 startBtn.textContent = 'BEGIN';
 startBtn.style.cssText = `
     padding: 15px 50px;
-    background: linear-gradient(135deg, ${THEME.primary} 0%, #660000 100%);
-    border: 2px solid ${THEME.secondary};
-    color: ${THEME.secondary};
+    background: ${THEME.primary};
+    border: 2px solid ${THEME.accent};
+    color: ${THEME.bg};
     font-size: 18px;
     font-weight: bold;
-    font-family: "Impact", sans-serif;
+    font-family: "Arial", sans-serif;
     letter-spacing: 3px;
     cursor: pointer;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
     border-radius: 50px;
-    box-shadow: 0 0 20px rgba(139, 0, 0, 0.5);
+    box-shadow: 0 0 20px ${THEME.primaryGlow};
 `;
 
 startBtn.onmouseenter = () => {
     startBtn.style.transform = 'scale(1.1)';
     startBtn.style.boxShadow = `0 0 30px ${THEME.primary}`;
-    startBtn.style.borderColor = THEME.primaryHover;
+    startBtn.style.borderColor = THEME.accent;
 };
 
 startBtn.onmouseleave = () => {
     startBtn.style.transform = 'scale(1)';
-    startBtn.style.boxShadow = '0 0 20px rgba(139, 0, 0, 0.5)';
-    startBtn.style.borderColor = THEME.secondary;
+    startBtn.style.boxShadow = `0 0 20px ${THEME.primaryGlow}`;
+    startBtn.style.borderColor = THEME.accent;
 };
 
 startBtn.onclick = () => {
@@ -486,6 +487,8 @@ let isDragging = false;
 let dragStart = { x: 0, y: 0 };
 let holdTimer = null;
 let holdingSkill = null;
+let touchDistance = 0;
+let lastTouchPosition = { x: 0, y: 0 };
 
 // Update canvas transform
 function updateCanvasTransform() {
@@ -503,9 +506,11 @@ function drawSkillTree() {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Draw connections first
-    ctx.strokeStyle = THEME.border;
-    ctx.lineWidth = 3;
+    // Draw connections first (glowing blue lines)
+    ctx.strokeStyle = THEME.connection;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = THEME.accent;
 
     // Draw connections from center
     skillTree.center.connections.forEach(targetId => {
@@ -531,6 +536,9 @@ function drawSkillTree() {
         });
     });
 
+    // Reset shadow for skills
+    ctx.shadowBlur = 0;
+
     // Draw center skill
     drawSkill(centerX, centerY, skillTree.center, true);
 
@@ -543,31 +551,28 @@ function drawSkillTree() {
 function drawSkill(x, y, skill, isCenter) {
     const radius = isCenter ? 60 : 45;
 
-    // Draw circle
+    // Draw outer glow
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = THEME.primaryGlow;
+
+    // Draw filled circle (white with glow)
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = THEME.bgLight;
+    ctx.fillStyle = THEME.primary;
     ctx.fill();
-    ctx.strokeStyle = THEME.primary;
-    ctx.lineWidth = 3;
-    ctx.stroke();
 
-    // Draw inner circle
-    ctx.beginPath();
-    ctx.arc(x, y, radius - 8, 0, Math.PI * 2);
-    ctx.strokeStyle = THEME.secondary;
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Reset shadow
+    ctx.shadowBlur = 0;
 
     // Draw icon placeholder
-    ctx.fillStyle = THEME.secondary;
+    ctx.fillStyle = THEME.bg;
     ctx.font = `${isCenter ? 28 : 20}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('🎨', x, y - 5);
 
     // Draw label
-    ctx.fillStyle = THEME.muted;
+    ctx.fillStyle = THEME.primary;
     ctx.font = `${isCenter ? 14 : 11}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -582,7 +587,10 @@ drawSkillTree();
 // ==========================================
 // INTERACTION HANDLERS
 // ==========================================
+
+// Mouse events
 canvas.addEventListener('mousedown', (e) => {
+    e.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
     const y = (e.clientY - rect.top - rect.height / 2 - pan.y) / zoom;
@@ -592,8 +600,10 @@ canvas.addEventListener('mousedown', (e) => {
     if (clicked) {
         // Start hold timer for skill
         holdTimer = setTimeout(() => {
-            holdingSkill = clicked;
-            showSkillActions(clicked, e.clientX, e.clientY);
+            if (!isDragging) {
+                holdingSkill = clicked;
+                showSkillActions(clicked, e.clientX, e.clientY);
+            }
         }, 500);
     } else {
         // Start panning
@@ -608,15 +618,36 @@ canvas.addEventListener('mousemove', (e) => {
         pan.x = e.clientX - dragStart.x;
         pan.y = e.clientY - dragStart.y;
         updateCanvasTransform();
+
+        // Cancel hold timer if we started dragging
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+        }
     }
 });
 
-canvas.addEventListener('mouseup', () => {
+canvas.addEventListener('mouseup', (e) => {
+    const wasDragging = isDragging;
     isDragging = false;
     canvas.style.cursor = 'grab';
+
     if (holdTimer) {
         clearTimeout(holdTimer);
         holdTimer = null;
+
+        // If not dragging and timer was active, this was a click
+        if (!wasDragging) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
+            const y = (e.clientY - rect.top - rect.height / 2 - pan.y) / zoom;
+            const clicked = getSkillAtPosition(x, y);
+
+            if (clicked) {
+                // Open skill MD file
+                openSkillFile(clicked);
+            }
+        }
     }
 });
 
@@ -635,6 +666,133 @@ canvas.addEventListener('wheel', (e) => {
     zoom = Math.max(0.3, Math.min(2, zoom * delta));
     updateCanvasTransform();
 });
+
+// Touch events for mobile
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+
+    if (e.touches.length === 1) {
+        // Single touch - start hold timer or pan
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const x = (touch.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
+        const y = (touch.clientY - rect.top - rect.height / 2 - pan.y) / zoom;
+
+        const clicked = getSkillAtPosition(x, y);
+
+        if (clicked) {
+            holdTimer = setTimeout(() => {
+                if (!isDragging) {
+                    holdingSkill = clicked;
+                    showSkillActions(clicked, touch.clientX, touch.clientY);
+                }
+            }, 500);
+        } else {
+            isDragging = true;
+            dragStart = { x: touch.clientX - pan.x, y: touch.clientY - pan.y };
+        }
+
+        lastTouchPosition = { x: touch.clientX, y: touch.clientY };
+    } else if (e.touches.length === 2) {
+        // Two touches - prepare for pinch zoom
+        isDragging = false;
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        touchDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+
+        lastTouchPosition = {
+            x: (touch1.clientX + touch2.clientX) / 2,
+            y: (touch1.clientY + touch2.clientY) / 2
+        };
+    }
+});
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+
+    if (e.touches.length === 1 && isDragging) {
+        // Single touch pan
+        const touch = e.touches[0];
+        pan.x = touch.clientX - dragStart.x;
+        pan.y = touch.clientY - dragStart.y;
+        updateCanvasTransform();
+
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+    } else if (e.touches.length === 2) {
+        // Two touch pinch and pan
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+
+        const newDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+
+        const newCenter = {
+            x: (touch1.clientX + touch2.clientX) / 2,
+            y: (touch1.clientY + touch2.clientY) / 2
+        };
+
+        // Pinch zoom
+        if (touchDistance > 0) {
+            const zoomDelta = newDistance / touchDistance;
+            zoom = Math.max(0.3, Math.min(2, zoom * zoomDelta));
+        }
+
+        // Pan
+        pan.x += newCenter.x - lastTouchPosition.x;
+        pan.y += newCenter.y - lastTouchPosition.y;
+
+        touchDistance = newDistance;
+        lastTouchPosition = newCenter;
+        updateCanvasTransform();
+    }
+});
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+
+    if (e.touches.length === 0) {
+        const wasDragging = isDragging;
+        isDragging = false;
+        touchDistance = 0;
+
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+
+            // Quick tap - open file
+            if (!wasDragging && e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
+                const y = (touch.clientY - rect.top - rect.height / 2 - pan.y) / zoom;
+                const clicked = getSkillAtPosition(x, y);
+
+                if (clicked) {
+                    openSkillFile(clicked);
+                }
+            }
+        }
+    }
+});
+
+function openSkillFile(skill) {
+    // Try to open the skill's MD file
+    const fileName = `Drawing/${skill.name}`;
+    window.location.href = `obsidian://open?vault=${encodeURIComponent(VAULT_NAME)}&file=${encodeURIComponent(fileName)}`;
+}
 
 function getSkillAtPosition(x, y) {
     const centerX = canvas.width / 2;
@@ -698,11 +856,11 @@ function showSkillActions(skill, clientX, clientY) {
     const radius = skill === skillTree.center ? 60 : 45;
 
     ctx.save();
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = THEME.primary;
+    ctx.shadowBlur = 40;
+    ctx.shadowColor = THEME.accent;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = THEME.primary;
+    ctx.strokeStyle = THEME.accent;
     ctx.lineWidth = 5;
     ctx.stroke();
     ctx.restore();
@@ -726,15 +884,15 @@ function createCircleButton(icon, label, onClick) {
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        background: linear-gradient(135deg, ${THEME.primary} 0%, #660000 100%);
-        border: 3px solid ${THEME.secondary};
+        background: ${THEME.primary};
+        border: 3px solid ${THEME.accent};
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        box-shadow: 0 0 20px rgba(139, 0, 0, 0.5);
+        box-shadow: 0 0 20px ${THEME.primaryGlow};
     `;
 
     const iconEl = document.createElement('div');
@@ -746,7 +904,7 @@ function createCircleButton(icon, label, onClick) {
     labelEl.textContent = label;
     labelEl.style.cssText = `
         font-size: 10px;
-        color: ${THEME.secondary};
+        color: ${THEME.bg};
         font-weight: bold;
         font-family: Arial, sans-serif;
         letter-spacing: 1px;
@@ -761,7 +919,7 @@ function createCircleButton(icon, label, onClick) {
 
     btn.onmouseleave = () => {
         btn.style.transform = 'scale(1)';
-        btn.style.boxShadow = '0 0 20px rgba(139, 0, 0, 0.5)';
+        btn.style.boxShadow = `0 0 20px ${THEME.primaryGlow}`;
     };
 
     btn.onclick = onClick;
@@ -823,14 +981,14 @@ function showEditModal(skill) {
         width: 150px;
         height: 150px;
         border-radius: 50%;
-        background: ${THEME.bgLight};
-        border: 4px solid ${THEME.primary};
+        background: ${THEME.primary};
+        border: 4px solid ${THEME.accent};
         margin: 0 auto 30px auto;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 60px;
-        box-shadow: 0 0 30px rgba(139, 0, 0, 0.5);
+        box-shadow: 0 0 30px ${THEME.primaryGlow};
     `;
     skillDisplay.textContent = '🎨';
     modalContent.appendChild(skillDisplay);
@@ -839,7 +997,7 @@ function showEditModal(skill) {
     const nameLabel = document.createElement('div');
     nameLabel.textContent = 'Skill Name:';
     nameLabel.style.cssText = `
-        color: ${THEME.secondary};
+        color: ${THEME.primary};
         font-size: 14px;
         font-weight: bold;
         margin-bottom: 8px;
@@ -855,7 +1013,7 @@ function showEditModal(skill) {
         padding: 12px;
         background: ${THEME.bgLight};
         border: 2px solid ${THEME.border};
-        color: ${THEME.secondary};
+        color: ${THEME.primary};
         font-size: 16px;
         margin-bottom: 20px;
         font-family: Arial, sans-serif;
@@ -866,7 +1024,7 @@ function showEditModal(skill) {
     const imageLabel = document.createElement('div');
     imageLabel.textContent = 'Image Name:';
     imageLabel.style.cssText = `
-        color: ${THEME.secondary};
+        color: ${THEME.primary};
         font-size: 14px;
         font-weight: bold;
         margin-bottom: 8px;
@@ -882,7 +1040,7 @@ function showEditModal(skill) {
         padding: 12px;
         background: ${THEME.bgLight};
         border: 2px solid ${THEME.border};
-        color: ${THEME.secondary};
+        color: ${THEME.primary};
         font-size: 16px;
         margin-bottom: 30px;
         font-family: Arial, sans-serif;
@@ -904,12 +1062,12 @@ function showEditModal(skill) {
     saveBtn.style.cssText = `
         padding: 12px 30px;
         background: ${THEME.primary};
-        border: 2px solid ${THEME.secondary};
-        color: ${THEME.secondary};
+        border: 2px solid ${THEME.accent};
+        color: ${THEME.bg};
         font-size: 14px;
         font-weight: bold;
         cursor: pointer;
-        font-family: "Impact", sans-serif;
+        font-family: "Arial", sans-serif;
         letter-spacing: 2px;
         transition: all 0.3s ease;
     `;
@@ -927,13 +1085,13 @@ function showEditModal(skill) {
     deleteBtn.textContent = 'DELETE';
     deleteBtn.style.cssText = `
         padding: 12px 30px;
-        background: #330000;
-        border: 2px solid ${THEME.primary};
+        background: #663333;
+        border: 2px solid #aa6666;
         color: ${THEME.primary};
         font-size: 14px;
         font-weight: bold;
         cursor: pointer;
-        font-family: "Impact", sans-serif;
+        font-family: "Arial", sans-serif;
         letter-spacing: 2px;
         transition: all 0.3s ease;
     `;
@@ -962,7 +1120,7 @@ function showEditModal(skill) {
         font-size: 14px;
         font-weight: bold;
         cursor: pointer;
-        font-family: "Impact", sans-serif;
+        font-family: "Arial", sans-serif;
         letter-spacing: 2px;
         transition: all 0.3s ease;
     `;
@@ -973,7 +1131,7 @@ function showEditModal(skill) {
     [saveBtn, deleteBtn, cancelBtn].forEach(btn => {
         btn.onmouseenter = () => {
             btn.style.transform = 'scale(1.05)';
-            btn.style.boxShadow = `0 0 15px ${THEME.primary}`;
+            btn.style.boxShadow = `0 0 15px ${THEME.accent}`;
         };
         btn.onmouseleave = () => {
             btn.style.transform = 'scale(1)';
@@ -1035,13 +1193,13 @@ function createControlButton(text, onClick) {
         height: 50px;
         border-radius: 50%;
         background: ${THEME.primary};
-        border: 2px solid ${THEME.secondary};
-        color: ${THEME.secondary};
+        border: 2px solid ${THEME.accent};
+        color: ${THEME.bg};
         font-size: 24px;
         font-weight: bold;
         cursor: pointer;
         transition: all 0.3s ease;
-        box-shadow: 0 0 15px rgba(139, 0, 0, 0.5);
+        box-shadow: 0 0 15px ${THEME.primaryGlow};
     `;
     btn.onclick = onClick;
     btn.onmouseenter = () => {
@@ -1050,7 +1208,7 @@ function createControlButton(text, onClick) {
     };
     btn.onmouseleave = () => {
         btn.style.transform = 'scale(1)';
-        btn.style.boxShadow = '0 0 15px rgba(139, 0, 0, 0.5)';
+        btn.style.boxShadow = `0 0 15px ${THEME.primaryGlow}`;
     };
     return btn;
 }
@@ -1090,10 +1248,11 @@ instructions.style.cssText = `
     line-height: 1.6;
 `;
 instructions.innerHTML = `
-    <strong style="color: ${THEME.secondary};">CONTROLS:</strong><br>
+    <strong style="color: ${THEME.primary};">CONTROLS:</strong><br>
+    <span style="color: ${THEME.accent};">• CLICK</span> on a skill to open its notes<br>
+    <span style="color: ${THEME.accent};">• HOLD</span> on a skill (0.5s) to edit or add new skills<br>
     <span style="color: ${THEME.accent};">• DRAG</span> to pan around the skill tree<br>
-    <span style="color: ${THEME.accent};">• SCROLL</span> to zoom in/out<br>
-    <span style="color: ${THEME.accent};">• HOLD</span> on a skill to edit or add new skills<br>
+    <span style="color: ${THEME.accent};">• SCROLL</span> or pinch to zoom in/out<br>
     <span style="color: ${THEME.accent};">• USE BUTTONS</span> in bottom right to reset view
 `;
 mainContainer.appendChild(instructions);
