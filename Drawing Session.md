@@ -130,8 +130,8 @@ dv.paragraph(""); // Minimal output
 
 ```dataviewjs
 // ==========================================
-// RECENT SESSIONS - COLLAGE CARD
-// Stacked cards showing 5 most recent sessions
+// RECENT SESSIONS - SCATTERED COLLAGE CARD
+// Cards on top, divider, title/description below
 // ==========================================
 
 const THEME = window.SESSION_THEME || { color: "#888", colorHover: "#fff", colorBorder: "#222", colorMuted: "#555" };
@@ -167,46 +167,13 @@ container.appendChild(card);
 
 if (createCorners) createCorners(card, THEME.color);
 
-// Header
-const headerSection = document.createElement('div');
-headerSection.style.cssText = `
-    padding: 24px 28px 20px 28px;
-    background: linear-gradient(180deg, #0f0f0f 0%, #0a0a0a 100%);
-    border-bottom: 1px solid ${THEME.colorBorder};
-`;
-card.appendChild(headerSection);
-
-const header = document.createElement('h3');
-header.textContent = "Recent Sessions";
-header.style.cssText = `
-    margin: 0 0 8px 0;
-    color: ${THEME.color};
-    font-size: 11px;
-    font-weight: 500;
-    font-family: "Courier New", monospace;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    opacity: 0.7;
-`;
-headerSection.appendChild(header);
-
-const desc = document.createElement('p');
-desc.textContent = "Your creative journey";
-desc.style.cssText = `
-    margin: 0;
-    color: ${THEME.colorMuted};
-    font-size: 13px;
-    line-height: 1.4;
-    font-family: "Georgia", serif;
-    font-style: italic;
-`;
-headerSection.appendChild(desc);
-
-// Collage container - stacked cards
+// ==========================================
+// TOP SECTION - Scattered cards collage
+// ==========================================
 const collageContainer = document.createElement('div');
 collageContainer.style.cssText = `
     position: relative;
-    height: 280px;
+    height: 260px;
     margin: 20px;
     perspective: 1000px;
 `;
@@ -215,7 +182,7 @@ card.appendChild(collageContainer);
 if (sessions.length === 0) {
     const emptyMsg = document.createElement('div');
     emptyMsg.innerHTML = `
-        <div style="text-align: center; padding: 60px 20px; color: ${THEME.colorMuted};">
+        <div style="text-align: center; padding: 80px 20px; color: ${THEME.colorMuted};">
             <div style="font-size: 32px; margin-bottom: 16px; opacity: 0.3;">&#9998;</div>
             <div style="font-family: Georgia, serif; font-style: italic; font-size: 14px;">No sessions yet</div>
             <div style="font-family: Courier New, monospace; font-size: 10px; letter-spacing: 2px; margin-top: 8px; opacity: 0.5;">START ONE BELOW</div>
@@ -223,140 +190,87 @@ if (sessions.length === 0) {
     `;
     collageContainer.appendChild(emptyMsg);
 } else {
-    // Create stacked session cards
-    sessions.forEach((session, index) => {
-        const sessionCard = document.createElement('div');
-        const offset = index * 8;
-        const rotation = (index - 2) * 2; // Slight rotation for collage effect
-        const zIndex = sessions.length - index;
-        const opacity = 1 - (index * 0.12);
+    // Random-ish positions for scattered effect
+    const positions = [
+        { x: 15, y: 10, rot: -8, scale: 1 },      // back-left
+        { x: 55, y: 5, rot: 5, scale: 1 },        // back-right
+        { x: 35, y: 25, rot: -3, scale: 1.02 },   // middle-center
+        { x: 10, y: 45, rot: 6, scale: 1 },       // front-left
+        { x: 50, y: 50, rot: -4, scale: 1.05 },   // front-right (most recent)
+    ];
 
+    // Create scattered session cards (reverse so most recent is on top)
+    sessions.slice().reverse().forEach((session, reverseIndex) => {
+        const index = sessions.length - 1 - reverseIndex;
+        const pos = positions[index] || positions[0];
+        const zIndex = index + 1;
+
+        const sessionCard = document.createElement('div');
         sessionCard.style.cssText = `
             position: absolute;
-            top: ${offset}px;
-            left: ${offset}px;
-            right: ${-offset}px;
-            height: 180px;
+            left: ${pos.x}%;
+            top: ${pos.y}%;
+            width: 140px;
+            height: 100px;
             background: #111;
             border: 1px solid ${THEME.colorBorder};
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: rotate(${rotation}deg);
+            transform: rotate(${pos.rot}deg) scale(${pos.scale});
             z-index: ${zIndex};
-            opacity: ${opacity};
             overflow: hidden;
         `;
         collageContainer.appendChild(sessionCard);
 
-        // Session content
+        // Inner content
         const content = document.createElement('div');
         content.style.cssText = `
-            padding: 20px;
+            padding: 12px;
             height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            position: relative;
         `;
         sessionCard.appendChild(content);
 
-        // Top row: date and skills count
-        const topRow = document.createElement('div');
-        topRow.style.cssText = `display: flex; justify-content: space-between; align-items: flex-start;`;
-        content.appendChild(topRow);
-
+        // Date at top
         const dateEl = document.createElement('div');
         const sessionDate = session.file.ctime;
-        dateEl.textContent = sessionDate ? moment(sessionDate.ts || sessionDate).format('MMM D, YYYY') : session.file.name;
+        dateEl.textContent = sessionDate ? moment(sessionDate.ts || sessionDate).format('MMM D') : '—';
         dateEl.style.cssText = `
             color: #fff;
-            font-size: 14px;
+            font-size: 11px;
             font-family: "Courier New", monospace;
             letter-spacing: 1px;
             text-transform: uppercase;
         `;
-        topRow.appendChild(dateEl);
+        content.appendChild(dateEl);
 
-        const skillCount = session.skills ? (Array.isArray(session.skills) ? session.skills.length : 1) : 0;
-        if (skillCount > 0) {
-            const countBadge = document.createElement('div');
-            countBadge.textContent = `${skillCount} skill${skillCount > 1 ? 's' : ''}`;
-            countBadge.style.cssText = `
-                color: ${THEME.colorMuted};
-                font-size: 10px;
-                font-family: "Courier New", monospace;
-                letter-spacing: 1px;
-                padding: 4px 8px;
-                border: 1px solid ${THEME.colorBorder};
-                text-transform: uppercase;
-            `;
-            topRow.appendChild(countBadge);
-        }
-
-        // Middle: session name
-        const nameEl = document.createElement('div');
-        nameEl.textContent = session.file.name;
-        nameEl.style.cssText = `
-            color: ${THEME.color};
+        // Mood indicator at bottom
+        const moodEl = document.createElement('div');
+        const sessionMood = session.mood || '';
+        const moodIcon = sessionMood === 'discipline' ? '◆' : sessionMood === 'flow' ? '≈' : '○';
+        moodEl.textContent = moodIcon;
+        moodEl.style.cssText = `
+            color: ${sessionMood === 'discipline' ? '#888' : sessionMood === 'flow' ? '#666' : '#333'};
             font-size: 16px;
-            font-family: "Times New Roman", serif;
-            letter-spacing: 0.5px;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            padding: 10px 0;
+            text-align: right;
         `;
-        content.appendChild(nameEl);
-
-        // Bottom: type indicator
-        const bottomRow = document.createElement('div');
-        bottomRow.style.cssText = `display: flex; justify-content: space-between; align-items: center;`;
-        content.appendChild(bottomRow);
-
-        const typeEl = document.createElement('div');
-        const sessionType = session.mood || session.type || 'session';
-        const typeIcon = sessionType === 'discipline' ? '&#9830;' : sessionType === 'flow' ? '&#8776;' : '&#9679;';
-        typeEl.innerHTML = `<span style="margin-right: 6px;">${typeIcon}</span>${sessionType}`;
-        typeEl.style.cssText = `
-            color: ${sessionType === 'discipline' ? '#888' : sessionType === 'flow' ? '#666' : THEME.colorMuted};
-            font-size: 10px;
-            font-family: "Courier New", monospace;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        `;
-        bottomRow.appendChild(typeEl);
-
-        // Arrow indicator
-        const arrow = document.createElement('div');
-        arrow.innerHTML = '&rarr;';
-        arrow.style.cssText = `
-            color: ${THEME.colorMuted};
-            font-size: 16px;
-            opacity: 0;
-            transform: translateX(-10px);
-            transition: all 0.3s ease;
-        `;
-        bottomRow.appendChild(arrow);
+        content.appendChild(moodEl);
 
         // Hover effect
         sessionCard.onmouseenter = () => {
-            sessionCard.style.transform = `rotate(0deg) translateY(-8px) scale(1.02)`;
+            sessionCard.style.transform = `rotate(0deg) scale(1.15) translateY(-10px)`;
             sessionCard.style.zIndex = '100';
-            sessionCard.style.opacity = '1';
             sessionCard.style.borderColor = THEME.colorHover;
-            sessionCard.style.boxShadow = '0 20px 60px rgba(0,0,0,0.8)';
-            arrow.style.opacity = '1';
-            arrow.style.transform = 'translateX(0)';
+            sessionCard.style.boxShadow = '0 20px 40px rgba(0,0,0,0.8)';
         };
 
         sessionCard.onmouseleave = () => {
-            sessionCard.style.transform = `rotate(${rotation}deg)`;
+            sessionCard.style.transform = `rotate(${pos.rot}deg) scale(${pos.scale})`;
             sessionCard.style.zIndex = zIndex;
-            sessionCard.style.opacity = opacity;
             sessionCard.style.borderColor = THEME.colorBorder;
             sessionCard.style.boxShadow = 'none';
-            arrow.style.opacity = '0';
-            arrow.style.transform = 'translateX(-10px)';
         };
 
         // Click to open session
@@ -369,15 +283,50 @@ if (sessions.length === 0) {
     });
 }
 
-// Subtle line at bottom
-const bottomLine = document.createElement('div');
-bottomLine.style.cssText = `
-    width: 40px;
+// ==========================================
+// DIVIDER LINE
+// ==========================================
+const divider = document.createElement('div');
+divider.style.cssText = `
+    width: calc(100% - 40px);
     height: 1px;
-    background: linear-gradient(90deg, transparent, ${THEME.color}40, transparent);
-    margin: 0 auto 20px auto;
+    background: ${THEME.colorBorder};
+    margin: 0 20px;
 `;
-card.appendChild(bottomLine);
+card.appendChild(divider);
+
+// ==========================================
+// BOTTOM SECTION - Title and description
+// ==========================================
+const infoSection = document.createElement('div');
+infoSection.style.cssText = `
+    padding: 20px 24px 24px 24px;
+`;
+card.appendChild(infoSection);
+
+const title = document.createElement('h3');
+title.textContent = "Recent Sessions";
+title.style.cssText = `
+    margin: 0 0 6px 0;
+    color: ${THEME.color};
+    font-size: 14px;
+    font-weight: 500;
+    font-family: "Times New Roman", serif;
+    letter-spacing: 0.5px;
+`;
+infoSection.appendChild(title);
+
+const desc = document.createElement('p');
+desc.textContent = "Your creative journey";
+desc.style.cssText = `
+    margin: 0;
+    color: ${THEME.colorMuted};
+    font-size: 12px;
+    line-height: 1.4;
+    font-family: "Georgia", serif;
+    font-style: italic;
+`;
+infoSection.appendChild(desc);
 ```
 
 ```dataviewjs
@@ -710,14 +659,15 @@ async function createFreeSession() {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '').substring(0, 4);
+    const startTimeStr = now.toTimeString().split(' ')[0].substring(0, 5);
     const fileName = `Session ${dateStr} ${timeStr}`;
     const sessionFolder = settings.sessionFolder || "Home/Starts/Drawing/Sessions";
     const filePath = `${sessionFolder}/${fileName}`;
 
-    // Note content with Add Skills button embedded
+    // Note content with Add Skills button AND Finish Session button embedded
     const noteContent = `---
 date: ${dateStr}
-time: "${now.toTimeString().split(' ')[0].substring(0, 5)}"
+time: "${startTimeStr}"
 type: session
 mood:
 skills: []
@@ -898,6 +848,164 @@ addBtn.onclick = async () => {
 
 ---
 
+\`\`\`dataviewjs
+// FINISH SESSION BUTTON - Mood tracking and time calculation
+var VAULT_NAME = "${VAULT_NAME}";
+var THEME = { color: "#888", colorHover: "#fff", colorBorder: "#222", colorMuted: "#555" };
+
+function createCorners(container, color, size) {
+    color = color || THEME.color;
+    size = size || 14;
+    ['TL', 'TR', 'BL', 'BR'].forEach(function(pos) {
+        var corner = document.createElement('div');
+        var isTop = pos.includes('T');
+        var isLeft = pos.includes('L');
+        corner.style.cssText = 'position:absolute;' + (isTop ? 'top:0;' : 'bottom:0;') + (isLeft ? 'left:0;' : 'right:0;') + 'width:' + size + 'px;height:' + size + 'px;border-' + (isTop ? 'top' : 'bottom') + ':1px solid ' + color + ';border-' + (isLeft ? 'left' : 'right') + ':1px solid ' + color + ';z-index:10;pointer-events:none;transition:all 0.3s ease;';
+        container.appendChild(corner);
+    });
+}
+
+var container = dv.el('div', '');
+container.style.cssText = 'max-width:460px;margin:40px auto 20px auto;';
+
+var finishCard = document.createElement('div');
+finishCard.style.cssText = 'border:1px dashed ' + THEME.colorBorder + ';background:#0a0a0a;position:relative;cursor:pointer;transition:all 0.4s ease;text-align:center;padding:24px;';
+container.appendChild(finishCard);
+createCorners(finishCard, THEME.color);
+
+var icon = document.createElement('div');
+icon.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color:#888;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+icon.style.marginBottom = '12px';
+finishCard.appendChild(icon);
+
+var title = document.createElement('div');
+title.textContent = 'Finish Session';
+title.style.cssText = 'color:#888;font-size:10px;font-family:Courier New,monospace;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;transition:color 0.3s;';
+finishCard.appendChild(title);
+
+var subtitle = document.createElement('div');
+subtitle.textContent = 'Log mood and track time';
+subtitle.style.cssText = 'color:#555;font-size:11px;font-family:Georgia,serif;font-style:italic;';
+finishCard.appendChild(subtitle);
+
+finishCard.onmouseenter = function() {
+    finishCard.style.borderColor = THEME.colorHover;
+    finishCard.style.borderStyle = 'solid';
+    title.style.color = THEME.colorHover;
+    icon.querySelector('svg').style.color = THEME.colorHover;
+};
+finishCard.onmouseleave = function() {
+    finishCard.style.borderColor = THEME.colorBorder;
+    finishCard.style.borderStyle = 'dashed';
+    title.style.color = THEME.color;
+    icon.querySelector('svg').style.color = THEME.color;
+};
+
+finishCard.onclick = function() {
+    var currentPage = dv.current();
+    var startTime = null;
+    var startTimeStr = "Unknown";
+    if (currentPage && currentPage.time) {
+        startTimeStr = currentPage.time;
+        var timeParts = currentPage.time.split(':');
+        startTime = new Date();
+        startTime.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), 0, 0);
+    } else if (currentPage && currentPage.file && currentPage.file.ctime) {
+        startTime = new Date(currentPage.file.ctime.ts || currentPage.file.ctime);
+        startTimeStr = startTime.toTimeString().substring(0, 5);
+    }
+
+    var now = new Date();
+    var nowStr = now.toTimeString().substring(0, 5);
+    var durationStr = "—";
+    if (startTime) {
+        var diffMs = now - startTime;
+        var diffMins = Math.floor(diffMs / 60000);
+        var hours = Math.floor(diffMins / 60);
+        var mins = diffMins % 60;
+        durationStr = hours > 0 ? hours + 'h ' + mins + 'm' : mins + ' min';
+    }
+
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);';
+
+    var modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background:#0a0a0a;padding:32px;border:1px solid #222;max-width:380px;width:90%;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;';
+    modal.appendChild(modalContent);
+    createCorners(modalContent, THEME.color);
+
+    modalContent.innerHTML = '<div style="color:#888;font-size:10px;font-family:Courier New,monospace;letter-spacing:3px;text-transform:uppercase;">Session Complete</div>' +
+        '<div style="width:100%;padding:16px;background:#0f0f0f;border:1px solid #222;">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#555;font-size:9px;font-family:Courier New,monospace;letter-spacing:1px;text-transform:uppercase;">Started</span><span style="color:#888;font-size:13px;font-family:Courier New,monospace;">' + startTimeStr + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#555;font-size:9px;font-family:Courier New,monospace;letter-spacing:1px;text-transform:uppercase;">Finished</span><span style="color:#888;font-size:13px;font-family:Courier New,monospace;">' + nowStr + '</span></div>' +
+        '<div style="width:100%;height:1px;background:#222;margin:8px 0;"></div>' +
+        '<div style="display:flex;justify-content:space-between;"><span style="color:#555;font-size:9px;font-family:Courier New,monospace;letter-spacing:1px;text-transform:uppercase;">Duration</span><span style="color:#fff;font-size:16px;font-family:Courier New,monospace;font-weight:600;">' + durationStr + '</span></div>' +
+        '</div>' +
+        '<div style="color:#555;font-size:9px;font-family:Courier New,monospace;letter-spacing:2px;text-transform:uppercase;">How did it feel?</div>' +
+        '<div id="mood-btns" style="display:flex;gap:12px;width:100%;"></div>' +
+        '<button id="confirm-finish" style="width:100%;padding:12px;background:transparent;border:1px solid #222;color:#888;font-family:Courier New,monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;opacity:0.4;pointer-events:none;transition:all 0.2s;">Complete & Return</button>';
+
+    var moodBtns = modalContent.querySelector('#mood-btns');
+    var confirmBtn = modalContent.querySelector('#confirm-finish');
+    var selectedMood = null;
+
+    ['discipline', 'flow'].forEach(function(mood) {
+        var btn = document.createElement('div');
+        btn.style.cssText = 'flex:1;padding:16px;background:#0f0f0f;border:1px solid #222;text-align:center;cursor:pointer;transition:all 0.2s;';
+        btn.innerHTML = '<div style="font-size:20px;margin-bottom:6px;">' + (mood === 'discipline' ? '◆' : '≈') + '</div><div style="color:#555;font-size:8px;font-family:Courier New,monospace;letter-spacing:1px;text-transform:uppercase;transition:color 0.2s;">' + mood + '</div>';
+        moodBtns.appendChild(btn);
+
+        btn.onclick = function() {
+            var allBtns = moodBtns.querySelectorAll('div');
+            for (var i = 0; i < allBtns.length; i++) {
+                if (allBtns[i].parentElement === moodBtns) {
+                    allBtns[i].style.borderColor = '#222';
+                    allBtns[i].style.background = '#0f0f0f';
+                    var lbl = allBtns[i].querySelector('div:last-child');
+                    if (lbl) lbl.style.color = '#555';
+                }
+            }
+            selectedMood = mood;
+            btn.style.borderColor = '#fff';
+            btn.style.background = '#141414';
+            btn.querySelector('div:last-child').style.color = '#fff';
+            confirmBtn.style.opacity = '1';
+            confirmBtn.style.pointerEvents = 'auto';
+        };
+    });
+
+    confirmBtn.onmouseenter = function() { if (selectedMood) { confirmBtn.style.borderColor = '#fff'; confirmBtn.style.color = '#fff'; } };
+    confirmBtn.onmouseleave = function() { confirmBtn.style.borderColor = '#222'; confirmBtn.style.color = '#888'; };
+
+    confirmBtn.onclick = async function() {
+        if (!selectedMood) return;
+        var file = app.workspace.getActiveFile();
+        if (file) {
+            try {
+                var content = await app.vault.read(file);
+                if (content.includes('mood:')) {
+                    content = content.replace(/mood:\\s*\\n|mood:\\s*$/m, 'mood: "' + selectedMood + '"\\n');
+                    content = content.replace(/mood:\\s*"[^"]*"/m, 'mood: "' + selectedMood + '"');
+                }
+                if (!content.includes('endTime:')) {
+                    var fmEnd = content.indexOf('---', 4);
+                    if (fmEnd !== -1) content = content.slice(0, fmEnd) + 'endTime: "' + nowStr + '"\\n' + content.slice(fmEnd);
+                }
+                if (!content.includes('duration:')) {
+                    var fmEnd2 = content.indexOf('---', 4);
+                    if (fmEnd2 !== -1) content = content.slice(0, fmEnd2) + 'duration: "' + durationStr + '"\\n' + content.slice(fmEnd2);
+                }
+                await app.vault.modify(file, content);
+            } catch (err) { console.error('Error updating:', err); }
+        }
+        modal.remove();
+        window.location.href = 'obsidian://open?vault=' + encodeURIComponent(VAULT_NAME) + '&file=' + encodeURIComponent('Drawing hub');
+    };
+
+    modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+};
+\`\`\`
 `;
 
     try {
@@ -924,437 +1032,5 @@ addBtn.onclick = async () => {
         console.error('[FreeSession] Failed to create:', err);
         new Notice('Failed to create session: ' + err.message);
     }
-}
-```
-
-```dataviewjs
-// ==========================================
-// FINISH SESSION BUTTON
-// Opens modal with mood selection and time tracking
-// ==========================================
-
-const THEME = window.SESSION_THEME || { color: "#888", colorHover: "#fff", colorBorder: "#222", colorMuted: "#555" };
-const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.SESSION_SETTINGS || { sessionFolder: "Home/Starts/Drawing/Sessions" };
-const createCorners = window.createSessionCorners;
-
-// Container
-const container = dv.el("div", "");
-container.style.cssText = `
-    max-width: 460px;
-    margin: 30px auto;
-    padding: 0;
-`;
-
-// Finish button card - dashed border style (like log button)
-const finishCard = document.createElement('div');
-finishCard.style.cssText = `
-    border: 1px dashed ${THEME.colorBorder};
-    background: #0a0a0a;
-    position: relative;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    overflow: hidden;
-`;
-container.appendChild(finishCard);
-
-const corners = createCorners ? createCorners(finishCard, THEME.color) : [];
-
-// Inner content
-const inner = document.createElement('div');
-inner.style.cssText = `
-    padding: 28px;
-    text-align: center;
-    position: relative;
-`;
-finishCard.appendChild(inner);
-
-// Icon
-const icon = document.createElement('div');
-icon.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${THEME.color}; transition: all 0.3s ease;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-icon.style.cssText = `margin-bottom: 14px;`;
-inner.appendChild(icon);
-
-// Title
-const title = document.createElement('div');
-title.textContent = 'Finish Session';
-title.style.cssText = `
-    color: ${THEME.color};
-    font-size: 11px;
-    font-family: "Courier New", monospace;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    transition: color 0.3s ease;
-`;
-inner.appendChild(title);
-
-// Subtitle
-const subtitle = document.createElement('div');
-subtitle.textContent = 'Log your mood and track time';
-subtitle.style.cssText = `
-    color: ${THEME.colorMuted};
-    font-size: 11px;
-    font-family: "Georgia", serif;
-    font-style: italic;
-`;
-inner.appendChild(subtitle);
-
-// Hover effects
-finishCard.onmouseenter = () => {
-    finishCard.style.borderColor = THEME.colorHover;
-    finishCard.style.borderStyle = 'solid';
-    title.style.color = THEME.colorHover;
-    icon.querySelector('svg').style.color = THEME.colorHover;
-    corners.forEach(c => {
-        c.style.width = '22px';
-        c.style.height = '22px';
-    });
-};
-
-finishCard.onmouseleave = () => {
-    finishCard.style.borderColor = THEME.colorBorder;
-    finishCard.style.borderStyle = 'dashed';
-    title.style.color = THEME.color;
-    icon.querySelector('svg').style.color = THEME.color;
-    corners.forEach(c => {
-        c.style.width = '16px';
-        c.style.height = '16px';
-    });
-};
-
-// Click - open finish modal
-finishCard.onclick = () => {
-    openFinishModal();
-};
-
-// ==========================================
-// FINISH SESSION MODAL
-// ==========================================
-function openFinishModal() {
-    // Get current session info
-    const currentFile = app.workspace.getActiveFile();
-    const currentPage = dv.current();
-
-    // Try to get start time from frontmatter
-    let startTime = null;
-    let startTimeStr = "Unknown";
-    if (currentPage && currentPage.time) {
-        startTimeStr = currentPage.time;
-        // Parse time like "14:30"
-        const [hours, mins] = currentPage.time.split(':').map(Number);
-        startTime = new Date();
-        startTime.setHours(hours, mins, 0, 0);
-    } else if (currentPage && currentPage.file && currentPage.file.ctime) {
-        startTime = new Date(currentPage.file.ctime.ts || currentPage.file.ctime);
-        startTimeStr = startTime.toTimeString().substring(0, 5);
-    }
-
-    const now = new Date();
-    const nowStr = now.toTimeString().substring(0, 5);
-
-    // Calculate duration
-    let durationStr = "—";
-    if (startTime) {
-        const diffMs = now - startTime;
-        const diffMins = Math.floor(diffMs / 60000);
-        const hours = Math.floor(diffMins / 60);
-        const mins = diffMins % 60;
-        if (hours > 0) {
-            durationStr = `${hours}h ${mins}m`;
-        } else {
-            durationStr = `${mins} min`;
-        }
-    }
-
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        backdrop-filter: blur(4px);
-        animation: modal-fade-in 0.3s ease-out;
-    `;
-
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-        background: #0a0a0a;
-        padding: 36px 32px;
-        border: 1px solid ${THEME.colorBorder};
-        max-width: 400px;
-        width: 90%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        animation: modal-slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-    `;
-    modal.appendChild(modalContent);
-
-    if (createCorners) createCorners(modalContent, THEME.color);
-
-    // Modal title
-    const modalTitle = document.createElement('div');
-    modalTitle.textContent = 'Session Complete';
-    modalTitle.style.cssText = `
-        color: ${THEME.color};
-        font-size: 11px;
-        font-family: "Courier New", monospace;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        text-align: center;
-    `;
-    modalContent.appendChild(modalTitle);
-
-    // Time info section
-    const timeSection = document.createElement('div');
-    timeSection.style.cssText = `
-        width: 100%;
-        padding: 20px;
-        background: #0f0f0f;
-        border: 1px solid ${THEME.colorBorder};
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    `;
-    modalContent.appendChild(timeSection);
-
-    // Time row function
-    function createTimeRow(label, value, isHighlight = false) {
-        const row = document.createElement('div');
-        row.style.cssText = `display: flex; justify-content: space-between; align-items: center;`;
-
-        const labelEl = document.createElement('div');
-        labelEl.textContent = label;
-        labelEl.style.cssText = `
-            color: ${THEME.colorMuted};
-            font-size: 10px;
-            font-family: "Courier New", monospace;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        `;
-        row.appendChild(labelEl);
-
-        const valueEl = document.createElement('div');
-        valueEl.textContent = value;
-        valueEl.style.cssText = `
-            color: ${isHighlight ? THEME.colorHover : THEME.color};
-            font-size: ${isHighlight ? '18px' : '14px'};
-            font-family: "Courier New", monospace;
-            letter-spacing: 1px;
-            font-weight: ${isHighlight ? '600' : '400'};
-        `;
-        row.appendChild(valueEl);
-
-        timeSection.appendChild(row);
-        return row;
-    }
-
-    createTimeRow('Started', startTimeStr);
-    createTimeRow('Finished', nowStr);
-
-    // Divider
-    const timeDivider = document.createElement('div');
-    timeDivider.style.cssText = `
-        width: 100%;
-        height: 1px;
-        background: ${THEME.colorBorder};
-        margin: 4px 0;
-    `;
-    timeSection.appendChild(timeDivider);
-
-    createTimeRow('Duration', durationStr, true);
-
-    // Mood selection title
-    const moodTitle = document.createElement('div');
-    moodTitle.textContent = 'How did it feel?';
-    moodTitle.style.cssText = `
-        color: ${THEME.colorMuted};
-        font-size: 10px;
-        font-family: "Courier New", monospace;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-top: 8px;
-    `;
-    modalContent.appendChild(moodTitle);
-
-    // Mood buttons
-    const moodContainer = document.createElement('div');
-    moodContainer.style.cssText = `
-        display: flex;
-        gap: 16px;
-        width: 100%;
-    `;
-    modalContent.appendChild(moodContainer);
-
-    let selectedMood = null;
-
-    function createMoodBtn(mood, icon, label) {
-        const btn = document.createElement('div');
-        btn.style.cssText = `
-            flex: 1;
-            padding: 20px 16px;
-            background: #0f0f0f;
-            border: 1px solid ${THEME.colorBorder};
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        `;
-        moodContainer.appendChild(btn);
-
-        const iconEl = document.createElement('div');
-        iconEl.textContent = icon;
-        iconEl.style.cssText = `font-size: 24px; margin-bottom: 8px;`;
-        btn.appendChild(iconEl);
-
-        const labelEl = document.createElement('div');
-        labelEl.textContent = label;
-        labelEl.style.cssText = `
-            color: ${THEME.colorMuted};
-            font-size: 9px;
-            font-family: "Courier New", monospace;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            transition: color 0.3s ease;
-        `;
-        btn.appendChild(labelEl);
-
-        btn.onmouseenter = () => {
-            if (selectedMood !== mood) {
-                btn.style.borderColor = '#444';
-            }
-        };
-
-        btn.onmouseleave = () => {
-            if (selectedMood !== mood) {
-                btn.style.borderColor = THEME.colorBorder;
-            }
-        };
-
-        btn.onclick = () => {
-            // Deselect others
-            moodContainer.querySelectorAll('div').forEach(el => {
-                if (el.parentElement === moodContainer) {
-                    el.style.borderColor = THEME.colorBorder;
-                    el.style.background = '#0f0f0f';
-                    const lbl = el.querySelector('div:last-child');
-                    if (lbl) lbl.style.color = THEME.colorMuted;
-                }
-            });
-            // Select this one
-            selectedMood = mood;
-            btn.style.borderColor = THEME.colorHover;
-            btn.style.background = '#141414';
-            labelEl.style.color = THEME.colorHover;
-            confirmBtn.style.opacity = '1';
-            confirmBtn.style.pointerEvents = 'auto';
-        };
-
-        return btn;
-    }
-
-    createMoodBtn('discipline', '◆', 'Discipline');
-    createMoodBtn('flow', '≈', 'Flow');
-
-    // Confirm button
-    const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = 'Complete & Return';
-    confirmBtn.style.cssText = `
-        width: 100%;
-        padding: 14px;
-        background: transparent;
-        border: 1px solid ${THEME.colorBorder};
-        color: ${THEME.color};
-        font-family: "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        opacity: 0.4;
-        pointer-events: none;
-        margin-top: 8px;
-    `;
-    modalContent.appendChild(confirmBtn);
-
-    confirmBtn.onmouseenter = () => {
-        if (selectedMood) {
-            confirmBtn.style.borderColor = THEME.colorHover;
-            confirmBtn.style.color = THEME.colorHover;
-        }
-    };
-
-    confirmBtn.onmouseleave = () => {
-        confirmBtn.style.borderColor = THEME.colorBorder;
-        confirmBtn.style.color = THEME.color;
-    };
-
-    confirmBtn.onclick = async () => {
-        if (!selectedMood) return;
-
-        // Update frontmatter if we have an active file
-        if (currentFile) {
-            try {
-                let content = await app.vault.read(currentFile);
-
-                // Update mood in frontmatter
-                if (content.includes('mood:')) {
-                    content = content.replace(/mood:\s*\n|mood:\s*$/m, `mood: "${selectedMood}"\n`);
-                    content = content.replace(/mood:\s*"[^"]*"/m, `mood: "${selectedMood}"`);
-                } else {
-                    // Add mood after date if exists
-                    const fmEnd = content.indexOf('---', 4);
-                    if (fmEnd !== -1) {
-                        content = content.slice(0, fmEnd) + `mood: "${selectedMood}"\n` + content.slice(fmEnd);
-                    }
-                }
-
-                // Add end time
-                if (!content.includes('endTime:')) {
-                    const fmEnd = content.indexOf('---', 4);
-                    if (fmEnd !== -1) {
-                        content = content.slice(0, fmEnd) + `endTime: "${nowStr}"\n` + content.slice(fmEnd);
-                    }
-                }
-
-                // Add duration
-                if (!content.includes('duration:')) {
-                    const fmEnd = content.indexOf('---', 4);
-                    if (fmEnd !== -1) {
-                        content = content.slice(0, fmEnd) + `duration: "${durationStr}"\n` + content.slice(fmEnd);
-                    }
-                }
-
-                await app.vault.modify(currentFile, content);
-            } catch (err) {
-                console.error('[FinishSession] Error updating file:', err);
-            }
-        }
-
-        // Close modal and navigate
-        modal.style.opacity = '0';
-        setTimeout(() => {
-            modal.remove();
-            window.location.href = `obsidian://open?vault=${encodeURIComponent(VAULT_NAME)}&file=${encodeURIComponent("Drawing hub")}`;
-        }, 200);
-    };
-
-    // Close on backdrop
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            modal.style.opacity = '0';
-            setTimeout(() => modal.remove(), 200);
-        }
-    };
-
-    document.body.appendChild(modal);
 }
 ```
