@@ -131,7 +131,7 @@ dv.paragraph(""); // Minimal output
 ```dataviewjs
 // ==========================================
 // RECENT SESSIONS - SCATTERED COLLAGE CARD
-// Cards on top, divider, title/description below
+// Cards with images from notes, title below
 // ==========================================
 
 const THEME = window.SESSION_THEME || { color: "#888", colorHover: "#fff", colorBorder: "#222", colorMuted: "#555" };
@@ -145,6 +145,23 @@ const sessions = dv.pages(`"${sessionFolder}"`)
     .sort(p => p.file.ctime, 'desc')
     .limit(5)
     .array();
+
+// Helper: Extract first image from note content
+async function getFirstImage(session) {
+    try {
+        const file = app.vault.getAbstractFileByPath(session.file.path);
+        if (!file) return null;
+        const content = await app.vault.read(file);
+        // Match ![[image.ext]] patterns (common image extensions)
+        const imageMatch = content.match(/!\[\[([^\]]+\.(jpg|jpeg|png|gif|webp|bmp))\]\]/i);
+        if (imageMatch) {
+            return imageMatch[1];
+        }
+    } catch (e) {
+        console.log('[RecentSessions] Error reading:', e);
+    }
+    return null;
+}
 
 // Main container
 const container = dv.el("div", "");
@@ -200,7 +217,7 @@ if (sessions.length === 0) {
     ];
 
     // Create scattered session cards (reverse so most recent is on top)
-    sessions.slice().reverse().forEach((session, reverseIndex) => {
+    sessions.slice().reverse().forEach(async (session, reverseIndex) => {
         const index = sessions.length - 1 - reverseIndex;
         const pos = positions[index] || positions[0];
         const zIndex = index + 1;
@@ -222,6 +239,33 @@ if (sessions.length === 0) {
         `;
         collageContainer.appendChild(sessionCard);
 
+        // Try to get image from note
+        const imageName = await getFirstImage(session);
+
+        if (imageName) {
+            // Find the image file in vault
+            const imageFile = app.metadataCache.getFirstLinkpathDest(imageName, session.file.path);
+            if (imageFile) {
+                const imageUrl = app.vault.getResourcePath(imageFile);
+                sessionCard.style.backgroundImage = `url('${imageUrl}')`;
+                sessionCard.style.backgroundSize = 'cover';
+                sessionCard.style.backgroundPosition = 'center';
+
+                // Add dark overlay for text readability
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 100%);
+                    pointer-events: none;
+                `;
+                sessionCard.appendChild(overlay);
+            }
+        }
+
         // Inner content
         const content = document.createElement('div');
         content.style.cssText = `
@@ -230,6 +274,8 @@ if (sessions.length === 0) {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
+            z-index: 1;
         `;
         sessionCard.appendChild(content);
 
@@ -243,6 +289,7 @@ if (sessions.length === 0) {
             font-family: "Courier New", monospace;
             letter-spacing: 1px;
             text-transform: uppercase;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         `;
         content.appendChild(dateEl);
 
@@ -252,9 +299,10 @@ if (sessions.length === 0) {
         const moodIcon = sessionMood === 'discipline' ? '◆' : sessionMood === 'flow' ? '≈' : '○';
         moodEl.textContent = moodIcon;
         moodEl.style.cssText = `
-            color: ${sessionMood === 'discipline' ? '#888' : sessionMood === 'flow' ? '#666' : '#333'};
+            color: ${sessionMood === 'discipline' ? '#fff' : sessionMood === 'flow' ? '#ccc' : '#666'};
             font-size: 16px;
             text-align: right;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         `;
         content.appendChild(moodEl);
 
@@ -806,15 +854,34 @@ addBtn.onclick = async () => {
         if (!file) return;
 
         let content = await app.vault.read(file);
-
         const newSkills = [...selected];
+
+        // Build the new skills array items
+        let skillItems = '';
         newSkills.forEach(skillName => {
-            const fmEnd = content.indexOf('---', 4);
-            if (fmEnd !== -1) {
-                content = content.slice(0, fmEnd) + '  - "' + skillName + '"\\n' + content.slice(fmEnd);
-            }
+            skillItems += '  - "' + skillName + '"\\n';
         });
 
+        // Fix YAML: handle skills: [] or skills: with existing items
+        if (content.includes('skills: []')) {
+            // Replace empty array with proper YAML list
+            content = content.replace('skills: []', 'skills:\\n' + skillItems.slice(0, -2)); // remove trailing \\n
+        } else if (content.match(/skills:\\s*\\n/)) {
+            // Has skills: with items below, find where to insert
+            const skillsMatch = content.match(/skills:\\s*\\n((?:  - [^\\n]+\\n)*)/);
+            if (skillsMatch) {
+                const existingSkills = skillsMatch[0];
+                content = content.replace(existingSkills, existingSkills + skillItems);
+            }
+        } else {
+            // Fallback: add skills section before closing ---
+            const fmEnd = content.indexOf('---', 4);
+            if (fmEnd !== -1) {
+                content = content.slice(0, fmEnd) + 'skills:\\n' + skillItems + content.slice(fmEnd);
+            }
+        }
+
+        // Add embeds at the end
         newSkills.forEach(skillName => {
             content += '![[' + skillName + '|scroll]]\\n\\n';
         });

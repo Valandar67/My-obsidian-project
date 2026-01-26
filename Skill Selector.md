@@ -700,16 +700,32 @@ addBtn.onclick = async () => {
 
         // Read current content
         let content = await app.vault.read(file);
-
-        // Add to frontmatter skills array
         const newSkills = [...selected];
+
+        // Build the new skills array items
+        let skillItems = '';
         newSkills.forEach(skillName => {
-            // Add to frontmatter (before the closing ---)
+            skillItems += '  - "' + skillName + '"\\n';
+        });
+
+        // Fix YAML: handle skills: [] or skills: with existing items
+        if (content.includes('skills: []')) {
+            // Replace empty array with proper YAML list
+            content = content.replace('skills: []', 'skills:\\n' + skillItems.slice(0, -2)); // remove trailing \\n
+        } else if (content.match(/skills:\\s*\\n/)) {
+            // Has skills: with items below, find where to insert
+            const skillsMatch = content.match(/skills:\\s*\\n((?:  - [^\\n]+\\n)*)/);
+            if (skillsMatch) {
+                const existingSkills = skillsMatch[0];
+                content = content.replace(existingSkills, existingSkills + skillItems);
+            }
+        } else {
+            // Fallback: add skills section before closing ---
             const fmEnd = content.indexOf('---', 4);
             if (fmEnd !== -1) {
-                content = content.slice(0, fmEnd) + '  - "' + skillName + '"\\n' + content.slice(fmEnd);
+                content = content.slice(0, fmEnd) + 'skills:\\n' + skillItems + content.slice(fmEnd);
             }
-        });
+        }
 
         // Add embeds at the end
         newSkills.forEach(skillName => {
