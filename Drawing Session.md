@@ -862,53 +862,64 @@ addBtn.onclick = async () => {
         let content = await app.vault.read(file);
         const newSkills = [...selected];
 
-        // Build the new skills array items (without trailing newline)
-        var skillItems = '';
-        newSkills.forEach(function(skillName) {
-            skillItems += '  - "' + skillName + '"' + String.fromCharCode(10);
-        });
+        // Build skill items string
+        var NL = String.fromCharCode(10);
+        var BT = String.fromCharCode(96);
+        var skillLines = '';
+        for (var i = 0; i < newSkills.length; i++) {
+            skillLines += '  - "' + newSkills[i] + '"' + NL;
+        }
 
-        // Fix YAML: handle skills: [] or skills: with existing items
-        if (content.includes('skills: []')) {
-            // Replace empty array with proper YAML list (remove last newline char)
-            content = content.replace('skills: []', 'skills:' + String.fromCharCode(10) + skillItems.slice(0, -1));
-        } else if (content.indexOf('skills:') !== -1) {
-            // Find the end of skills section in frontmatter
-            var fmEnd = content.indexOf('---', 4);
-            if (fmEnd !== -1) {
-                var frontmatter = content.slice(0, fmEnd);
-                var afterFm = content.slice(fmEnd);
-                // Insert before the closing ---
-                frontmatter = frontmatter.replace(/skills:([^\\-]*)/s, 'skills:$1' + skillItems);
-                content = frontmatter + afterFm;
+        // Handle YAML skills in frontmatter
+        var fmClose = content.indexOf('---', 4);
+        if (fmClose !== -1) {
+            var fm = content.substring(0, fmClose);
+            var rest = content.substring(fmClose);
+            var skillsIdx = fm.indexOf('skills:');
+            if (skillsIdx !== -1) {
+                // Find what comes after skills:
+                var afterSkills = fm.substring(skillsIdx + 7);
+                if (afterSkills.trim().startsWith('[]')) {
+                    // Empty array - replace it
+                    fm = fm.substring(0, skillsIdx) + 'skills:' + NL + skillLines.slice(0, -1) + fm.substring(skillsIdx + 7 + afterSkills.indexOf('[]') + 2);
+                } else {
+                    // Has items or empty - find next property or end
+                    var lines = fm.substring(skillsIdx).split(NL);
+                    var insertAt = skillsIdx + lines[0].length + 1;
+                    for (var j = 1; j < lines.length; j++) {
+                        if (lines[j].startsWith('  - ')) {
+                            insertAt += lines[j].length + 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    fm = fm.substring(0, insertAt) + skillLines + fm.substring(insertAt);
+                }
+                content = fm + rest;
             }
         }
 
-        // Add embeds BEFORE the Finish Session divider (---)
-        var finishDividerIdx = content.lastIndexOf('---' + String.fromCharCode(10) + String.fromCharCode(10) + String.fromCharCode(96) + String.fromCharCode(96) + String.fromCharCode(96) + 'dataviewjs' + String.fromCharCode(10) + '// FINISH');
-        if (finishDividerIdx === -1) {
-            // Fallback: look for just the --- before FINISH SESSION
-            finishDividerIdx = content.indexOf('---' + String.fromCharCode(10) + String.fromCharCode(10) + String.fromCharCode(96));
-            if (finishDividerIdx > 100) {
-                // Make sure it's not the frontmatter closer
-                var checkBefore = content.slice(finishDividerIdx - 20, finishDividerIdx);
-                if (checkBefore.indexOf('```') === -1) finishDividerIdx = -1;
-            } else {
-                finishDividerIdx = -1;
+        // Build embed content
+        var embedStr = '';
+        for (var k = 0; k < newSkills.length; k++) {
+            embedStr += '![[' + newSkills[k] + '|scroll]]' + NL + NL;
+        }
+
+        // Find the Finish Session section (--- followed by dataviewjs with FINISH)
+        var searchStr = '---' + NL + NL + BT + BT + BT + 'dataviewjs' + NL + '// FINISH';
+        var finishIdx = content.indexOf(searchStr);
+        if (finishIdx === -1) {
+            // Try alternate: just --- before the last dataviewjs
+            var lastDivider = content.lastIndexOf('---' + NL + NL + BT + BT + BT);
+            if (lastDivider > fmClose + 50) {
+                finishIdx = lastDivider;
             }
         }
 
-        var embedContent = '';
-        newSkills.forEach(function(skillName) {
-            embedContent += '![[' + skillName + '|scroll]]' + String.fromCharCode(10) + String.fromCharCode(10);
-        });
-
-        if (finishDividerIdx !== -1) {
-            // Insert before the Finish Session divider
-            content = content.slice(0, finishDividerIdx) + embedContent + content.slice(finishDividerIdx);
+        if (finishIdx !== -1) {
+            content = content.substring(0, finishIdx) + embedStr + content.substring(finishIdx);
         } else {
-            // Fallback: append at the end
-            content += embedContent;
+            content += embedStr;
         }
 
         await app.vault.modify(file, content);
