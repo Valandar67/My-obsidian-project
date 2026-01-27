@@ -862,35 +862,54 @@ addBtn.onclick = async () => {
         let content = await app.vault.read(file);
         const newSkills = [...selected];
 
-        // Build the new skills array items
-        let skillItems = '';
-        newSkills.forEach(skillName => {
-            skillItems += '  - "' + skillName + '"\\n';
+        // Build the new skills array items (without trailing newline)
+        var skillItems = '';
+        newSkills.forEach(function(skillName) {
+            skillItems += '  - "' + skillName + '"' + String.fromCharCode(10);
         });
 
         // Fix YAML: handle skills: [] or skills: with existing items
         if (content.includes('skills: []')) {
-            // Replace empty array with proper YAML list
-            content = content.replace('skills: []', 'skills:\\n' + skillItems.slice(0, -2)); // remove trailing \\n
-        } else if (content.match(/skills:\\s*\\n/)) {
-            // Has skills: with items below, find where to insert
-            const skillsMatch = content.match(/skills:\\s*\\n((?:  - [^\\n]+\\n)*)/);
-            if (skillsMatch) {
-                const existingSkills = skillsMatch[0];
-                content = content.replace(existingSkills, existingSkills + skillItems);
-            }
-        } else {
-            // Fallback: add skills section before closing ---
-            const fmEnd = content.indexOf('---', 4);
+            // Replace empty array with proper YAML list (remove last newline char)
+            content = content.replace('skills: []', 'skills:' + String.fromCharCode(10) + skillItems.slice(0, -1));
+        } else if (content.indexOf('skills:') !== -1) {
+            // Find the end of skills section in frontmatter
+            var fmEnd = content.indexOf('---', 4);
             if (fmEnd !== -1) {
-                content = content.slice(0, fmEnd) + 'skills:\\n' + skillItems + content.slice(fmEnd);
+                var frontmatter = content.slice(0, fmEnd);
+                var afterFm = content.slice(fmEnd);
+                // Insert before the closing ---
+                frontmatter = frontmatter.replace(/skills:([^\\-]*)/s, 'skills:$1' + skillItems);
+                content = frontmatter + afterFm;
             }
         }
 
-        // Add embeds at the end
-        newSkills.forEach(skillName => {
-            content += '![[' + skillName + '|scroll]]\\n\\n';
+        // Add embeds BEFORE the Finish Session divider (---)
+        var finishDividerIdx = content.lastIndexOf('---' + String.fromCharCode(10) + String.fromCharCode(10) + String.fromCharCode(96) + String.fromCharCode(96) + String.fromCharCode(96) + 'dataviewjs' + String.fromCharCode(10) + '// FINISH');
+        if (finishDividerIdx === -1) {
+            // Fallback: look for just the --- before FINISH SESSION
+            finishDividerIdx = content.indexOf('---' + String.fromCharCode(10) + String.fromCharCode(10) + String.fromCharCode(96));
+            if (finishDividerIdx > 100) {
+                // Make sure it's not the frontmatter closer
+                var checkBefore = content.slice(finishDividerIdx - 20, finishDividerIdx);
+                if (checkBefore.indexOf('```') === -1) finishDividerIdx = -1;
+            } else {
+                finishDividerIdx = -1;
+            }
+        }
+
+        var embedContent = '';
+        newSkills.forEach(function(skillName) {
+            embedContent += '![[' + skillName + '|scroll]]' + String.fromCharCode(10) + String.fromCharCode(10);
         });
+
+        if (finishDividerIdx !== -1) {
+            // Insert before the Finish Session divider
+            content = content.slice(0, finishDividerIdx) + embedContent + content.slice(finishDividerIdx);
+        } else {
+            // Fallback: append at the end
+            content += embedContent;
+        }
 
         await app.vault.modify(file, content);
         closePopup();
