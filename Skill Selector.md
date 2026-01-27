@@ -531,8 +531,15 @@ beginBtn.addEventListener('click', async () => {
 
     // Build the note content with selected skills as |scroll embeds
     const selectedList = [...selectedSkills];
-    const startTimeStr = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
-    let noteContent = `---\ndate: ${dateStr}\ntime: "${startTimeStr}"\ntype: session\nmood:\nskills:\n`;
+
+    // Create ISO timestamp with timezone offset
+    const tzOffset = -now.getTimezoneOffset();
+    const tzHours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, '0');
+    const tzMins = String(Math.abs(tzOffset) % 60).padStart(2, '0');
+    const tzSign = tzOffset >= 0 ? '+' : '-';
+    const timestamp = now.toISOString().slice(0, -1) + tzSign + tzHours + ':' + tzMins;
+
+    let noteContent = `---\nDrawing: true\nDrawing-Type:\nTimestamp: "${timestamp}"\nskills:\n`;
     selectedList.forEach(skillName => {
         noteContent += `  - "${skillName}"\n`;
     });
@@ -903,9 +910,10 @@ finishCard.onclick = function() {
         if (file) {
             try {
                 var content = await app.vault.read(file);
-                if (content.includes('mood:')) {
-                    content = content.replace(/mood:\\s*\\n|mood:\\s*$/m, 'mood: "' + selectedMood + '"\\n');
-                    content = content.replace(/mood:\\s*"[^"]*"/m, 'mood: "' + selectedMood + '"');
+                // Update Drawing-Type property
+                if (content.includes('Drawing-Type:')) {
+                    content = content.replace(/Drawing-Type:\\s*\\n|Drawing-Type:\\s*$/m, 'Drawing-Type: "' + selectedMood + '"\\n');
+                    content = content.replace(/Drawing-Type:\\s*"[^"]*"/m, 'Drawing-Type: "' + selectedMood + '"');
                 }
                 if (!content.includes('endTime:')) {
                     var fmEnd = content.indexOf('---', 4);

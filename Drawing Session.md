@@ -293,13 +293,13 @@ if (sessions.length === 0) {
         `;
         content.appendChild(dateEl);
 
-        // Mood indicator at bottom
+        // Drawing-Type indicator at bottom
         const moodEl = document.createElement('div');
-        const sessionMood = session.mood || '';
-        const moodIcon = sessionMood === 'discipline' ? '◆' : sessionMood === 'flow' ? '≈' : '○';
+        const drawingType = session["Drawing-Type"] || '';
+        const moodIcon = drawingType === 'discipline' ? '◆' : drawingType === 'flow' ? '≈' : '○';
         moodEl.textContent = moodIcon;
         moodEl.style.cssText = `
-            color: ${sessionMood === 'discipline' ? '#fff' : sessionMood === 'flow' ? '#ccc' : '#666'};
+            color: ${drawingType === 'discipline' ? '#fff' : drawingType === 'flow' ? '#ccc' : '#666'};
             font-size: 16px;
             text-align: right;
             text-shadow: 0 1px 3px rgba(0,0,0,0.8);
@@ -707,17 +707,23 @@ async function createFreeSession() {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '').substring(0, 4);
-    const startTimeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+    // Create ISO timestamp with timezone offset
+    const tzOffset = -now.getTimezoneOffset();
+    const tzHours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, '0');
+    const tzMins = String(Math.abs(tzOffset) % 60).padStart(2, '0');
+    const tzSign = tzOffset >= 0 ? '+' : '-';
+    const timestamp = now.toISOString().slice(0, -1) + tzSign + tzHours + ':' + tzMins;
+
     const fileName = `Session ${dateStr} ${timeStr}`;
     const sessionFolder = settings.sessionFolder || "Home/Starts/Drawing/Sessions";
     const filePath = `${sessionFolder}/${fileName}`;
 
     // Note content with Add Skills button AND Finish Session button embedded
     const noteContent = `---
-date: ${dateStr}
-time: "${startTimeStr}"
-type: session
-mood:
+Drawing: true
+Drawing-Type:
+Timestamp: "${timestamp}"
 skills: []
 ---
 
@@ -1050,9 +1056,10 @@ finishCard.onclick = function() {
         if (file) {
             try {
                 var content = await app.vault.read(file);
-                if (content.includes('mood:')) {
-                    content = content.replace(/mood:\\s*\\n|mood:\\s*$/m, 'mood: "' + selectedMood + '"\\n');
-                    content = content.replace(/mood:\\s*"[^"]*"/m, 'mood: "' + selectedMood + '"');
+                // Update Drawing-Type property
+                if (content.includes('Drawing-Type:')) {
+                    content = content.replace(/Drawing-Type:\\s*\\n|Drawing-Type:\\s*$/m, 'Drawing-Type: "' + selectedMood + '"\\n');
+                    content = content.replace(/Drawing-Type:\\s*"[^"]*"/m, 'Drawing-Type: "' + selectedMood + '"');
                 }
                 if (!content.includes('endTime:')) {
                     var fmEnd = content.indexOf('---', 4);
