@@ -1,0 +1,19 @@
+/* Sidebar Notes Plugin Styles */
+
+/* Settings styling for pinned note entries */
+.pinned-note-setting .setting-item-control {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pinned-note-setting .setting-item-control input[type="text"] {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* Note suggestion modal styling */
+.suggestion-item small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}

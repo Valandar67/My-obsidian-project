@@ -1,0 +1,10 @@
+{
+  "id": "sidebar-notes",
+  "name": "Sidebar Notes",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Pin specific notes to the right sidebar for quick access while working in the main view",
+  "author": "Your Name",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
