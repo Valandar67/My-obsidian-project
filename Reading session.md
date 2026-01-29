@@ -7,16 +7,16 @@ cssclasses:
 ```dataviewjs
 // ==========================================
 // READING SESSION - GLOBAL STYLES & CONFIG
-// Parchment & Ink Theme
+// Sage Green Theme (matching Home.md)
 // ==========================================
 
-if (!document.getElementById('reading-session-styles-v1')) {
+if (!document.getElementById('reading-session-styles-v2')) {
     const style = document.createElement('style');
-    style.id = 'reading-session-styles-v1';
+    style.id = 'reading-session-styles-v2';
     style.textContent = `
         @keyframes reading-breathe {
-            0%, 100% { box-shadow: inset 0 0 20px rgba(168, 144, 120, 0.03); }
-            50% { box-shadow: inset 0 0 40px rgba(168, 144, 120, 0.08); }
+            0%, 100% { box-shadow: inset 0 0 20px rgba(122, 154, 125, 0.03); }
+            50% { box-shadow: inset 0 0 40px rgba(122, 154, 125, 0.08); }
         }
 
         @keyframes reading-float-up {
@@ -37,15 +37,16 @@ if (!document.getElementById('reading-session-styles-v1')) {
             100% { top: 100%; opacity: 0; }
         }
 
-        @keyframes flash-out {
-            0% { opacity: 0.8; transform: scale(0.5); }
-            100% { opacity: 0; transform: scale(1.5); }
+        @keyframes book-glow {
+            0% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 rgba(122, 154, 125, 0); }
+            50% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 30px rgba(122, 154, 125, 0.4); }
+            100% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 rgba(122, 154, 125, 0); }
         }
 
-        @keyframes page-turn {
-            0% { transform: rotateY(0deg); }
-            50% { transform: rotateY(-15deg); }
-            100% { transform: rotateY(0deg); }
+        @keyframes page-flip {
+            0% { transform: perspective(400px) rotateY(0deg); }
+            30% { transform: perspective(400px) rotateY(-8deg); }
+            100% { transform: perspective(400px) rotateY(0deg); }
         }
 
         .reading-modal-overlay {
@@ -58,7 +59,7 @@ if (!document.getElementById('reading-session-styles-v1')) {
             background: rgba(0,0,0,0.95); backdrop-filter: blur(4px);
         }
         .reading-modal-content {
-            background: #0a0a0a; padding: 32px; border: 1px solid #3a3028;
+            background: #0a0a0a; padding: 32px; border: 1px solid #2a3a2d;
             max-width: 500px; max-height: 85vh; width: 90%;
             display: flex; flex-direction: column; gap: 20px;
             box-shadow: 0 40px 120px rgba(0,0,0,0.9); position: relative;
@@ -87,29 +88,60 @@ if (!document.getElementById('reading-session-styles-v1')) {
         }
 
         .book-card:hover {
-            transform: translateY(-8px) scale(1.02);
-        }
-
-        .book-card.active {
-            transform: scale(1.05);
-            z-index: 10;
+            filter: brightness(1.05);
         }
 
         .progress-ring {
             transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        .search-folder-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #0f0f0f;
+            border: 1px solid #2a3a2d;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .search-folder-item:hover {
+            border-color: #7a9a7d;
+        }
+
+        .search-folder-remove {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid #3a4a3d;
+            color: #5a6a5d;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .search-folder-remove:hover {
+            border-color: #9a6a6a;
+            color: #9a6a6a;
+            background: rgba(154, 106, 106, 0.1);
+        }
     `;
     document.head.appendChild(style);
 }
 
-// Theme - Warm parchment & ink
+// Theme - Sage Green (matching Home.md reading)
 const READING_THEME = {
-    color: "#a89078",
-    colorHover: "#c8a890",
-    colorBorder: "#3a3028",
-    colorBorderHover: "#4a4038",
-    colorMuted: "#6a5a4a",
-    colorAccent: "#c4a882",
+    color: "#7a9a7d",
+    colorHover: "#8aaa8d",
+    colorBorder: "#2a3a2d",
+    colorBorderHover: "#3a4a3d",
+    colorMuted: "#5a6a5d",
+    colorAccent: "#8aaa8d",
     colorProgress: "#7a9a7d",
     colorPages: "#6a8a9a"
 };
@@ -118,7 +150,7 @@ window.READING_THEME = READING_THEME;
 window.VAULT_NAME = "Alt society";
 
 // Settings persistence
-const READING_SETTINGS_KEY = 'reading-session-settings-v1';
+const READING_SETTINGS_KEY = 'reading-session-settings-v2';
 
 function loadReadingSettings() {
     try {
@@ -128,7 +160,8 @@ function loadReadingSettings() {
     return {
         booksFolder: "Library/Books",
         sessionsFolder: "Personal Life/03 Reading/Sessions",
-        logFile: "Personal Life/03 Reading/Reading Log.md"
+        logFile: "Personal Life/03 Reading/Reading Log.md",
+        searchFolders: []  // Folders to search for PDF page references
     };
 }
 
@@ -139,6 +172,79 @@ function saveReadingSettings(settings) {
 }
 
 window.READING_SETTINGS = loadReadingSettings();
+
+// ==========================================
+// SMART PAGE TRACKING - Find highest page from PDF links
+// ==========================================
+window.findHighestPageForBook = async function(bookTitle, totalPages) {
+    const settings = window.READING_SETTINGS;
+    const searchFolders = settings.searchFolders || [];
+
+    if (searchFolders.length === 0 || !totalPages) {
+        return null;
+    }
+
+    // Clean book title for matching (remove author suffix if present)
+    const cleanTitle = bookTitle.replace(/\s*-\s*[^-]+$/, '').trim();
+
+    // Regex to find PDF page links: [[BookName.pdf#page=XXX...]]
+    // Matches patterns like: [[Plato's Republic - Plato.pdf#page=199&selection=...]]
+    const pageRegex = new RegExp(
+        `\\[\\[[^\\]]*${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\]]*\\.pdf#page=(\\d+)`,
+        'gi'
+    );
+
+    let highestPage = 0;
+    let foundIn = null;
+
+    // Get all markdown files
+    const allFiles = app.vault.getMarkdownFiles();
+
+    // Filter to files in search folders, sorted by mtime (newest first)
+    const relevantFiles = allFiles
+        .filter(file => {
+            return searchFolders.some(folder => {
+                const normalizedFolder = folder.endsWith('/') ? folder : folder + '/';
+                return file.path.startsWith(folder) || file.path.startsWith(normalizedFolder);
+            });
+        })
+        .sort((a, b) => b.stat.mtime - a.stat.mtime);
+
+    // Search through files (limit to most recent 50 for performance)
+    const filesToSearch = relevantFiles.slice(0, 50);
+
+    for (const file of filesToSearch) {
+        try {
+            const content = await app.vault.cachedRead(file);
+            let match;
+
+            while ((match = pageRegex.exec(content)) !== null) {
+                const pageNum = parseInt(match[1], 10);
+                if (pageNum > highestPage) {
+                    highestPage = pageNum;
+                    foundIn = file.path;
+                }
+            }
+
+            // Reset regex for next file
+            pageRegex.lastIndex = 0;
+        } catch (e) {
+            console.warn('Error reading file for page tracking:', file.path, e);
+        }
+    }
+
+    if (highestPage > 0) {
+        const progressPercent = Math.min(100, Math.round((highestPage / totalPages) * 100));
+        return {
+            currentPage: highestPage,
+            totalPages: totalPages,
+            percent: progressPercent,
+            foundIn: foundIn
+        };
+    }
+
+    return null;
+};
 
 // Helper: Create decorative corners
 window.createReadingCorners = function(container, color = READING_THEME.color, size = 16) {
@@ -197,10 +303,11 @@ dv.paragraph("");
 // Touch-friendly mobile carousel
 // ==========================================
 
-const THEME = window.READING_THEME || { color: "#a89078", colorHover: "#c8a890", colorBorder: "#3a3028", colorMuted: "#6a5a4a", colorAccent: "#c4a882" };
+const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d" };
 const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.READING_SETTINGS || { booksFolder: "Library/Books" };
+const settings = window.READING_SETTINGS || { booksFolder: "Library/Books", searchFolders: [] };
 const createCorners = window.createReadingCorners;
+const findHighestPageForBook = window.findHighestPageForBook;
 
 // Get books from configured folder (markdown files with book metadata)
 const booksFolder = settings.booksFolder || "Library/Books";
@@ -214,6 +321,9 @@ const books = dv.pages()
     .sort(p => p.file.mtime, 'desc')
     .limit(10)
     .array();
+
+// Cache for page progress data
+const pageProgressCache = new Map();
 
 // Main container
 const container = dv.el("div", "");
@@ -356,7 +466,7 @@ if (books.length === 0) {
         border: 1px solid ${THEME.colorBorder};
         position: relative;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.6), 4px 4px 0 rgba(168, 144, 120, 0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6), 4px 4px 0 rgba(122, 154, 125, 0.1);
     `;
     bookCard.appendChild(coverContainer);
 
@@ -505,7 +615,7 @@ if (books.length === 0) {
     });
 
     // Update display function
-    function updateDisplay() {
+    async function updateDisplay() {
         const book = books[currentIndex];
         if (!book) return;
 
@@ -540,21 +650,48 @@ if (books.length === 0) {
         }
 
         // Update title & author
-        bookTitle.textContent = book.title || book.file.name.replace(/\s*-\s*[^-]+$/, '');
+        const displayTitle = book.title || book.file.name.replace(/\s*-\s*[^-]+$/, '');
+        bookTitle.textContent = displayTitle;
         bookAuthor.textContent = book.author || book.authors || '';
 
-        // Update progress
-        const progress = book.Progress;
+        // Update progress - Smart page tracking
         let progressPercent = 0;
-        if (typeof progress === 'number') {
-            progressPercent = progress;
-        } else if (progress === 'Currently reading') {
-            progressPercent = 30; // Default for "currently reading"
-        } else if (progress === 'Completed' || progress === 'Finished') {
-            progressPercent = 100;
+        let progressLabel = '';
+        const totalPages = book.totalPage || book.totalPages || 0;
+
+        // Try smart page tracking first (if search folders are configured)
+        const cacheKey = book.file.path;
+        let smartProgress = pageProgressCache.get(cacheKey);
+
+        if (smartProgress === undefined && findHighestPageForBook && totalPages > 0) {
+            // Fetch and cache
+            smartProgress = await findHighestPageForBook(displayTitle, totalPages);
+            pageProgressCache.set(cacheKey, smartProgress);
         }
+
+        if (smartProgress && smartProgress.percent > 0) {
+            // Use smart tracking result
+            progressPercent = smartProgress.percent;
+            progressLabel = `p.${smartProgress.currentPage}/${smartProgress.totalPages}`;
+        } else {
+            // Fallback to frontmatter Progress field
+            const progress = book.Progress;
+            if (typeof progress === 'number') {
+                progressPercent = progress;
+                progressLabel = `${progressPercent}%`;
+            } else if (progress === 'Currently reading') {
+                progressPercent = 0; // Show 0 if no smart tracking
+                progressLabel = 'reading';
+            } else if (progress === 'Completed' || progress === 'Finished') {
+                progressPercent = 100;
+                progressLabel = '100%';
+            } else {
+                progressLabel = '—';
+            }
+        }
+
         progressFill.style.width = `${progressPercent}%`;
-        progressText.textContent = `${progressPercent}%`;
+        progressText.textContent = progressLabel;
 
         // Update dots
         dots.forEach((dot, i) => {
@@ -607,36 +744,31 @@ if (books.length === 0) {
         coverImg.style.filter = 'grayscale(0.1) contrast(1.2) brightness(1)';
         scanline.style.opacity = '1';
         scanline.style.animation = 'scanline-sweep 1.5s ease-out';
-        coverContainer.style.boxShadow = '0 12px 40px rgba(0,0,0,0.8), 6px 6px 0 rgba(168, 144, 120, 0.15)';
+        coverContainer.style.boxShadow = '0 12px 40px rgba(0,0,0,0.8), 6px 6px 0 rgba(122, 154, 125, 0.15)';
     };
 
     bookCard.onmouseleave = () => {
         coverImg.style.filter = 'grayscale(0.3) contrast(1.1) brightness(0.9)';
         scanline.style.opacity = '0';
         scanline.style.animation = 'none';
-        coverContainer.style.boxShadow = '0 8px 32px rgba(0,0,0,0.6), 4px 4px 0 rgba(168, 144, 120, 0.1)';
+        coverContainer.style.boxShadow = '0 8px 32px rgba(0,0,0,0.6), 4px 4px 0 rgba(122, 154, 125, 0.1)';
     };
 
-    // Click to open book
+    // Click to open book - Glow effect + page flip animation
     bookCard.onclick = () => {
         const book = books[currentIndex];
         if (book) {
-            // Flash effect
-            const flash = document.createElement('div');
-            flash.style.cssText = `
-                position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: radial-gradient(circle, ${THEME.color}60 0%, transparent 60%);
-                animation: flash-out 0.4s ease-out forwards;
-                pointer-events: none;
-                z-index: 20;
-            `;
-            coverContainer.appendChild(flash);
+            // Glow pulse effect
+            coverContainer.style.animation = 'book-glow 0.6s ease-out';
+
+            // Page flip effect on the cover
+            coverImg.style.animation = 'page-flip 0.5s ease-out';
 
             setTimeout(() => {
-                flash.remove();
+                coverContainer.style.animation = '';
+                coverImg.style.animation = '';
                 window.location.href = `obsidian://open?vault=${encodeURIComponent(VAULT_NAME)}&file=${encodeURIComponent(book.file.path)}`;
-            }, 300);
+            }, 400);
         }
     };
 
@@ -698,9 +830,9 @@ infoSection.appendChild(desc);
 // START READING SESSION - ACTION CARD
 // ==========================================
 
-const THEME = window.READING_THEME || { color: "#a89078", colorHover: "#c8a890", colorBorder: "#3a3028", colorMuted: "#6a5a4a", colorAccent: "#c4a882", colorProgress: "#7a9a7d" };
+const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d", colorProgress: "#7a9a7d" };
 const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.READING_SETTINGS || { booksFolder: "Library/Books", sessionsFolder: "Personal Life/03 Reading/Sessions", logFile: "Personal Life/03 Reading/Reading Log.md" };
+const settings = window.READING_SETTINGS || { booksFolder: "Library/Books", sessionsFolder: "Personal Life/03 Reading/Sessions", logFile: "Personal Life/03 Reading/Reading Log.md", searchFolders: [] };
 const createCorners = window.createReadingCorners;
 
 // Get books for selection
@@ -1074,9 +1206,12 @@ function openLogSessionModal() {
 // SETTINGS MODAL
 // ==========================================
 function openSettingsModal() {
+    // Local copy of search folders for editing
+    let searchFolders = [...(settings.searchFolders || [])];
+
     createModal("Settings", (content) => {
         const note = document.createElement('p');
-        note.textContent = 'Configure where your books are stored. Books need frontmatter with title/author/Progress properties.';
+        note.textContent = 'Configure where your books are stored. Books need frontmatter with title/author/totalPage properties.';
         note.style.cssText = `color: ${THEME.colorMuted}; font-size: 12px; font-style: italic; line-height: 1.5; margin: 0;`;
         content.appendChild(note);
 
@@ -1122,6 +1257,134 @@ function openSettingsModal() {
         `;
         content.appendChild(sessionsInput);
 
+        // ==========================================
+        // SEARCH FOLDERS FOR PAGE TRACKING
+        // ==========================================
+        const searchLabel = document.createElement('div');
+        searchLabel.innerHTML = `<span style="color: ${THEME.color};">Page Tracking Folders</span>`;
+        searchLabel.style.cssText = `font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 20px;`;
+        content.appendChild(searchLabel);
+
+        const searchDesc = document.createElement('p');
+        searchDesc.textContent = 'Folders to search for PDF page links (e.g., [[Book.pdf#page=123]]). Progress is calculated from the highest page number found.';
+        searchDesc.style.cssText = `color: ${THEME.colorMuted}; font-size: 11px; font-style: italic; line-height: 1.4; margin: 4px 0 12px 0;`;
+        content.appendChild(searchDesc);
+
+        // Folder list container
+        const folderListContainer = document.createElement('div');
+        folderListContainer.style.cssText = `
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+        `;
+        content.appendChild(folderListContainer);
+
+        function renderFolderList() {
+            folderListContainer.innerHTML = '';
+
+            if (searchFolders.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.textContent = 'No folders added yet';
+                emptyMsg.style.cssText = `
+                    color: ${THEME.colorMuted};
+                    font-size: 12px;
+                    font-style: italic;
+                    text-align: center;
+                    padding: 16px;
+                    border: 1px dashed ${THEME.colorBorder};
+                `;
+                folderListContainer.appendChild(emptyMsg);
+                return;
+            }
+
+            searchFolders.forEach((folder, index) => {
+                const item = document.createElement('div');
+                item.className = 'search-folder-item';
+
+                const folderPath = document.createElement('span');
+                folderPath.textContent = folder;
+                folderPath.style.cssText = `
+                    flex: 1;
+                    color: ${THEME.color};
+                    font-size: 13px;
+                    font-family: "Courier New", monospace;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                `;
+                item.appendChild(folderPath);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'search-folder-remove';
+                removeBtn.textContent = '×';
+                removeBtn.onclick = () => {
+                    searchFolders.splice(index, 1);
+                    renderFolderList();
+                };
+                item.appendChild(removeBtn);
+
+                folderListContainer.appendChild(item);
+            });
+        }
+
+        renderFolderList();
+
+        // Add folder input row
+        const addFolderRow = document.createElement('div');
+        addFolderRow.style.cssText = 'display: flex; gap: 8px;';
+        content.appendChild(addFolderRow);
+
+        const newFolderInput = document.createElement('input');
+        newFolderInput.type = 'text';
+        newFolderInput.placeholder = 'Enter folder path...';
+        newFolderInput.style.cssText = `
+            flex: 1;
+            padding: 12px;
+            background: #0f0f0f;
+            border: 1px solid ${THEME.colorBorder};
+            color: ${THEME.color};
+            font-size: 13px;
+            font-family: "Courier New", monospace;
+        `;
+        addFolderRow.appendChild(newFolderInput);
+
+        const addFolderBtn = document.createElement('button');
+        addFolderBtn.textContent = '+ Add';
+        addFolderBtn.style.cssText = `
+            padding: 12px 16px;
+            background: transparent;
+            border: 1px solid ${THEME.colorBorder};
+            color: ${THEME.color};
+            font-size: 12px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        `;
+        addFolderBtn.onmouseover = () => {
+            addFolderBtn.style.borderColor = THEME.color;
+            addFolderBtn.style.background = 'rgba(122, 154, 125, 0.1)';
+        };
+        addFolderBtn.onmouseout = () => {
+            addFolderBtn.style.borderColor = THEME.colorBorder;
+            addFolderBtn.style.background = 'transparent';
+        };
+        addFolderBtn.onclick = () => {
+            const folder = newFolderInput.value.trim();
+            if (folder && !searchFolders.includes(folder)) {
+                searchFolders.push(folder);
+                newFolderInput.value = '';
+                renderFolderList();
+            }
+        };
+        addFolderRow.appendChild(addFolderBtn);
+
+        // Enter key to add
+        newFolderInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                addFolderBtn.onclick();
+            }
+        };
+
         // Save button
         const saveBtn = document.createElement('button');
         saveBtn.textContent = "SAVE SETTINGS";
@@ -1135,11 +1398,15 @@ function openSettingsModal() {
             font-weight: 700;
             letter-spacing: 2px;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 16px;
+            transition: all 0.2s ease;
         `;
+        saveBtn.onmouseover = () => { saveBtn.style.background = THEME.colorHover; };
+        saveBtn.onmouseout = () => { saveBtn.style.background = THEME.color; };
         saveBtn.onclick = () => {
             settings.booksFolder = folderInput.value.trim() || 'Library/Books';
             settings.sessionsFolder = sessionsInput.value.trim() || 'Personal Life/03 Reading/Sessions';
+            settings.searchFolders = searchFolders;
             window.READING_SETTINGS = settings;
             saveReadingSettings(settings);
             new Notice('Settings saved!');
@@ -1275,8 +1542,8 @@ buttonsSection.appendChild(settingsBtn);
 // READING STATS CARD
 // ==========================================
 
-const THEME = window.READING_THEME || { color: "#a89078", colorHover: "#c8a890", colorBorder: "#3a3028", colorMuted: "#6a5a4a", colorAccent: "#c4a882", colorProgress: "#7a9a7d", colorPages: "#6a8a9a" };
-const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md" };
+const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d", colorProgress: "#7a9a7d", colorPages: "#6a8a9a" };
+const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md", searchFolders: [] };
 const createCorners = window.createReadingCorners;
 
 // Get log data
@@ -1435,9 +1702,9 @@ getStats().then(stats => {
 // RECENT SESSIONS - TIMELINE CARD
 // ==========================================
 
-const THEME = window.READING_THEME || { color: "#a89078", colorHover: "#c8a890", colorBorder: "#3a3028", colorMuted: "#6a5a4a", colorAccent: "#c4a882" };
+const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d" };
 const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md" };
+const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md", searchFolders: [] };
 const createCorners = window.createReadingCorners;
 
 // Get recent entries
@@ -1626,7 +1893,7 @@ getRecentEntries().then(entries => {
             notes.style.cssText = `
                 margin-top: 8px;
                 padding: 8px 10px;
-                background: rgba(168, 144, 120, 0.05);
+                background: rgba(122, 154, 125, 0.05);
                 border-left: 2px solid ${THEME.colorBorder};
                 color: ${THEME.colorMuted};
                 font-size: 12px;
