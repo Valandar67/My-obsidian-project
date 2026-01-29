@@ -678,7 +678,7 @@ if (books.length === 0) {
         if (smartProgress && smartProgress.percent > 0) {
             // Use smart tracking result
             progressPercent = smartProgress.percent;
-            progressLabel = `p.${smartProgress.currentPage}/${smartProgress.totalPages}`;
+            progressLabel = `${progressPercent}%`;
         } else {
             // Fallback to frontmatter Progress field
             const progress = book.Progress;
