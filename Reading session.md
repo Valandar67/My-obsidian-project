@@ -87,10 +87,6 @@ if (!document.getElementById('reading-session-styles-v2')) {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .book-card:hover {
-            filter: brightness(1.05);
-        }
-
         .progress-ring {
             transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -559,14 +555,15 @@ if (books.length === 0) {
     progressContainer.style.cssText = `
         margin-top: 12px;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     `;
     bookCard.appendChild(progressContainer);
 
     const progressBar = document.createElement('div');
     progressBar.style.cssText = `
-        width: 100px;
+        width: 120px;
         height: 4px;
         background: ${THEME.colorBorder};
         border-radius: 2px;
@@ -588,6 +585,7 @@ if (books.length === 0) {
         color: ${THEME.colorMuted};
         font-family: "Courier New", monospace;
         font-size: 10px;
+        letter-spacing: 0.5px;
     `;
     progressContainer.appendChild(progressText);
 
@@ -1204,7 +1202,10 @@ function openLogSessionModal() {
 
             closeModal();
             new Notice(`Reading session logged: ${duration} min`);
-            setTimeout(() => location.reload(), 300);
+            // Refresh dataview blocks without full page reload
+            setTimeout(() => {
+                app.workspace.trigger('dataview:refresh-views');
+            }, 300);
         };
         content.appendChild(submitBtn);
     });
@@ -1306,7 +1307,10 @@ function openSettingsModal() {
             saveReadingSettings(settings);
             new Notice('Settings saved!');
             closeModal();
-            setTimeout(() => location.reload(), 300);
+            // Refresh dataview blocks without full page reload
+            setTimeout(() => {
+                app.workspace.trigger('dataview:refresh-views');
+            }, 300);
         };
         content.appendChild(saveBtn);
     });
