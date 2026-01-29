@@ -1,0 +1,28 @@
+/* Aggressive solution for mobile */
+span.internal-embed[alt="scroll"],
+div.internal-embed[alt="scroll"] {
+  display: block !important;
+  max-width: 400px !important;
+  height: 400px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--background-modifier-border) !important;
+  border-radius: 8px !important;
+}
+
+span.internal-embed[alt="scroll"] .markdown-embed,
+div.internal-embed[alt="scroll"] .markdown-embed {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+span.internal-embed[alt="scroll"] .markdown-embed-content,
+div.internal-embed[alt="scroll"] .markdown-embed-content,
+span.internal-embed[alt="scroll"] .markdown-preview-view,
+div.internal-embed[alt="scroll"] .markdown-preview-view {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  padding: 12px !important;
+}
