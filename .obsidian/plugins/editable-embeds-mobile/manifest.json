@@ -1,10 +1,10 @@
 {
-	"id": "editable-embeds-mobile",
-	"name": "Editable Embeds Mobile",
+	"id": "auto-scroll-embeds",
+	"name": "Auto Scroll Embeds",
 	"version": "1.0.0",
 	"minAppVersion": "1.0.0",
-	"description": "Makes embedded notes editable directly in Live Preview mode on mobile devices",
-	"author": "Claude",
+	"description": "Makes embedded notes scrollable with configurable dimensions",
+	"author": "Valandar67",
 	"authorUrl": "https://github.com/Valandar67",
 	"isDesktopOnly": false
 }
