@@ -150,7 +150,7 @@ window.READING_THEME = READING_THEME;
 window.VAULT_NAME = "Alt society";
 
 // Settings persistence
-const READING_SETTINGS_KEY = 'reading-session-settings-v2';
+const READING_SETTINGS_KEY = 'reading-session-settings-v3';
 
 function loadReadingSettings() {
     try {
@@ -160,8 +160,7 @@ function loadReadingSettings() {
     return {
         booksFolder: "Library/Books",
         sessionsFolder: "Personal Life/03 Reading/Sessions",
-        logFile: "Personal Life/03 Reading/Reading Log.md",
-        searchFolders: []  // Folders to search for PDF page references
+        logFile: "Personal Life/03 Reading/Reading Log.md"
     };
 }
 
@@ -175,14 +174,18 @@ window.READING_SETTINGS = loadReadingSettings();
 
 // ==========================================
 // SMART PAGE TRACKING - Find highest page from PDF links
+// Now accepts per-book trackingFolders from frontmatter
 // ==========================================
-window.findHighestPageForBook = async function(bookTitle, totalPages) {
-    const settings = window.READING_SETTINGS;
-    const searchFolders = settings.searchFolders || [];
+window.findHighestPageForBook = async function(bookTitle, totalPages, trackingFolders) {
+    // trackingFolders comes from the book's frontmatter
+    const folders = trackingFolders || [];
 
-    if (searchFolders.length === 0 || !totalPages) {
+    if (folders.length === 0 || !totalPages) {
         return null;
     }
+
+    // Normalize folders array (handle single string or array)
+    const searchFolders = Array.isArray(folders) ? folders : [folders];
 
     // Clean book title for matching (remove author suffix if present)
     const cleanTitle = bookTitle.replace(/\s*-\s*[^-]+$/, '').trim();
@@ -305,18 +308,20 @@ dv.paragraph("");
 
 const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d" };
 const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.READING_SETTINGS || { booksFolder: "Library/Books", searchFolders: [] };
+const settings = window.READING_SETTINGS || { booksFolder: "Library/Books" };
 const createCorners = window.createReadingCorners;
 const findHighestPageForBook = window.findHighestPageForBook;
 
-// Get books from configured folder (markdown files with book metadata)
-const booksFolder = settings.booksFolder || "Library/Books";
+// Get books that are "Currently reading" (in progress)
 const books = dv.pages()
     .where(p => {
         // Check if file has book-like properties
         const hasBookMeta = p.title || p.author || p.localCoverImage || p.coverUrl;
-        const isInBooksArea = p.file.path.includes("Book") || p.file.folder?.includes("Library");
-        return hasBookMeta && (p.Progress || p.totalPage);
+        // Only show books that are "in progress"
+        const isInProgress = p.Progress === "Currently reading" ||
+                            p.Progress === "In progress" ||
+                            p.Progress === "Reading";
+        return hasBookMeta && isInProgress && p.totalPage;
     })
     .sort(p => p.file.mtime, 'desc')
     .limit(10)
@@ -366,9 +371,9 @@ if (books.length === 0) {
     emptyMsg.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; color: ${THEME.colorMuted};">
             <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;">📚</div>
-            <div style="font-family: 'Times New Roman', serif; font-size: 16px; letter-spacing: 1px; margin-bottom: 8px;">No books found</div>
-            <div style="font-family: Georgia, serif; font-style: italic; font-size: 13px; opacity: 0.7;">Add books with metadata to your library</div>
-            <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px; margin-top: 16px; opacity: 0.5;">CONFIGURE FOLDER IN SETTINGS</div>
+            <div style="font-family: 'Times New Roman', serif; font-size: 16px; letter-spacing: 1px; margin-bottom: 8px;">No books in progress</div>
+            <div style="font-family: Georgia, serif; font-style: italic; font-size: 13px; opacity: 0.7;">Set a book's Progress to "Currently reading"</div>
+            <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px; margin-top: 16px; opacity: 0.5;">ADD trackingFolders TO BOOK FRONTMATTER</div>
         </div>
     `;
     carouselSection.appendChild(emptyMsg);
@@ -654,18 +659,21 @@ if (books.length === 0) {
         bookTitle.textContent = displayTitle;
         bookAuthor.textContent = book.author || book.authors || '';
 
-        // Update progress - Smart page tracking
+        // Update progress - Smart page tracking (per-book folders)
         let progressPercent = 0;
         let progressLabel = '';
         const totalPages = book.totalPage || book.totalPages || 0;
 
-        // Try smart page tracking first (if search folders are configured)
+        // Get per-book tracking folders from frontmatter
+        const trackingFolders = book.trackingFolders || book.searchFolders || null;
+
+        // Try smart page tracking first (if book has trackingFolders defined)
         const cacheKey = book.file.path;
         let smartProgress = pageProgressCache.get(cacheKey);
 
-        if (smartProgress === undefined && findHighestPageForBook && totalPages > 0) {
-            // Fetch and cache
-            smartProgress = await findHighestPageForBook(displayTitle, totalPages);
+        if (smartProgress === undefined && findHighestPageForBook && totalPages > 0 && trackingFolders) {
+            // Fetch and cache - pass per-book tracking folders
+            smartProgress = await findHighestPageForBook(displayTitle, totalPages, trackingFolders);
             pageProgressCache.set(cacheKey, smartProgress);
         }
 
@@ -798,7 +806,7 @@ infoSection.style.cssText = `
 card.appendChild(infoSection);
 
 const title = document.createElement('h3');
-title.textContent = "Library";
+title.textContent = "Bookshelf";
 title.style.cssText = `
     margin: 0 0 6px 0;
     color: ${THEME.color};
@@ -811,8 +819,8 @@ infoSection.appendChild(title);
 
 const desc = document.createElement('p');
 desc.textContent = books.length > 0
-    ? `${books.length} book${books.length > 1 ? 's' : ''} in collection`
-    : "Your reading collection";
+    ? `${books.length} book${books.length > 1 ? 's' : ''} in progress`
+    : "No books currently being read";
 desc.style.cssText = `
     margin: 0;
     color: ${THEME.colorMuted};
@@ -832,14 +840,14 @@ infoSection.appendChild(desc);
 
 const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d", colorProgress: "#7a9a7d" };
 const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.READING_SETTINGS || { booksFolder: "Library/Books", sessionsFolder: "Personal Life/03 Reading/Sessions", logFile: "Personal Life/03 Reading/Reading Log.md", searchFolders: [] };
+const settings = window.READING_SETTINGS || { booksFolder: "Library/Books", sessionsFolder: "Personal Life/03 Reading/Sessions", logFile: "Personal Life/03 Reading/Reading Log.md" };
 const createCorners = window.createReadingCorners;
 
-// Get books for selection
+// Get books for session logging (all books, not just in-progress)
 const books = dv.pages()
     .where(p => {
         const hasBookMeta = p.title || p.author || p.localCoverImage || p.coverUrl;
-        return hasBookMeta && (p.Progress || p.totalPage);
+        return hasBookMeta && p.totalPage;
     })
     .sort(p => p.file.mtime, 'desc')
     .array();
@@ -1206,19 +1214,16 @@ function openLogSessionModal() {
 // SETTINGS MODAL
 // ==========================================
 function openSettingsModal() {
-    // Local copy of search folders for editing
-    let searchFolders = [...(settings.searchFolders || [])];
-
     createModal("Settings", (content) => {
         const note = document.createElement('p');
-        note.textContent = 'Configure where your books are stored. Books need frontmatter with title/author/totalPage properties.';
+        note.innerHTML = `Configure paths. Books need frontmatter with <code style="color: ${THEME.color};">Progress: Currently reading</code> to appear on the shelf.`;
         note.style.cssText = `color: ${THEME.colorMuted}; font-size: 12px; font-style: italic; line-height: 1.5; margin: 0;`;
         content.appendChild(note);
 
         // Books folder
         const folderLabel = document.createElement('div');
         folderLabel.textContent = 'Books Folder Path';
-        folderLabel.style.cssText = `color: ${THEME.colorMuted}; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 8px;`;
+        folderLabel.style.cssText = `color: ${THEME.colorMuted}; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 12px;`;
         content.appendChild(folderLabel);
 
         const folderInput = document.createElement('input');
@@ -1257,133 +1262,24 @@ function openSettingsModal() {
         `;
         content.appendChild(sessionsInput);
 
-        // ==========================================
-        // SEARCH FOLDERS FOR PAGE TRACKING
-        // ==========================================
-        const searchLabel = document.createElement('div');
-        searchLabel.innerHTML = `<span style="color: ${THEME.color};">Page Tracking Folders</span>`;
-        searchLabel.style.cssText = `font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 20px;`;
-        content.appendChild(searchLabel);
-
-        const searchDesc = document.createElement('p');
-        searchDesc.textContent = 'Folders to search for PDF page links (e.g., [[Book.pdf#page=123]]). Progress is calculated from the highest page number found.';
-        searchDesc.style.cssText = `color: ${THEME.colorMuted}; font-size: 11px; font-style: italic; line-height: 1.4; margin: 4px 0 12px 0;`;
-        content.appendChild(searchDesc);
-
-        // Folder list container
-        const folderListContainer = document.createElement('div');
-        folderListContainer.style.cssText = `
-            max-height: 150px;
-            overflow-y: auto;
-            margin-bottom: 8px;
+        // Page tracking info
+        const trackingInfo = document.createElement('div');
+        trackingInfo.style.cssText = `
+            margin-top: 20px;
+            padding: 16px;
+            background: #0c0c0c;
+            border-left: 2px solid ${THEME.color};
         `;
-        content.appendChild(folderListContainer);
-
-        function renderFolderList() {
-            folderListContainer.innerHTML = '';
-
-            if (searchFolders.length === 0) {
-                const emptyMsg = document.createElement('div');
-                emptyMsg.textContent = 'No folders added yet';
-                emptyMsg.style.cssText = `
-                    color: ${THEME.colorMuted};
-                    font-size: 12px;
-                    font-style: italic;
-                    text-align: center;
-                    padding: 16px;
-                    border: 1px dashed ${THEME.colorBorder};
-                `;
-                folderListContainer.appendChild(emptyMsg);
-                return;
-            }
-
-            searchFolders.forEach((folder, index) => {
-                const item = document.createElement('div');
-                item.className = 'search-folder-item';
-
-                const folderPath = document.createElement('span');
-                folderPath.textContent = folder;
-                folderPath.style.cssText = `
-                    flex: 1;
-                    color: ${THEME.color};
-                    font-size: 13px;
-                    font-family: "Courier New", monospace;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                `;
-                item.appendChild(folderPath);
-
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'search-folder-remove';
-                removeBtn.textContent = '×';
-                removeBtn.onclick = () => {
-                    searchFolders.splice(index, 1);
-                    renderFolderList();
-                };
-                item.appendChild(removeBtn);
-
-                folderListContainer.appendChild(item);
-            });
-        }
-
-        renderFolderList();
-
-        // Add folder input row
-        const addFolderRow = document.createElement('div');
-        addFolderRow.style.cssText = 'display: flex; gap: 8px;';
-        content.appendChild(addFolderRow);
-
-        const newFolderInput = document.createElement('input');
-        newFolderInput.type = 'text';
-        newFolderInput.placeholder = 'Enter folder path...';
-        newFolderInput.style.cssText = `
-            flex: 1;
-            padding: 12px;
-            background: #0f0f0f;
-            border: 1px solid ${THEME.colorBorder};
-            color: ${THEME.color};
-            font-size: 13px;
-            font-family: "Courier New", monospace;
+        trackingInfo.innerHTML = `
+            <div style="color: ${THEME.color}; font-size: 12px; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px;">PAGE TRACKING</div>
+            <div style="color: ${THEME.colorMuted}; font-size: 12px; line-height: 1.5;">
+                Add <code style="color: ${THEME.colorAccent};">trackingFolders</code> to each book's frontmatter:
+            </div>
+            <pre style="color: ${THEME.colorAccent}; font-size: 11px; margin: 10px 0 0 0; padding: 10px; background: #0a0a0a; border: 1px solid ${THEME.colorBorder}; overflow-x: auto;">trackingFolders:
+  - "Daily Notes"
+  - "Research/Philosophy"</pre>
         `;
-        addFolderRow.appendChild(newFolderInput);
-
-        const addFolderBtn = document.createElement('button');
-        addFolderBtn.textContent = '+ Add';
-        addFolderBtn.style.cssText = `
-            padding: 12px 16px;
-            background: transparent;
-            border: 1px solid ${THEME.colorBorder};
-            color: ${THEME.color};
-            font-size: 12px;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        `;
-        addFolderBtn.onmouseover = () => {
-            addFolderBtn.style.borderColor = THEME.color;
-            addFolderBtn.style.background = 'rgba(122, 154, 125, 0.1)';
-        };
-        addFolderBtn.onmouseout = () => {
-            addFolderBtn.style.borderColor = THEME.colorBorder;
-            addFolderBtn.style.background = 'transparent';
-        };
-        addFolderBtn.onclick = () => {
-            const folder = newFolderInput.value.trim();
-            if (folder && !searchFolders.includes(folder)) {
-                searchFolders.push(folder);
-                newFolderInput.value = '';
-                renderFolderList();
-            }
-        };
-        addFolderRow.appendChild(addFolderBtn);
-
-        // Enter key to add
-        newFolderInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                addFolderBtn.onclick();
-            }
-        };
+        content.appendChild(trackingInfo);
 
         // Save button
         const saveBtn = document.createElement('button');
@@ -1406,7 +1302,6 @@ function openSettingsModal() {
         saveBtn.onclick = () => {
             settings.booksFolder = folderInput.value.trim() || 'Library/Books';
             settings.sessionsFolder = sessionsInput.value.trim() || 'Personal Life/03 Reading/Sessions';
-            settings.searchFolders = searchFolders;
             window.READING_SETTINGS = settings;
             saveReadingSettings(settings);
             new Notice('Settings saved!');
@@ -1543,7 +1438,7 @@ buttonsSection.appendChild(settingsBtn);
 // ==========================================
 
 const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d", colorProgress: "#7a9a7d", colorPages: "#6a8a9a" };
-const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md", searchFolders: [] };
+const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md" };
 const createCorners = window.createReadingCorners;
 
 // Get log data
@@ -1704,7 +1599,7 @@ getStats().then(stats => {
 
 const THEME = window.READING_THEME || { color: "#7a9a7d", colorHover: "#8aaa8d", colorBorder: "#2a3a2d", colorMuted: "#5a6a5d", colorAccent: "#8aaa8d" };
 const VAULT_NAME = window.VAULT_NAME || "Alt society";
-const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md", searchFolders: [] };
+const settings = window.READING_SETTINGS || { logFile: "Personal Life/03 Reading/Reading Log.md" };
 const createCorners = window.createReadingCorners;
 
 // Get recent entries
