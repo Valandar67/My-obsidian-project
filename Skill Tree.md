@@ -11,9 +11,16 @@ function logDebug(...args) {
 }
 
 // ==========================================
+// INSTANCE IDENTIFICATION
+// ==========================================
+// Each skill tree note gets its own unique localStorage keys
+// This prevents multiple skill trees from sharing state
+const INSTANCE_ID = dv.current().file.path.replace(/[^a-zA-Z0-9]/g, '-');
+
+// ==========================================
 // SETTINGS PERSISTENCE
 // ==========================================
-const SETTINGS_KEY = 'skill-tree-settings-v3';
+const SETTINGS_KEY = `skill-tree-settings-v3-${INSTANCE_ID}`;
 
 function loadSettings() {
     try {
@@ -42,7 +49,7 @@ let settings = loadSettings();
 // ==========================================
 // FULLSCREEN STATE
 // ==========================================
-const FULLSCREEN_KEY = 'skill-tree-fullscreen-v1';
+const FULLSCREEN_KEY = `skill-tree-fullscreen-v1-${INSTANCE_ID}`;
 
 function loadFullscreenState() {
     try {
