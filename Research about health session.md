@@ -262,8 +262,14 @@ const findHighestPageForBook = window.findHighestPageForHealthBook;
 
 // Get health books from the configured folder that are "Currently reading"
 const booksFolder = settings.booksFolder || "Library/Health Books";
-const books = dv.pages(`"${booksFolder}"`)
+const books = dv.pages()
     .where(p => {
+        // Filter by folder path
+        const inHealthFolder = p.file.path.startsWith(booksFolder + "/") ||
+                               p.file.folder === booksFolder ||
+                               p.file.path.startsWith(booksFolder);
+        if (!inHealthFolder) return false;
+
         const hasBookMeta = p.title || p.author || p.localCoverImage || p.coverUrl;
         const isInProgress = p.Progress === "Currently reading" ||
                             p.Progress === "In progress" ||
