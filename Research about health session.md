@@ -260,8 +260,9 @@ const settings = window.HEALTH_SETTINGS || { booksFolder: "Library/Health Books"
 const createCorners = window.createHealthCorners;
 const findHighestPageForBook = window.findHighestPageForHealthBook;
 
-// Get books that are "Currently reading" (in progress) - health related
-const books = dv.pages()
+// Get health books from the configured folder that are "Currently reading"
+const booksFolder = settings.booksFolder || "Library/Health Books";
+const books = dv.pages(`"${booksFolder}"`)
     .where(p => {
         const hasBookMeta = p.title || p.author || p.localCoverImage || p.coverUrl;
         const isInProgress = p.Progress === "Currently reading" ||
