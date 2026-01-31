@@ -30,6 +30,18 @@ if (!document.getElementById('health-session-styles-v1')) {
             100% { top: 100%; opacity: 0; }
         }
 
+        @keyframes health-book-glow {
+            0% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 rgba(122, 154, 122, 0); }
+            50% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 30px rgba(122, 154, 122, 0.4); }
+            100% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 rgba(122, 154, 122, 0); }
+        }
+
+        @keyframes health-page-flip {
+            0% { transform: perspective(400px) rotateY(0deg); }
+            30% { transform: perspective(400px) rotateY(-8deg); }
+            100% { transform: perspective(400px) rotateY(0deg); }
+        }
+
         .health-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0); display: flex; align-items: center;
@@ -49,6 +61,23 @@ if (!document.getElementById('health-session-styles-v1')) {
         }
         .health-modal-overlay.visible .health-modal-content {
             opacity: 1; transform: translateY(0);
+        }
+
+        .health-img-no-drag {
+            pointer-events: none !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-drag: none !important;
+        }
+
+        .health-book-carousel-container {
+            touch-action: pan-x !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .health-book-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .health-folder-item {
@@ -111,7 +140,8 @@ function loadHealthSettings() {
         if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
-        researchFolder: "Health Research"
+        researchFolder: "Health Research",
+        booksFolder: "Library/Health Books"
     };
 }
 
@@ -122,6 +152,71 @@ function saveHealthSettings(settings) {
 }
 
 window.HEALTH_SETTINGS = loadHealthSettings();
+
+// ==========================================
+// SMART PAGE TRACKING - Find highest page from PDF links
+// ==========================================
+window.findHighestPageForHealthBook = async function(bookTitle, totalPages, trackingFolders) {
+    const folders = trackingFolders || [];
+
+    if (folders.length === 0 || !totalPages) {
+        return null;
+    }
+
+    const searchFolders = Array.isArray(folders) ? folders : [folders];
+    const cleanTitle = bookTitle.replace(/\s*-\s*[^-]+$/, '').trim();
+
+    const pageRegex = new RegExp(
+        `\\[\\[[^\\]]*${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\]]*\\.pdf#page=(\\d+)`,
+        'gi'
+    );
+
+    let highestPage = 0;
+    let foundIn = null;
+
+    const allFiles = app.vault.getMarkdownFiles();
+    const relevantFiles = allFiles
+        .filter(file => {
+            return searchFolders.some(folder => {
+                const normalizedFolder = folder.endsWith('/') ? folder : folder + '/';
+                return file.path.startsWith(folder) || file.path.startsWith(normalizedFolder);
+            });
+        })
+        .sort((a, b) => b.stat.mtime - a.stat.mtime);
+
+    const filesToSearch = relevantFiles.slice(0, 50);
+
+    for (const file of filesToSearch) {
+        try {
+            const content = await app.vault.cachedRead(file);
+            let match;
+
+            while ((match = pageRegex.exec(content)) !== null) {
+                const pageNum = parseInt(match[1], 10);
+                if (pageNum > highestPage) {
+                    highestPage = pageNum;
+                    foundIn = file.path;
+                }
+            }
+
+            pageRegex.lastIndex = 0;
+        } catch (e) {
+            console.warn('Error reading file for page tracking:', file.path, e);
+        }
+    }
+
+    if (highestPage > 0) {
+        const progressPercent = Math.min(100, Math.round((highestPage / totalPages) * 100));
+        return {
+            currentPage: highestPage,
+            totalPages: totalPages,
+            percent: progressPercent,
+            foundIn: foundIn
+        };
+    }
+
+    return null;
+};
 
 // Helper: Create decorative corners
 window.createHealthCorners = function(container, color = HEALTH_THEME.color, size = 16) {
@@ -151,6 +246,527 @@ window.createHealthCorners = function(container, color = HEALTH_THEME.color, siz
 };
 
 dv.paragraph("");
+```
+
+```dataviewjs
+// ==========================================
+// BOOK CAROUSEL - HEALTH REFERENCE BOOKS
+// Touch-friendly mobile carousel
+// ==========================================
+
+const THEME = window.HEALTH_THEME || { color: "#7a9a7a", colorHover: "#8aaa8a", colorBorder: "#2a3a2a", colorMuted: "#5a6a5a", colorAccent: "#8aaa8a" };
+const VAULT_NAME = window.VAULT_NAME || "Alt society";
+const settings = window.HEALTH_SETTINGS || { booksFolder: "Library/Health Books" };
+const createCorners = window.createHealthCorners;
+const findHighestPageForBook = window.findHighestPageForHealthBook;
+
+// Get books that are "Currently reading" (in progress) - health related
+const books = dv.pages()
+    .where(p => {
+        const hasBookMeta = p.title || p.author || p.localCoverImage || p.coverUrl;
+        const isInProgress = p.Progress === "Currently reading" ||
+                            p.Progress === "In progress" ||
+                            p.Progress === "Reading";
+        return hasBookMeta && isInProgress && p.totalPage;
+    })
+    .sort(p => p.file.mtime, 'desc')
+    .limit(10)
+    .array();
+
+// Cache for page progress data
+const pageProgressCache = new Map();
+
+// Main container
+const container = dv.el("div", "");
+container.style.cssText = `
+    max-width: 460px;
+    margin: 20px auto;
+    padding: 0;
+`;
+
+// Card wrapper
+const card = document.createElement('div');
+card.style.cssText = `
+    border: 1px solid ${THEME.colorBorder};
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+    animation: health-breathe 8s ease-in-out infinite;
+`;
+container.appendChild(card);
+
+if (createCorners) createCorners(card, THEME.color);
+
+// ==========================================
+// CAROUSEL SECTION
+// ==========================================
+const carouselSection = document.createElement('div');
+carouselSection.style.cssText = `
+    position: relative;
+    padding: 24px 16px 16px 16px;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+`;
+card.appendChild(carouselSection);
+
+if (books.length === 0) {
+    // Empty state
+    const emptyMsg = document.createElement('div');
+    emptyMsg.innerHTML = `
+        <div style="text-align: center; padding: 60px 20px; color: ${THEME.colorMuted};">
+            <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;">📚</div>
+            <div style="font-family: 'Times New Roman', serif; font-size: 16px; letter-spacing: 1px; margin-bottom: 8px;">No health books in progress</div>
+            <div style="font-family: Georgia, serif; font-style: italic; font-size: 13px; opacity: 0.7;">Set a book's Progress to "Currently reading"</div>
+            <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px; margin-top: 16px; opacity: 0.5;">ADD trackingFolders TO BOOK FRONTMATTER</div>
+        </div>
+    `;
+    carouselSection.appendChild(emptyMsg);
+} else {
+    // Current book index
+    let currentIndex = 0;
+
+    // Book display area
+    const bookDisplay = document.createElement('div');
+    bookDisplay.className = 'health-book-carousel-container';
+    bookDisplay.style.cssText = `
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        min-height: 280px;
+        overflow: hidden;
+    `;
+    carouselSection.appendChild(bookDisplay);
+
+    // Navigation arrows
+    const leftArrow = document.createElement('div');
+    leftArrow.innerHTML = '‹';
+    leftArrow.style.cssText = `
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 10, 10, 0.8);
+        border: 1px solid ${THEME.colorBorder};
+        color: ${THEME.color};
+        font-size: 24px;
+        cursor: pointer;
+        z-index: 20;
+        transition: all 0.3s ease;
+        opacity: ${books.length > 1 ? '1' : '0.3'};
+        pointer-events: ${books.length > 1 ? 'auto' : 'none'};
+    `;
+    leftArrow.onmouseenter = () => { leftArrow.style.borderColor = THEME.color; leftArrow.style.color = THEME.colorHover; };
+    leftArrow.onmouseleave = () => { leftArrow.style.borderColor = THEME.colorBorder; leftArrow.style.color = THEME.color; };
+
+    const rightArrow = document.createElement('div');
+    rightArrow.innerHTML = '›';
+    rightArrow.style.cssText = `
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 10, 10, 0.8);
+        border: 1px solid ${THEME.colorBorder};
+        color: ${THEME.color};
+        font-size: 24px;
+        cursor: pointer;
+        z-index: 20;
+        transition: all 0.3s ease;
+        opacity: ${books.length > 1 ? '1' : '0.3'};
+        pointer-events: ${books.length > 1 ? 'auto' : 'none'};
+    `;
+    rightArrow.onmouseenter = () => { rightArrow.style.borderColor = THEME.color; rightArrow.style.color = THEME.colorHover; };
+    rightArrow.onmouseleave = () => { rightArrow.style.borderColor = THEME.colorBorder; rightArrow.style.color = THEME.color; };
+
+    carouselSection.appendChild(leftArrow);
+    carouselSection.appendChild(rightArrow);
+
+    // Book card element
+    const bookCard = document.createElement('div');
+    bookCard.className = 'health-book-card';
+    bookCard.style.cssText = `
+        width: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+    `;
+    bookDisplay.appendChild(bookCard);
+
+    // Book cover container
+    const coverContainer = document.createElement('div');
+    coverContainer.style.cssText = `
+        width: 160px;
+        height: 240px;
+        background: #111;
+        border: 1px solid ${THEME.colorBorder};
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6), 4px 4px 0 rgba(122, 154, 122, 0.1);
+    `;
+    bookCard.appendChild(coverContainer);
+
+    // Cover image
+    const coverImg = document.createElement('img');
+    coverImg.className = 'health-img-no-drag';
+    coverImg.draggable = false;
+    coverImg.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: grayscale(0.3) contrast(1.1) brightness(0.9);
+        transition: all 0.4s ease;
+    `;
+    coverContainer.appendChild(coverImg);
+
+    // Fallback icon
+    const fallbackIcon = document.createElement('div');
+    fallbackIcon.innerHTML = '📖';
+    fallbackIcon.style.cssText = `
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 48px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    `;
+    coverContainer.appendChild(fallbackIcon);
+
+    // Vignette overlay
+    const vignette = document.createElement('div');
+    vignette.style.cssText = `
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.5) 100%);
+        pointer-events: none;
+    `;
+    coverContainer.appendChild(vignette);
+
+    // Scanline for hover
+    const scanline = document.createElement('div');
+    scanline.style.cssText = `
+        position: absolute;
+        top: -100%;
+        left: 0;
+        right: 0;
+        height: 100%;
+        background: linear-gradient(180deg, transparent 0%, ${THEME.color}30 50%, transparent 100%);
+        pointer-events: none;
+        opacity: 0;
+    `;
+    coverContainer.appendChild(scanline);
+
+    // Book title
+    const bookTitle = document.createElement('div');
+    bookTitle.style.cssText = `
+        margin-top: 16px;
+        color: ${THEME.color};
+        font-family: "Times New Roman", serif;
+        font-size: 14px;
+        letter-spacing: 0.5px;
+        text-align: center;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    `;
+    bookCard.appendChild(bookTitle);
+
+    // Author
+    const bookAuthor = document.createElement('div');
+    bookAuthor.style.cssText = `
+        margin-top: 4px;
+        color: ${THEME.colorMuted};
+        font-family: Georgia, serif;
+        font-style: italic;
+        font-size: 12px;
+        text-align: center;
+    `;
+    bookCard.appendChild(bookAuthor);
+
+    // Progress indicator
+    const progressContainer = document.createElement('div');
+    progressContainer.style.cssText = `
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+    `;
+    bookCard.appendChild(progressContainer);
+
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+        width: 120px;
+        height: 4px;
+        background: ${THEME.colorBorder};
+        border-radius: 2px;
+        overflow: hidden;
+    `;
+    progressContainer.appendChild(progressBar);
+
+    const progressFill = document.createElement('div');
+    progressFill.style.cssText = `
+        height: 100%;
+        background: ${THEME.colorAccent};
+        border-radius: 2px;
+        transition: width 0.4s ease;
+    `;
+    progressBar.appendChild(progressFill);
+
+    const progressText = document.createElement('div');
+    progressText.style.cssText = `
+        color: ${THEME.colorMuted};
+        font-family: "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+    `;
+    progressContainer.appendChild(progressText);
+
+    // Dot indicators
+    const dotsContainer = document.createElement('div');
+    dotsContainer.style.cssText = `
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+    `;
+    carouselSection.appendChild(dotsContainer);
+
+    const dots = [];
+    books.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.style.cssText = `
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: ${i === 0 ? THEME.color : THEME.colorBorder};
+            cursor: pointer;
+            transition: all 0.3s ease;
+        `;
+        dot.onclick = () => {
+            currentIndex = i;
+            updateDisplay();
+        };
+        dotsContainer.appendChild(dot);
+        dots.push(dot);
+    });
+
+    // Update display function
+    async function updateDisplay() {
+        const book = books[currentIndex];
+        if (!book) return;
+
+        // Update cover image
+        let imageSrc = null;
+        if (book.localCoverImage) {
+            const imgMatch = book.localCoverImage.match(/\[\[([^\]]+)\]\]/) || [null, book.localCoverImage];
+            const imgPath = imgMatch[1] || book.localCoverImage;
+            try {
+                const imgFile = app.metadataCache.getFirstLinkpathDest(imgPath, book.file.path);
+                if (imgFile) {
+                    imageSrc = app.vault.getResourcePath(imgFile);
+                }
+            } catch (e) {}
+        }
+        if (!imageSrc && book.coverUrl) {
+            imageSrc = book.coverUrl;
+        }
+
+        if (imageSrc) {
+            coverImg.src = imageSrc;
+            coverImg.style.opacity = '1';
+            fallbackIcon.style.opacity = '0';
+            coverImg.onerror = () => {
+                coverImg.style.opacity = '0';
+                fallbackIcon.style.opacity = '0.4';
+            };
+        } else {
+            coverImg.style.opacity = '0';
+            fallbackIcon.style.opacity = '0.4';
+        }
+
+        // Update title & author
+        const displayTitle = book.title || book.file.name.replace(/\s*-\s*[^-]+$/, '');
+        bookTitle.textContent = displayTitle;
+        bookAuthor.textContent = book.author || book.authors || '';
+
+        // Update progress - Smart page tracking
+        let progressPercent = 0;
+        let progressLabel = '';
+        const totalPages = book.totalPage || book.totalPages || 0;
+
+        const trackingFolders = book.trackingFolders || book.searchFolders || null;
+
+        const cacheKey = book.file.path;
+        let smartProgress = pageProgressCache.get(cacheKey);
+
+        if (smartProgress === undefined && findHighestPageForBook && totalPages > 0 && trackingFolders) {
+            smartProgress = await findHighestPageForBook(displayTitle, totalPages, trackingFolders);
+            pageProgressCache.set(cacheKey, smartProgress);
+        }
+
+        if (smartProgress && smartProgress.percent > 0) {
+            progressPercent = smartProgress.percent;
+            progressLabel = `${progressPercent}%`;
+        } else {
+            const progress = book.Progress;
+            if (typeof progress === 'number') {
+                progressPercent = progress;
+                progressLabel = `${progressPercent}%`;
+            } else if (progress === 'Currently reading') {
+                progressPercent = 0;
+                progressLabel = 'reading';
+            } else if (progress === 'Completed' || progress === 'Finished') {
+                progressPercent = 100;
+                progressLabel = '100%';
+            } else {
+                progressLabel = '—';
+            }
+        }
+
+        progressFill.style.width = `${progressPercent}%`;
+        progressText.textContent = progressLabel;
+
+        // Update dots
+        dots.forEach((dot, i) => {
+            dot.style.background = i === currentIndex ? THEME.color : THEME.colorBorder;
+            dot.style.transform = i === currentIndex ? 'scale(1.2)' : 'scale(1)';
+        });
+    }
+
+    // Navigation handlers
+    leftArrow.onclick = () => {
+        currentIndex = (currentIndex - 1 + books.length) % books.length;
+        bookCard.style.animation = 'none';
+        bookCard.offsetHeight;
+        bookCard.style.animation = 'health-fade-in 0.3s ease';
+        updateDisplay();
+    };
+
+    rightArrow.onclick = () => {
+        currentIndex = (currentIndex + 1) % books.length;
+        bookCard.style.animation = 'none';
+        bookCard.offsetHeight;
+        bookCard.style.animation = 'health-fade-in 0.3s ease';
+        updateDisplay();
+    };
+
+    // Touch/swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    bookDisplay.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    bookDisplay.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) {
+                rightArrow.onclick();
+            } else {
+                leftArrow.onclick();
+            }
+        }
+    }, { passive: true });
+
+    // Hover effects
+    bookCard.onmouseenter = () => {
+        coverImg.style.filter = 'grayscale(0.1) contrast(1.2) brightness(1)';
+        scanline.style.opacity = '1';
+        scanline.style.animation = 'scanline-sweep 1.5s ease-out';
+        coverContainer.style.boxShadow = '0 12px 40px rgba(0,0,0,0.8), 6px 6px 0 rgba(122, 154, 122, 0.15)';
+    };
+
+    bookCard.onmouseleave = () => {
+        coverImg.style.filter = 'grayscale(0.3) contrast(1.1) brightness(0.9)';
+        scanline.style.opacity = '0';
+        scanline.style.animation = 'none';
+        coverContainer.style.boxShadow = '0 8px 32px rgba(0,0,0,0.6), 4px 4px 0 rgba(122, 154, 122, 0.1)';
+    };
+
+    // Click to open book
+    bookCard.onclick = () => {
+        const book = books[currentIndex];
+        if (book) {
+            coverContainer.style.animation = 'health-book-glow 0.6s ease-out';
+            coverImg.style.animation = 'health-page-flip 0.5s ease-out';
+
+            setTimeout(() => {
+                coverContainer.style.animation = '';
+                coverImg.style.animation = '';
+                window.location.href = `obsidian://open?vault=${encodeURIComponent(VAULT_NAME)}&file=${encodeURIComponent(book.file.path)}`;
+            }, 400);
+        }
+    };
+
+    // Initial display
+    updateDisplay();
+}
+
+// ==========================================
+// DIVIDER
+// ==========================================
+const divider = document.createElement('div');
+divider.style.cssText = `
+    width: calc(100% - 40px);
+    height: 1px;
+    background: ${THEME.colorBorder};
+    margin: 0 20px;
+`;
+card.appendChild(divider);
+
+// ==========================================
+// INFO SECTION
+// ==========================================
+const infoSection = document.createElement('div');
+infoSection.style.cssText = `
+    padding: 20px 24px 24px 24px;
+`;
+card.appendChild(infoSection);
+
+const title = document.createElement('h3');
+title.textContent = "Health Bookshelf";
+title.style.cssText = `
+    margin: 0 0 6px 0;
+    color: ${THEME.color};
+    font-size: 14px;
+    font-weight: 500;
+    font-family: "Times New Roman", serif;
+    letter-spacing: 0.5px;
+`;
+infoSection.appendChild(title);
+
+const desc = document.createElement('p');
+desc.textContent = books.length > 0
+    ? `${books.length} book${books.length > 1 ? 's' : ''} in progress`
+    : "No health books currently being read";
+desc.style.cssText = `
+    margin: 0;
+    color: ${THEME.colorMuted};
+    font-size: 12px;
+    line-height: 1.4;
+    font-family: "Georgia", serif;
+    font-style: italic;
+`;
+infoSection.appendChild(desc);
 ```
 
 ```dataviewjs
@@ -507,7 +1123,28 @@ function openSettingsModal() {
     `;
     scrollWrapper.appendChild(divider);
 
-    // Folder path input
+    // Books folder input
+    const booksLabel = document.createElement('div');
+    booksLabel.textContent = 'Health Books Folder';
+    booksLabel.style.cssText = `color: ${THEME.colorMuted}; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 12px;`;
+    scrollWrapper.appendChild(booksLabel);
+
+    const booksInput = document.createElement('input');
+    booksInput.type = 'text';
+    booksInput.value = window.HEALTH_SETTINGS.booksFolder || 'Library/Health Books';
+    booksInput.placeholder = 'Library/Health Books';
+    booksInput.style.cssText = `
+        width: 100%;
+        padding: 14px;
+        background: #0f0f0f;
+        border: 1px solid ${THEME.colorBorder};
+        color: ${THEME.color};
+        font-size: 14px;
+        box-sizing: border-box;
+    `;
+    scrollWrapper.appendChild(booksInput);
+
+    // Research folder path input
     const folderLabel = document.createElement('div');
     folderLabel.textContent = 'Research Folder Path';
     folderLabel.style.cssText = `color: ${THEME.colorMuted}; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 12px;`;
@@ -570,6 +1207,7 @@ function openSettingsModal() {
     saveBtn.onmouseover = () => { saveBtn.style.background = THEME.colorHover; };
     saveBtn.onmouseout = () => { saveBtn.style.background = THEME.color; };
     saveBtn.onclick = () => {
+        window.HEALTH_SETTINGS.booksFolder = booksInput.value.trim() || 'Library/Health Books';
         window.HEALTH_SETTINGS.researchFolder = folderInput.value.trim() || 'Health Research';
         try {
             localStorage.setItem('health-session-settings-v1', JSON.stringify(window.HEALTH_SETTINGS));
