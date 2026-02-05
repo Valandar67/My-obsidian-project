@@ -1427,194 +1427,235 @@ var TrackRankView = class extends import_obsidian.ItemView {
     // Calculate dynamic segments
     const segmentConfig = calculateHPSegments(settings.bossMaxHP);
     const { segmentCount, hpPerSegment } = segmentConfig;
-    const segmentWidth = 100 / segmentCount;
-
-    // Calculate which segments are filled
-    const fullSegments = Math.floor(settings.bossCurrentHP / hpPerSegment);
-    const partialFillHP = settings.bossCurrentHP % hpPerSegment;
-    const partialFillPercent = (partialFillHP / hpPerSegment) * 100;
 
     // Determine if HP is critically low (trigger pulse when HP ≤ 2 segments worth)
     const criticalThreshold = hpPerSegment * 2;
     const isCritical = settings.bossCurrentHP <= criticalThreshold && settings.bossCurrentHP > 0;
 
-    // Add pulse animation styles if not present
-    if (!document.getElementById('track-habit-rank-hp-pulse-styles')) {
+    // Add ornate HP bar styles if not present
+    if (!document.getElementById('track-habit-rank-ornate-hp-styles')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-hp-pulse-styles';
+      style.id = 'track-habit-rank-ornate-hp-styles';
       style.textContent = `
-        @keyframes hpPulse {
-          0%, 100% { opacity: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3); }
-          50% { opacity: 0.7; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 0 8px currentColor; }
+        @keyframes hpPulseOrnate {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.3); }
         }
-        @keyframes hpFramePulse {
-          0%, 100% { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05); }
-          50% { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 12px var(--pulse-glow); }
+        @keyframes hpGlowPulse {
+          0%, 100% { box-shadow: 0 0 8px var(--glow-color); }
+          50% { box-shadow: 0 0 16px var(--glow-color), 0 0 24px var(--glow-color); }
+        }
+        .ornate-hp-segment {
+          transition: all 0.3s ease;
+        }
+        .ornate-hp-segment.filled {
+          background: var(--segment-fill);
+        }
+        .ornate-hp-segment.empty {
+          background: linear-gradient(180deg, #1a1510 0%, #0d0a08 50%, #1a1510 100%);
         }
       `;
       document.head.appendChild(style);
     }
 
-    // HP text display
+    // Boss name in runic/nordic style above bar
     wrapper.createEl("div", {
-      text: `${settings.bossCurrentHP}/${settings.bossMaxHP} HP`,
+      text: boss?.name || "UNKNOWN",
       attr: {
         style: `
           font-family: "Times New Roman", serif;
-          font-size: 13px;
-          letter-spacing: 1px;
+          font-size: 14px;
+          font-weight: 600;
+          letter-spacing: 3px;
+          text-transform: uppercase;
           color: ${hpBarColors.accent};
-          opacity: 0.9;
-          margin-bottom: 10px;
+          text-align: center;
+          margin-bottom: 8px;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         `
       }
     });
 
-    // God of War style HP bar with tier-based colors
+    // Ornate HP bar container with end caps
     const hpBarContainer = wrapper.createDiv({
       cls: "track-habit-rank-hp-bar-container",
       attr: {
         style: `
           width: 100%;
-          margin-bottom: 20px;
+          margin-bottom: 8px;
           position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         `
       }
     });
 
-    // Outer frame with embossed effect and tier-based border
+    // Left decorative end cap - Celtic knot design
+    const leftCap = hpBarContainer.createDiv({
+      attr: {
+        style: `
+          width: 24px;
+          height: 28px;
+          flex-shrink: 0;
+          position: relative;
+        `
+      }
+    });
+    leftCap.innerHTML = `
+      <svg viewBox="0 0 24 28" width="24" height="28" style="filter: drop-shadow(1px 0 1px rgba(0,0,0,0.5));">
+        <defs>
+          <linearGradient id="capGradLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#3a3025"/>
+            <stop offset="50%" style="stop-color:#5a4a35"/>
+            <stop offset="100%" style="stop-color:#4a3a28"/>
+          </linearGradient>
+        </defs>
+        <!-- Celtic knot inspired end cap -->
+        <path d="M24 4 L24 24 L18 24 Q12 22 8 18 Q4 14 4 14 Q4 14 8 10 Q12 6 18 4 Z" fill="url(#capGradLeft)" stroke="#2a2015" stroke-width="1"/>
+        <!-- Inner knot detail -->
+        <circle cx="14" cy="14" r="4" fill="none" stroke="#6a5a45" stroke-width="1" opacity="0.6"/>
+        <circle cx="14" cy="14" r="2" fill="#5a4a35" opacity="0.8"/>
+        <!-- Decorative lines -->
+        <path d="M20 8 Q16 10 14 14 Q16 18 20 20" fill="none" stroke="#6a5a45" stroke-width="0.5" opacity="0.5"/>
+      </svg>
+    `;
+
+    // Main bar frame
     const barFrame = hpBarContainer.createDiv({
       cls: "track-habit-rank-hp-bar-frame",
       attr: {
         style: `
-          --pulse-glow: ${hpBarColors.glow};
-          width: 100%;
-          height: 18px;
-          background: linear-gradient(180deg, #1a1510 0%, #0d0a08 50%, #1a1510 100%);
-          border: 1px solid ${hpBarColors.border};
-          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05);
+          --glow-color: ${hpBarColors.glow};
+          flex: 1;
+          height: 20px;
+          background: linear-gradient(180deg, #2a2520 0%, #1a1510 30%, #0d0a08 50%, #1a1510 70%, #2a2520 100%);
+          border-top: 1px solid #4a4030;
+          border-bottom: 1px solid #1a1510;
           position: relative;
-          overflow: hidden;
-          ${isCritical ? 'animation: hpFramePulse 1.5s ease-in-out infinite;' : ''}
+          display: flex;
+          gap: 2px;
+          padding: 2px;
+          ${isCritical ? 'animation: hpGlowPulse 1.5s ease-in-out infinite;' : ''}
         `
       }
     });
 
-    // Damage lingering layer (red - shows HP at start of day)
+    // Calculate filled segments
+    const filledSegments = Math.ceil((settings.bossCurrentHP / settings.bossMaxHP) * segmentCount);
+
+    // Damage lingering segments (shows HP at start of day)
     const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
-    const startOfDayPercent = Math.round((startOfDayHP / settings.bossMaxHP) * 100);
-    if (startOfDayPercent > hpPercent) {
-      barFrame.createDiv({
-        cls: "track-habit-rank-hp-damage-linger",
+    const startOfDaySegments = Math.ceil((startOfDayHP / settings.bossMaxHP) * segmentCount);
+
+    // Metallic gradient based on tier
+    const metallicFill = settings.inTartarus
+      ? 'linear-gradient(180deg, #a04040 0%, #803030 20%, #602020 50%, #803030 80%, #a04040 100%)'
+      : hpBarColors.accent === '#6a8a5a'
+        ? 'linear-gradient(180deg, #8aaa7a 0%, #6a8a5a 20%, #4a6a3a 50%, #6a8a5a 80%, #8aaa7a 100%)'  // Green
+        : hpBarColors.accent === '#b8a070'
+          ? 'linear-gradient(180deg, #d8c090 0%, #b8a070 20%, #9a8050 50%, #b8a070 80%, #d8c090 100%)'  // Gold
+          : hpBarColors.accent === '#8a6a9a'
+            ? 'linear-gradient(180deg, #aa8aba 0%, #8a6a9a 20%, #6a4a7a 50%, #8a6a9a 80%, #aa8aba 100%)'  // Purple
+            : 'linear-gradient(180deg, #ba6a6a 0%, #9a4a4a 20%, #7a3030 50%, #9a4a4a 80%, #ba6a6a 100%)'; // Crimson
+
+    // Create individual plate segments
+    for (let i = 0; i < segmentCount; i++) {
+      const isFilled = i < filledSegments;
+      const wasFilled = i < startOfDaySegments && i >= filledSegments; // Damage linger
+
+      const segment = barFrame.createDiv({
+        cls: `ornate-hp-segment ${isFilled ? 'filled' : 'empty'}`,
         attr: {
           style: `
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: calc(${startOfDayPercent}% - 4px);
-            height: calc(100% - 4px);
-            background: linear-gradient(180deg, #6a2a2a 0%, #4a1a1a 50%, #3a1010 100%);
-            opacity: 0.8;
-            z-index: 1;
-          `
-        }
-      });
-    }
-
-    // Main HP fill with tier-based gradient
-    barFrame.createDiv({
-      cls: "track-habit-rank-hp-fill",
-      attr: {
-        style: `
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: calc(${hpPercent}% - 4px);
-          height: calc(100% - 4px);
-          background: ${hpBarColors.fill};
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
-          transition: width 0.4s ease;
-          z-index: 2;
-          ${isCritical ? `animation: hpPulse 1.5s ease-in-out infinite; color: ${hpBarColors.accent};` : ''}
-        `
-      }
-    });
-
-    // Dynamic segment dividers
-    for (let i = 1; i < segmentCount; i++) {
-      barFrame.createDiv({
-        attr: {
-          style: `
-            position: absolute;
-            top: 0;
-            left: ${i * segmentWidth}%;
-            width: 1px;
+            --segment-fill: ${metallicFill};
+            flex: 1;
             height: 100%;
-            background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.7) 100%);
-            z-index: 3;
+            background: ${isFilled
+              ? metallicFill
+              : wasFilled
+                ? 'linear-gradient(180deg, #5a2a2a 0%, #4a1a1a 50%, #3a1010 100%)'
+                : 'linear-gradient(180deg, #1a1510 0%, #0d0a08 50%, #1a1510 100%)'
+            };
+            border-radius: 1px;
+            box-shadow: ${isFilled
+              ? 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.4), 0 0 2px rgba(0,0,0,0.5)'
+              : 'inset 0 1px 2px rgba(0,0,0,0.5)'
+            };
+            ${isCritical && isFilled ? 'animation: hpPulseOrnate 1.5s ease-in-out infinite;' : ''}
           `
         }
       });
     }
 
-    // Subtle highlight on top edge
-    barFrame.createDiv({
+    // Right decorative end cap - simpler symmetrical design
+    const rightCap = hpBarContainer.createDiv({
       attr: {
         style: `
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          right: 2px;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-          z-index: 4;
+          width: 24px;
+          height: 28px;
+          flex-shrink: 0;
+          position: relative;
         `
       }
     });
+    rightCap.innerHTML = `
+      <svg viewBox="0 0 24 28" width="24" height="28" style="filter: drop-shadow(-1px 0 1px rgba(0,0,0,0.5));">
+        <defs>
+          <linearGradient id="capGradRight" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#4a3a28"/>
+            <stop offset="50%" style="stop-color:#5a4a35"/>
+            <stop offset="100%" style="stop-color:#3a3025"/>
+          </linearGradient>
+        </defs>
+        <!-- Symmetrical end cap -->
+        <path d="M0 4 L0 24 L6 24 Q12 22 16 18 Q20 14 20 14 Q20 14 16 10 Q12 6 6 4 Z" fill="url(#capGradRight)" stroke="#2a2015" stroke-width="1"/>
+        <!-- Inner detail -->
+        <circle cx="10" cy="14" r="3" fill="none" stroke="#6a5a45" stroke-width="1" opacity="0.6"/>
+        <path d="M4 10 L8 14 L4 18" fill="none" stroke="#6a5a45" stroke-width="0.5" opacity="0.5"/>
+      </svg>
+    `;
 
-    // Segment info and damage display
+    // HP text below bar
     const hpInfoContainer = wrapper.createDiv({
       attr: {
         style: `
           display: flex;
-          justify-content: space-between;
-          margin-top: -12px;
-          margin-bottom: 12px;
-          padding: 0 4px;
+          justify-content: center;
+          gap: 16px;
+          margin-bottom: 16px;
         `
       }
     });
 
-    // Show segment info (left)
     hpInfoContainer.createEl("div", {
-      text: `${hpPerSegment} HP/seg`,
+      text: `${settings.bossCurrentHP} / ${settings.bossMaxHP}`,
       attr: {
         style: `
-          font-family: "Georgia", serif;
-          font-size: 10px;
-          color: ${colors.textMuted};
-          opacity: 0.6;
+          font-family: "Times New Roman", serif;
+          font-size: 12px;
+          letter-spacing: 1px;
+          color: ${hpBarColors.accent};
+          opacity: 0.9;
         `
       }
     });
 
-    // Show damage dealt today if any (right)
-    if (startOfDayPercent > hpPercent) {
+    // Show damage dealt today if any
+    if (startOfDaySegments > filledSegments) {
       const damageDealt = startOfDayHP - settings.bossCurrentHP;
       hpInfoContainer.createEl("div", {
         text: `\u2212${damageDealt} today`,
         attr: {
           style: `
             font-family: "Georgia", serif;
-            font-size: 10px;
+            font-size: 11px;
             font-style: italic;
-            color: ${colors.goldMuted};
-            opacity: 0.7;
+            color: ${colors.dangerMuted};
+            opacity: 0.8;
           `
         }
       });
-    } else {
-      hpInfoContainer.createEl("div", { text: "" });
     }
     if (boss?.lore) {
       wrapper.createEl("div", {
@@ -2010,45 +2051,66 @@ var TrackRankView = class extends import_obsidian.ItemView {
   }
 
   /**
-   * Render reward card carousel with visual cards
+   * Render center-focused reward card carousel
    */
   renderRewardBoxes(wrapper, colors) {
     const settings = this.plugin.settings;
     const rewardProgress = this.plugin.getRewardProgress();
 
-    // Add carousel animation styles if not present
-    if (!document.getElementById('track-habit-rank-reward-card-styles')) {
+    // Add center-focused carousel styles if not present
+    if (!document.getElementById('track-habit-rank-center-carousel-styles')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-reward-card-styles';
+      style.id = 'track-habit-rank-center-carousel-styles';
       style.textContent = `
-        @keyframes cardPulse {
-          0%, 100% { box-shadow: 0 2px 8px rgba(184, 160, 112, 0.2); }
-          50% { box-shadow: 0 4px 16px rgba(184, 160, 112, 0.4); }
+        @keyframes ancientGlow {
+          0%, 100% {
+            box-shadow: 0 0 8px rgba(184, 160, 112, 0.3), inset 0 0 12px rgba(184, 160, 112, 0.1);
+          }
+          50% {
+            box-shadow: 0 0 16px rgba(184, 160, 112, 0.5), inset 0 0 20px rgba(184, 160, 112, 0.2);
+          }
         }
-        @keyframes cardShine {
-          0% { background-position: -100% 0; }
-          100% { background-position: 200% 0; }
+        @keyframes runeShimmer {
+          0% { opacity: 0.4; }
+          50% { opacity: 0.8; }
+          100% { opacity: 0.4; }
         }
-        .reward-carousel {
+        .center-carousel-container {
+          position: relative;
+          overflow: hidden;
+          padding: 12px 0;
+        }
+        .center-carousel {
           display: flex;
-          gap: 12px;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
           overflow-x: auto;
           scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
-          padding: 8px 4px 12px 4px;
-          margin: 0 -8px;
+          padding: 8px calc(50% - 55px);
         }
-        .reward-carousel::-webkit-scrollbar { display: none; }
-        .reward-card {
+        .center-carousel::-webkit-scrollbar { display: none; }
+        .center-card {
           flex: 0 0 auto;
-          width: 100px;
-          scroll-snap-align: start;
-          transition: transform 0.3s ease, opacity 0.3s ease;
+          scroll-snap-align: center;
+          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-        .reward-card:hover { transform: translateY(-4px); }
-        .reward-card.locked { filter: grayscale(0.8) brightness(0.7); }
-        .reward-card.earned { animation: cardPulse 2s ease-in-out infinite; }
+        .center-card.side {
+          opacity: 0.6;
+          transform: scale(0.85);
+        }
+        .center-card.center {
+          opacity: 1;
+          transform: scale(1);
+        }
+        .center-card.earned {
+          animation: ancientGlow 3s ease-in-out infinite;
+        }
+        .center-card.locked {
+          filter: grayscale(0.7) brightness(0.6);
+        }
       `;
       document.head.appendChild(style);
     }
@@ -2058,58 +2120,63 @@ var TrackRankView = class extends import_obsidian.ItemView {
       attr: {
         style: `
           margin: 16px 0;
-          padding: 12px 8px;
-          background: ${colors.bgLight};
+          padding: 8px 0;
+          background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 100%);
           border: 1px solid ${colors.greenBorder};
+          position: relative;
         `
       }
     });
 
-    // Section header
+    // Section header with progress
+    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
     const header = rewardSection.createDiv({
       attr: {
         style: `
           display: flex;
-          justify-content: space-between;
+          justify-content: center;
           align-items: center;
-          margin-bottom: 12px;
-          padding: 0 4px;
+          gap: 12px;
+          padding: 0 12px 8px 12px;
         `
       }
     });
 
     header.createEl("div", {
-      text: "Rewards",
-      attr: {
-        style: `
-          font-family: "Times New Roman", serif;
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 1.5px;
-          text-transform: uppercase;
-          color: ${colors.goldMuted};
-        `
-      }
-    });
-
-    // Progress indicator
-    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
-    header.createEl("div", {
-      text: `${activityRemaining} to next`,
+      text: `${activityRemaining} to next reward`,
       attr: {
         style: `
           font-family: "Georgia", serif;
           font-size: 10px;
+          font-style: italic;
           color: ${colors.textMuted};
-          opacity: 0.8;
         `
       }
     });
 
-    // Carousel container
-    const carousel = rewardSection.createDiv({ cls: "reward-carousel" });
+    // Pending badge
+    if (rewardProgress.pendingCount > 0) {
+      header.createEl("div", {
+        text: `${rewardProgress.pendingCount} unclaimed`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 9px;
+            color: ${colors.gold};
+            padding: 2px 8px;
+            border: 1px solid ${colors.goldMuted};
+            background: rgba(154, 140, 122, 0.1);
+          `
+        }
+      });
+    }
 
-    // Get current reward tier and pool
+    // Center-focused carousel container
+    const carouselContainer = rewardSection.createDiv({ cls: "center-carousel-container" });
+    const carousel = carouselContainer.createDiv({ cls: "center-carousel" });
+
+    // Collect all cards to render
+    const cards = [];
     const tierDisplayNames = {
       micro: "Micro",
       mini: "Mini",
@@ -2120,107 +2187,235 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
     const pendingRewards = settings.pendingRewards || [];
 
-    // Render pending/earned rewards first (highlighted)
+    // Add pending rewards first
     pendingRewards.forEach((reward) => {
       const pool = settings.rewardPools?.find(p => p.tier === reward.rewardTier);
       const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
-      this.createRewardCard(carousel, {
+      cards.push({
         emoji: option?.emoji || "🎁",
         image: option?.image || "",
-        name: option?.description || "Unclaimed Reward",
+        name: option?.description || "Unclaimed",
         effect: tierDisplayNames[reward.rewardTier] || "Reward",
         isEarned: true,
-        isLocked: false,
-        colors
-      }, () => new RewardLogModal(this.app, this.plugin).open());
+        isLocked: false
+      });
     });
 
-    // Render available rewards from current pool (locked until earned)
+    // Add available rewards from current pool
     if (currentPool?.options) {
-      currentPool.options.slice(0, 3).forEach((option, index) => {
-        // Skip if already pending
+      currentPool.options.slice(0, 3).forEach((option) => {
         const isPending = pendingRewards.some(r => r.selectedOptionId === option.id);
         if (isPending) return;
-
-        this.createRewardCard(carousel, {
+        cards.push({
           emoji: option.emoji || "🎁",
           image: option.image || "",
           name: option.description,
           effect: `${activityRemaining} more`,
           isEarned: false,
-          isLocked: true,
-          colors
-        }, () => new RewardLogModal(this.app, this.plugin).open());
+          isLocked: true
+        });
       });
     }
 
-    // Add "view all" card at end
-    const viewAllCard = carousel.createDiv({
-      cls: "reward-card",
-      attr: {
-        style: `
-          width: 80px;
-          height: 120px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          background: ${colors.bgLight};
-          border: 1px dashed ${colors.greenBorder};
-          cursor: pointer;
-          transition: all 0.2s ease;
-          opacity: 0.6;
-        `
-      }
-    });
-    viewAllCard.createEl("div", {
-      text: "→",
-      attr: {
-        style: `
-          font-size: 20px;
-          color: ${colors.greenMuted};
-          margin-bottom: 4px;
-        `
-      }
-    });
-    viewAllCard.createEl("div", {
-      text: "View All",
-      attr: {
-        style: `
-          font-family: "Georgia", serif;
-          font-size: 9px;
-          color: ${colors.textMuted};
-        `
-      }
-    });
-    viewAllCard.onclick = () => new RewardLogModal(this.app, this.plugin).open();
-    viewAllCard.onmouseenter = () => { viewAllCard.style.opacity = "1"; };
-    viewAllCard.onmouseleave = () => { viewAllCard.style.opacity = "0.6"; };
+    // Ensure we have at least 3 cards for the carousel effect
+    while (cards.length < 3) {
+      cards.push({
+        emoji: "🎁",
+        image: "",
+        name: "Future Reward",
+        effect: "Keep going",
+        isEarned: false,
+        isLocked: true
+      });
+    }
 
-    // Pending count badge (if any)
-    if (rewardProgress.pendingCount > 0) {
-      const badge = header.createDiv({
+    // Render cards with center/side positioning
+    cards.forEach((cardData, index) => {
+      const isCenter = index === Math.floor(cards.length / 2) || (cards.length <= 2 && index === 0);
+      this.createCenterCard(carousel, cardData, isCenter, colors, () => {
+        new RewardLogModal(this.app, this.plugin).open();
+      });
+    });
+
+    // Scroll hint indicators
+    if (cards.length > 3) {
+      const scrollHint = rewardSection.createDiv({
         attr: {
           style: `
-            background: ${colors.gold};
-            color: ${colors.bg};
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-family: "Georgia", serif;
-            font-size: 9px;
-            font-weight: 600;
-            margin-left: 8px;
+            text-align: center;
+            margin-top: 4px;
           `
         }
       });
-      badge.setText(`${rewardProgress.pendingCount}`);
+      for (let i = 0; i < Math.min(cards.length, 5); i++) {
+        scrollHint.createEl("span", {
+          text: "•",
+          attr: {
+            style: `
+              font-size: 8px;
+              color: ${i === Math.floor(cards.length / 2) ? colors.gold : colors.textMuted};
+              margin: 0 2px;
+              opacity: 0.6;
+            `
+          }
+        });
+      }
     }
+
+    // View all link
+    rewardSection.createEl("div", {
+      text: "View All Rewards →",
+      attr: {
+        style: `
+          text-align: center;
+          margin-top: 8px;
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: ${colors.textMuted};
+          cursor: pointer;
+          opacity: 0.7;
+          transition: opacity 0.2s ease;
+        `
+      }
+    }).onclick = () => new RewardLogModal(this.app, this.plugin).open();
   }
 
   /**
-   * Create a single reward card element
+   * Create a center-focused reward card
    */
+  createCenterCard(container, { emoji, image, name, effect, isEarned, isLocked }, isCenter, colors, onClick) {
+    const card = container.createDiv({
+      cls: `center-card ${isCenter ? 'center' : 'side'} ${isEarned ? 'earned' : ''} ${isLocked ? 'locked' : ''}`,
+      attr: {
+        style: `
+          width: ${isCenter ? '110px' : '90px'};
+          height: ${isCenter ? '140px' : '120px'};
+          background: ${colors.bgLight};
+          border: 1px solid ${isEarned ? colors.gold : colors.greenBorder};
+          display: flex;
+          flex-direction: column;
+          cursor: pointer;
+          overflow: hidden;
+          position: relative;
+        `
+      }
+    });
+
+    // Top section - image or emoji
+    const imageSection = card.createDiv({
+      attr: {
+        style: `
+          flex: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 100%);
+          position: relative;
+        `
+      }
+    });
+
+    if (image) {
+      const img = imageSection.createEl("img", {
+        attr: {
+          src: image,
+          alt: name,
+          style: `max-width: ${isCenter ? '60px' : '45px'}; max-height: ${isCenter ? '55px' : '40px'}; object-fit: contain;`
+        }
+      });
+      img.onerror = () => {
+        img.remove();
+        imageSection.createEl("div", { text: emoji, attr: { style: `font-size: ${isCenter ? '36px' : '28px'};` } });
+      };
+    } else {
+      imageSection.createEl("div", { text: emoji, attr: { style: `font-size: ${isCenter ? '36px' : '28px'};` } });
+    }
+
+    // Lock icon for locked cards
+    if (isLocked) {
+      imageSection.createEl("div", {
+        text: "🔒",
+        attr: {
+          style: `
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: ${isCenter ? '14px' : '10px'};
+            opacity: 0.6;
+          `
+        }
+      });
+    }
+
+    // Rune shimmer for earned cards
+    if (isEarned) {
+      const shimmer = card.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, ${colors.gold}, transparent);
+            animation: runeShimmer 2s ease-in-out infinite;
+          `
+        }
+      });
+    }
+
+    // Text section
+    const textSection = card.createDiv({
+      attr: {
+        style: `
+          padding: ${isCenter ? '8px' : '6px'};
+          background: ${colors.bg};
+          border-top: 1px solid ${colors.greenBorder};
+        `
+      }
+    });
+
+    textSection.createEl("div", {
+      text: name.length > (isCenter ? 16 : 12) ? name.substring(0, isCenter ? 14 : 10) + "..." : name,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: ${isCenter ? '10px' : '8px'};
+          color: ${isLocked ? colors.textMuted : colors.text};
+          margin-bottom: 2px;
+          line-height: 1.2;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        `
+      }
+    });
+
+    textSection.createEl("div", {
+      text: effect,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: ${isCenter ? '9px' : '7px'};
+          color: ${isEarned ? colors.gold : colors.textMuted};
+          opacity: 0.8;
+        `
+      }
+    });
+
+    card.onclick = onClick;
+    return card;
+  }
+
+  // Legacy method kept for compatibility
   createRewardCard(container, { emoji, image, name, effect, isEarned, isLocked, colors }, onClick) {
+    return this.createCenterCard(container, { emoji, image, name, effect, isEarned, isLocked }, true, colors, onClick);
+  }
+
+  /**
+   * @deprecated Use createCenterCard instead
+   */
+  _legacyCreateRewardCard(container, { emoji, image, name, effect, isEarned, isLocked, colors }, onClick) {
     const card = container.createDiv({
       cls: `reward-card ${isEarned ? 'earned' : ''} ${isLocked ? 'locked' : ''}`,
       attr: {

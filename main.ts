@@ -3154,116 +3154,259 @@ class RewardSelectionModal extends Modal {
 
     contentEl.empty();
 
+    // Add ornate modal styling
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes rewardModalGlow {
+        0%, 100% { box-shadow: inset 0 0 30px rgba(184, 160, 112, 0.15), 0 0 20px rgba(90, 74, 53, 0.3); }
+        50% { box-shadow: inset 0 0 40px rgba(184, 160, 112, 0.25), 0 0 30px rgba(90, 74, 53, 0.4); }
+      }
+      @keyframes runeReveal {
+        0% { opacity: 0; transform: translateY(-10px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes cardPulse {
+        0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(184, 160, 112, 0.2); }
+        50% { box-shadow: 0 6px 20px rgba(184, 160, 112, 0.3), inset 0 1px 0 rgba(184, 160, 112, 0.4); }
+      }
+      .reward-modal-container {
+        background: linear-gradient(180deg, #1a1510 0%, #0f0d0a 50%, #1a1510 100%);
+        border: 2px solid #5a4a35;
+        border-radius: 4px;
+        padding: 24px;
+        animation: rewardModalGlow 4s ease-in-out infinite;
+        position: relative;
+        overflow: hidden;
+      }
+      .reward-modal-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5 L35 25 L55 30 L35 35 L30 55 L25 35 L5 30 L25 25 Z' fill='none' stroke='%23b8a070' stroke-width='0.5' opacity='0.05'/%3E%3C/svg%3E");
+        pointer-events: none;
+        opacity: 0.3;
+      }
+      .reward-option-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+        padding: 16px;
+        background: linear-gradient(135deg, #1f1a14 0%, #151210 50%, #1a1510 100%);
+        border: 1px solid #3a3025;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        animation: runeReveal 0.5s ease-out forwards;
+        opacity: 0;
+      }
+      .reward-option-card:hover {
+        border-color: #b8a070;
+        background: linear-gradient(135deg, #2a2318 0%, #1a1510 50%, #2a2318 100%);
+        animation: cardPulse 2s ease-in-out infinite;
+      }
+      .reward-card-icon {
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(145deg, #2a2318 0%, #1a1510 100%);
+        border: 1px solid #4a3a28;
+        border-radius: 4px;
+        font-size: 28px;
+        flex-shrink: 0;
+      }
+      .reward-card-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 3px;
+      }
+      .reward-card-content {
+        flex: 1;
+      }
+      .reward-card-name {
+        font-family: "Times New Roman", serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: #d4c4a8;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+      }
+      .reward-card-desc {
+        font-family: "Georgia", serif;
+        font-size: 12px;
+        color: #8a7a65;
+        font-style: italic;
+      }
+    `;
+    contentEl.appendChild(style);
+
+    // Create ornate container
+    const container = contentEl.createDiv({ cls: 'reward-modal-container' });
+
     // Find the reward pool for this tier
     const pool = settings.rewardPools.find(p => p.tier === this.pendingReward.rewardTier);
     const options = pool?.options || [];
 
-    // Header
+    // Header with runic styling
     const tierDisplayNames: Record<RewardTier, string> = {
-      micro: 'Micro',
-      mini: 'Mini',
-      standard: 'Standard',
-      quality: 'Quality',
-      premium: 'Premium'
+      micro: 'MICRO',
+      mini: 'MINI',
+      standard: 'STANDARD',
+      quality: 'QUALITY',
+      premium: 'PREMIUM'
     };
 
     const typeDisplayNames: Record<RewardType, string> = {
       activity: 'Activity',
-      boss: 'Boss',
+      boss: 'Boss Victory',
       streak: 'Streak'
     };
 
-    new Setting(contentEl)
-      .setName(`${tierDisplayNames[this.pendingReward.rewardTier]} Reward Earned!`)
-      .setDesc(`${typeDisplayNames[this.pendingReward.rewardType]} milestone reached`)
-      .setHeading();
+    // Decorative top border
+    container.createDiv({
+      attr: {
+        style: `
+          height: 3px;
+          background: linear-gradient(90deg, transparent 0%, #b8a070 20%, #d4c4a8 50%, #b8a070 80%, transparent 100%);
+          margin-bottom: 20px;
+          border-radius: 2px;
+        `
+      }
+    });
+
+    // Title
+    container.createEl("div", {
+      text: `⚔ ${tierDisplayNames[this.pendingReward.rewardTier]} REWARD ⚔`,
+      attr: {
+        style: `
+          text-align: center;
+          font-family: "Times New Roman", serif;
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: 3px;
+          color: #d4c4a8;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+          margin-bottom: 8px;
+        `
+      }
+    });
+
+    // Subtitle
+    container.createEl("div", {
+      text: `${typeDisplayNames[this.pendingReward.rewardType]} milestone achieved`,
+      attr: {
+        style: `
+          text-align: center;
+          font-family: "Georgia", serif;
+          font-size: 12px;
+          font-style: italic;
+          color: #8a7a65;
+          margin-bottom: 20px;
+        `
+      }
+    });
 
     // Expiration warning
     const expiresAt = new Date(this.pendingReward.expiresAt);
     const now = new Date(getEffectiveNow(settings));
     const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+    const isUrgent = daysLeft <= 2;
 
-    contentEl.createEl("div", {
-      text: `Expires in ${daysLeft} days - claim now or bank it!`,
+    container.createEl("div", {
+      attr: {
+        style: `
+          margin-bottom: 20px;
+          padding: 12px 16px;
+          background: ${isUrgent ? 'rgba(180, 120, 60, 0.15)' : 'rgba(90, 74, 53, 0.2)'};
+          border: 1px solid ${isUrgent ? '#b4783c' : '#3a3025'};
+          border-radius: 3px;
+          text-align: center;
+        `
+      }
+    }).innerHTML = `
+      <span style="font-family: Georgia, serif; font-size: 12px; color: ${isUrgent ? '#d4a574' : '#8a7a65'};">
+        ${isUrgent ? '⚠ ' : ''}Claim within <strong style="color: ${isUrgent ? '#e8c090' : '#b8a070'};">${daysLeft} days</strong> or bank for later${isUrgent ? ' ⚠' : ''}
+      </span>
+    `;
+
+    // Section label
+    container.createEl("div", {
+      text: "SELECT YOUR REWARD",
       attr: {
         style: `
           margin-bottom: 16px;
-          padding: 12px 16px;
-          background: #0f0f0f;
-          border: 1px solid ${daysLeft <= 2 ? '#F59E0B' : '#2a3a2d'};
-          font-family: "Georgia", serif;
-          font-size: 13px;
-          font-style: italic;
-          color: ${daysLeft <= 2 ? '#F59E0B' : '#5a6a5d'};
-        `
-      }
-    });
-
-    // Reward options
-    contentEl.createEl("div", {
-      text: "Choose one reward:",
-      attr: {
-        style: `
-          margin-bottom: 12px;
           font-family: "Times New Roman", serif;
-          font-size: 14px;
-          letter-spacing: 0.5px;
-          color: #7a9a7d;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 2px;
+          color: #6a5a45;
+          text-align: center;
         `
       }
     });
 
     if (options.length === 0) {
-      contentEl.createEl("div", {
-        text: "No rewards configured for this tier. Add rewards in settings.",
+      container.createEl("div", {
+        text: "No rewards configured for this tier. Configure rewards in settings.",
         attr: {
           style: `
             margin-bottom: 16px;
-            padding: 16px;
-            background: #0f0f0f;
-            border: 1px solid rgba(239, 68, 68, 0.4);
+            padding: 20px;
+            background: rgba(180, 80, 60, 0.1);
+            border: 1px solid rgba(180, 80, 60, 0.3);
+            border-radius: 3px;
             font-family: "Georgia", serif;
             font-size: 13px;
-            color: #EF4444;
+            color: #c87a65;
+            text-align: center;
           `
         }
       });
     } else {
+      const optionsContainer = container.createDiv({
+        attr: { style: 'margin-bottom: 16px;' }
+      });
+
       options.forEach((option, index) => {
-        const optionBox = contentEl.createDiv({
+        const optionCard = optionsContainer.createDiv({
+          cls: 'reward-option-card',
           attr: {
-            style: `
-              margin-bottom: 12px;
-              padding: 16px;
-              border: 1px solid #2a3a2d;
-              background: #0f0f0f;
-              cursor: pointer;
-              transition: all 0.2s ease;
-            `
+            style: `animation-delay: ${index * 0.1}s;`
           }
         });
 
-        optionBox.createEl("div", {
-          text: option.description,
-          attr: {
-            style: `
-              font-family: "Times New Roman", serif;
-              font-size: 14px;
-              color: #e5e7eb;
-            `
-          }
+        // Icon section (emoji or image)
+        const iconSection = optionCard.createDiv({ cls: 'reward-card-icon' });
+        if (option.image) {
+          iconSection.createEl('img', {
+            attr: { src: option.image, alt: option.description }
+          });
+        } else {
+          iconSection.textContent = option.emoji || '🎁';
+        }
+
+        // Content section
+        const contentSection = optionCard.createDiv({ cls: 'reward-card-content' });
+        contentSection.createDiv({
+          cls: 'reward-card-name',
+          text: option.description
         });
 
-        optionBox.onmouseenter = () => {
-          optionBox.style.borderColor = '#7a9a7d';
-          optionBox.style.background = 'rgba(122, 154, 125, 0.1)';
-        };
-        optionBox.onmouseleave = () => {
-          optionBox.style.borderColor = '#2a3a2d';
-          optionBox.style.background = '#0f0f0f';
-        };
+        // Optional effect/flavor text
+        if (option.description.length > 30) {
+          contentSection.createDiv({
+            cls: 'reward-card-desc',
+            text: 'Tap to claim this reward'
+          });
+        }
 
-        optionBox.onclick = async () => {
+        optionCard.onclick = async () => {
           await this.claimReward(option);
         };
       });
@@ -3275,99 +3418,154 @@ class RewardSelectionModal extends Modal {
       const maxBanked = getMaxBankedRewards();
 
       if (bankedCount < maxBanked) {
-        const bankSection = contentEl.createDiv({
+        const bankSection = container.createDiv({
           attr: {
             style: `
               margin-top: 20px;
               padding-top: 16px;
-              border-top: 1px solid #2a3a2d;
+              border-top: 1px solid #3a3025;
             `
           }
         });
 
+        // Decorative divider
+        bankSection.createDiv({
+          attr: {
+            style: `
+              text-align: center;
+              margin-bottom: 16px;
+              font-family: "Times New Roman", serif;
+              font-size: 11px;
+              letter-spacing: 2px;
+              color: #5a4a35;
+            `
+          }
+        }).innerHTML = `── OR ──`;
+
         bankSection.createEl("div", {
-          text: `Or bank this reward for later (${bankedCount}/${maxBanked} banked)`,
+          text: `Store in the vault for later (${bankedCount}/${maxBanked} banked)`,
           attr: {
             style: `
               margin-bottom: 12px;
-              font-family: "Times New Roman", serif;
-              font-size: 13px;
-              color: #5a6a5d;
+              font-family: "Georgia", serif;
+              font-size: 12px;
+              font-style: italic;
+              color: #8a7a65;
+              text-align: center;
             `
           }
         });
 
         const bankBtn = bankSection.createEl("button", {
-          text: "Bank Reward",
+          text: "⚱ BANK REWARD",
           cls: "track-habit-rank-btn",
           attr: {
             style: `
-              padding: 12px 24px;
-              min-height: 44px;
-              background: #0f0f0f;
-              color: #8B5CF6;
-              border: 1px solid #8B5CF6;
+              display: block;
+              width: 100%;
+              padding: 14px 24px;
+              min-height: 48px;
+              background: linear-gradient(180deg, #2a2318 0%, #1a1510 100%);
+              color: #9a8a70;
+              border: 1px solid #5a4a35;
+              border-radius: 3px;
               cursor: pointer;
               font-family: "Times New Roman", serif;
               font-size: 12px;
-              font-weight: 500;
-              letter-spacing: 1.5px;
+              font-weight: 600;
+              letter-spacing: 2px;
               text-transform: uppercase;
               transition: all 0.3s ease;
             `
           }
         });
 
+        bankBtn.onmouseenter = () => {
+          bankBtn.style.borderColor = '#b8a070';
+          bankBtn.style.color = '#d4c4a8';
+          bankBtn.style.background = 'linear-gradient(180deg, #3a3025 0%, #2a2318 100%)';
+        };
+        bankBtn.onmouseleave = () => {
+          bankBtn.style.borderColor = '#5a4a35';
+          bankBtn.style.color = '#9a8a70';
+          bankBtn.style.background = 'linear-gradient(180deg, #2a2318 0%, #1a1510 100%)';
+        };
+
         bankBtn.onclick = async () => {
           await this.bankReward();
         };
       } else {
-        contentEl.createEl("div", {
-          text: `Maximum rewards banked (${maxBanked}/${maxBanked})`,
+        container.createEl("div", {
           attr: {
             style: `
               margin-top: 20px;
-              padding: 12px 16px;
-              background: #0f0f0f;
-              border: 1px solid rgba(139, 92, 246, 0.3);
-              font-family: "Times New Roman", serif;
+              padding: 14px 16px;
+              background: rgba(90, 74, 53, 0.15);
+              border: 1px solid #4a3a28;
+              border-radius: 3px;
+              font-family: "Georgia", serif;
               font-size: 12px;
-              color: #8B5CF6;
+              color: #8a7a65;
               text-align: center;
             `
           }
-        });
+        }).innerHTML = `<span style="color: #6a5a45;">⚱</span> Vault full <span style="color: #9a8a70;">(${maxBanked}/${maxBanked})</span>`;
       }
     }
 
-    // Close button
-    const closeSection = contentEl.createDiv({
+    // Decorative bottom border
+    container.createDiv({
       attr: {
         style: `
+          height: 3px;
+          background: linear-gradient(90deg, transparent 0%, #b8a070 20%, #d4c4a8 50%, #b8a070 80%, transparent 100%);
           margin-top: 20px;
+          margin-bottom: 16px;
+          border-radius: 2px;
+        `
+      }
+    });
+
+    // Close button
+    const closeSection = container.createDiv({
+      attr: {
+        style: `
           text-align: center;
         `
       }
     });
 
-    closeSection.createEl("button", {
+    const closeBtn = closeSection.createEl("button", {
       text: "Decide Later",
       cls: "track-habit-rank-btn",
       attr: {
         style: `
-          padding: 10px 20px;
-          min-height: 44px;
+          padding: 10px 24px;
+          min-height: 40px;
           background: transparent;
-          color: #5a6a5d;
-          border: 1px solid #2a3a2d;
+          color: #6a5a45;
+          border: 1px solid #3a3025;
+          border-radius: 3px;
           cursor: pointer;
           font-family: "Times New Roman", serif;
           font-size: 11px;
-          letter-spacing: 1px;
+          letter-spacing: 1.5px;
           text-transform: uppercase;
+          transition: all 0.3s ease;
         `
       }
-    }).onclick = () => this.close();
+    });
+
+    closeBtn.onmouseenter = () => {
+      closeBtn.style.borderColor = '#5a4a35';
+      closeBtn.style.color = '#9a8a70';
+    };
+    closeBtn.onmouseleave = () => {
+      closeBtn.style.borderColor = '#3a3025';
+      closeBtn.style.color = '#6a5a45';
+    };
+
+    closeBtn.onclick = () => this.close();
   }
 
   async claimReward(option: RewardOption) {
