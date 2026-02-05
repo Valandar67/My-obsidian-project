@@ -327,6 +327,9 @@ var DEFAULT_SETTINGS = {
   customTartarusTasks: [],
   tartarusImage: null,
   hadesWrathApplied: false,
+  // HP threshold boss images
+  bossStartOfDayHP: null,
+  lastHPResetDate: null,
   // Direct damage tracking
   lastCompletionCounts: {},
   // Boss HP scaling defaults
@@ -1015,6 +1018,33 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const boss = getCustomizedBossForTier(settings.currentTier, settings);
     const rankName = getRankNameForTier(settings.currentTier, settings);
     const barColor = getProgressBarColor(settings.currentTier, settings.inTartarus);
+
+    // Color palette: combining gold with green
+    const colors = {
+      gold: "#9a8c7a",
+      goldLight: "#b8a890",
+      goldMuted: "#6a5d4a",
+      goldBorder: "#3a342a",
+      green: "#7a9a7d",
+      greenLight: "#8aaa8d",
+      greenMuted: "#5a6a5d",
+      greenBorder: "#2a3a2d",
+      bg: "#0a0a0a",
+      bgLight: "#0f0f0f",
+      text: "#e5e7eb",
+      textMuted: "#5a6a5d",
+      danger: "#DC2626",
+      dangerMuted: "#6a2a2a"
+    };
+
+    // Check and reset start-of-day HP tracking
+    const effectiveToday = getEffectiveTodayISO(settings);
+    if (settings.lastHPResetDate !== effectiveToday) {
+      settings.bossStartOfDayHP = settings.bossCurrentHP;
+      settings.lastHPResetDate = effectiveToday;
+      this.plugin.saveSettings();
+    }
+
     const wrapper = content.createDiv({
       cls: "track-habit-rank-container",
       attr: {
@@ -1023,19 +1053,25 @@ var TrackRankView = class extends import_obsidian.ItemView {
           margin: 0 auto;
           padding: 24px;
           text-align: center;
-          background: #0a0a0a;
-          border: 1px solid #2a3a2d;
+          background: ${colors.bg};
+          border: 1px solid ${colors.greenBorder};
           position: relative;
           font-family: "Georgia", serif;
+          overflow: hidden;
         `
       }
     });
+
+    // Add aura particle effects
+    this.addAuraParticles(wrapper, settings.inTartarus ? colors.dangerMuted : colors.goldMuted);
+
     const cornerPositions = [
       { top: "0", left: "0", borderTop: true, borderLeft: true },
       { top: "0", right: "0", borderTop: true, borderRight: true },
       { bottom: "0", left: "0", borderBottom: true, borderLeft: true },
       { bottom: "0", right: "0", borderBottom: true, borderRight: true }
     ];
+    const cornerColor = settings.inTartarus ? colors.danger : colors.gold;
     cornerPositions.forEach((pos) => {
       const corner = wrapper.createDiv({
         attr: {
@@ -1047,10 +1083,10 @@ var TrackRankView = class extends import_obsidian.ItemView {
             ${pos.right !== void 0 ? `right: ${pos.right}` : ""};
             width: 18px;
             height: 18px;
-            ${pos.borderTop ? "border-top: 1px solid #7a9a7d;" : ""}
-            ${pos.borderBottom ? "border-bottom: 1px solid #7a9a7d;" : ""}
-            ${pos.borderLeft ? "border-left: 1px solid #7a9a7d;" : ""}
-            ${pos.borderRight ? "border-right: 1px solid #7a9a7d;" : ""}
+            ${pos.borderTop ? `border-top: 1px solid ${cornerColor};` : ""}
+            ${pos.borderBottom ? `border-bottom: 1px solid ${cornerColor};` : ""}
+            ${pos.borderLeft ? `border-left: 1px solid ${cornerColor};` : ""}
+            ${pos.borderRight ? `border-right: 1px solid ${cornerColor};` : ""}
             pointer-events: none;
             z-index: 10;
           `
@@ -1143,7 +1179,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             style: `
               max-width: 200px;
               max-height: 200px;
-              border: 1px solid #DC2626;
+              border: 1px solid ${colors.danger};
               object-fit: cover;
               filter: grayscale(0.3) contrast(1.2) brightness(0.9);
               transition: filter 0.4s ease;
@@ -1176,36 +1212,54 @@ var TrackRankView = class extends import_obsidian.ItemView {
           }
         });
       }
+      // Boss name is PRIMARY (large)
       wrapper.createEl("div", {
         text: "TARTARUS",
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 13px;
-            letter-spacing: 3px;
-            opacity: 0.7;
-            margin-bottom: 12px;
+            font-size: 2.4em;
+            font-weight: 600;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
             text-transform: uppercase;
-            color: #DC2626;
-            font-weight: 500;
+            color: ${colors.danger};
+            text-shadow: 0 2px 12px rgba(220, 38, 38, 0.3);
           `
         }
       });
+      // User title is SECONDARY (smaller, muted)
       wrapper.createEl("div", {
         text: rankName,
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 2.2em;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 400;
             letter-spacing: 2px;
-            margin-bottom: 6px;
-            color: #DC2626;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            color: ${colors.dangerMuted};
+            opacity: 0.8;
           `
         }
       });
     } else {
-      const bossImage = boss?.image;
+      // Get HP-threshold appropriate boss image
+      const hpPercent = settings.bossCurrentHP / settings.bossMaxHP;
+      const bossIndex = Math.ceil(settings.currentTier / 2);
+      const bossOverride = settings.customBosses?.find((c) => c.tier === bossIndex);
+      let bossImage = boss?.image;
+      if (bossOverride) {
+        if (hpPercent <= 0.2 && bossOverride.image20) {
+          bossImage = bossOverride.image20;
+        } else if (hpPercent <= 0.5 && bossOverride.image50) {
+          bossImage = bossOverride.image50;
+        } else if (bossOverride.image) {
+          bossImage = bossOverride.image;
+        }
+      }
+
       if (bossImage) {
         const imgContainer = wrapper.createDiv({
           attr: {
@@ -1223,10 +1277,10 @@ var TrackRankView = class extends import_obsidian.ItemView {
             style: `
               max-width: 200px;
               max-height: 200px;
-              border: 1px solid #2a3a2d;
+              border: 1px solid ${colors.goldBorder};
               object-fit: cover;
-              filter: grayscale(0.3) contrast(1.2) brightness(0.9);
-              transition: filter 0.4s ease, transform 0.4s ease;
+              filter: grayscale(0.2) contrast(1.1) brightness(0.95) sepia(0.1);
+              transition: filter 0.6s ease, transform 0.6s ease, opacity 0.6s ease;
             `
           }
         });
@@ -1234,117 +1288,242 @@ var TrackRankView = class extends import_obsidian.ItemView {
           imgContainer.remove();
         };
       }
+      // Boss name is PRIMARY (large, commanding)
       wrapper.createEl("div", {
         text: boss?.name || "No Boss",
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 13px;
+            font-size: 2.2em;
+            font-weight: 600;
             letter-spacing: 3px;
-            opacity: 0.7;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             text-transform: uppercase;
-            color: #7a9a7d;
+            color: ${colors.gold};
+            text-shadow: 0 2px 12px rgba(154, 140, 122, 0.3);
           `
         }
       });
+      // User title is SECONDARY (smaller, subdued)
       wrapper.createEl("div", {
         text: rankName,
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 2.2em;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 400;
             letter-spacing: 2px;
-            margin-bottom: 6px;
-            color: #7a9a7d;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            color: ${colors.greenMuted};
+            opacity: 0.8;
           `
         }
       });
     }
     const hpPercent = Math.round(settings.bossCurrentHP / settings.bossMaxHP * 100);
+
+    // HP text display
     wrapper.createEl("div", {
-      text: `${settings.bossCurrentHP}/${settings.bossMaxHP} HP (${hpPercent}%)`,
+      text: `${settings.bossCurrentHP}/${settings.bossMaxHP} HP`,
       attr: {
         style: `
           font-family: "Times New Roman", serif;
-          font-size: 14px;
-          letter-spacing: 0.5px;
-          color: #7a9a7d;
-          opacity: 0.85;
-          margin-bottom: 12px;
+          font-size: 13px;
+          letter-spacing: 1px;
+          color: ${settings.inTartarus ? colors.dangerMuted : colors.goldMuted};
+          opacity: 0.9;
+          margin-bottom: 10px;
         `
       }
     });
-    const bar = wrapper.createDiv({
-      cls: "track-habit-rank-progress",
+
+    // God of War style HP bar
+    const hpBarContainer = wrapper.createDiv({
+      cls: "track-habit-rank-hp-bar-container",
       attr: {
         style: `
           width: 100%;
-          height: 12px;
-          background: #2a3a2d;
-          overflow: hidden;
-          margin-bottom: 16px;
+          margin-bottom: 20px;
+          position: relative;
         `
       }
     });
-    bar.createDiv({
-      cls: "track-habit-rank-progress-fill",
+
+    // Outer frame with embossed effect
+    const barFrame = hpBarContainer.createDiv({
+      cls: "track-habit-rank-hp-bar-frame",
       attr: {
         style: `
-          width: ${hpPercent}%;
-          height: 100%;
-          background: ${barColor};
-          transition: width 0.3s ease, background 0.3s ease;
+          width: 100%;
+          height: 16px;
+          background: linear-gradient(180deg, #1a1510 0%, #0d0a08 50%, #1a1510 100%);
+          border: 1px solid ${settings.inTartarus ? '#4a2020' : '#4a4030'};
+          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05);
+          position: relative;
+          overflow: hidden;
         `
       }
     });
+
+    // Calculate segment count (segments give it weight and authority)
+    const segmentCount = 10;
+    const segmentWidth = 100 / segmentCount;
+
+    // Damage lingering layer (red - shows HP at start of day)
+    const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
+    const startOfDayPercent = Math.round((startOfDayHP / settings.bossMaxHP) * 100);
+    if (startOfDayPercent > hpPercent) {
+      barFrame.createDiv({
+        cls: "track-habit-rank-hp-damage-linger",
+        attr: {
+          style: `
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: calc(${startOfDayPercent}% - 4px);
+            height: calc(100% - 4px);
+            background: linear-gradient(180deg, #6a2a2a 0%, #4a1a1a 50%, #3a1010 100%);
+            opacity: 0.8;
+            z-index: 1;
+          `
+        }
+      });
+    }
+
+    // Main HP fill with gold gradient
+    const hpFillColor = settings.inTartarus
+      ? 'linear-gradient(180deg, #8a3030 0%, #6a2020 30%, #5a1818 70%, #4a1010 100%)'
+      : 'linear-gradient(180deg, #b8a070 0%, #9a8860 30%, #8a7850 70%, #6a5840 100%)';
+
+    barFrame.createDiv({
+      cls: "track-habit-rank-hp-fill",
+      attr: {
+        style: `
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: calc(${hpPercent}% - 4px);
+          height: calc(100% - 4px);
+          background: ${hpFillColor};
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+          transition: width 0.4s ease;
+          z-index: 2;
+        `
+      }
+    });
+
+    // Segment dividers for weight and mythic feel
+    for (let i = 1; i < segmentCount; i++) {
+      barFrame.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            top: 0;
+            left: ${i * segmentWidth}%;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6) 100%);
+            z-index: 3;
+          `
+        }
+      });
+    }
+
+    // Subtle highlight on top edge
+    barFrame.createDiv({
+      attr: {
+        style: `
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          right: 2px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          z-index: 4;
+        `
+      }
+    });
+
+    // Show damage dealt today if any
+    if (startOfDayPercent > hpPercent) {
+      const damageDealt = startOfDayHP - settings.bossCurrentHP;
+      wrapper.createEl("div", {
+        text: `\u2212${damageDealt} today`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 11px;
+            font-style: italic;
+            color: ${colors.goldMuted};
+            opacity: 0.7;
+            margin-top: -12px;
+            margin-bottom: 12px;
+          `
+        }
+      });
+    }
     if (boss?.lore) {
       wrapper.createEl("div", {
         text: boss.lore,
         attr: {
           style: `
             font-family: "Georgia", serif;
-            font-size: 13px;
+            font-size: 12px;
             font-style: italic;
-            color: #5a6a5d;
+            color: ${colors.textMuted};
             margin-bottom: 20px;
             line-height: 1.5;
+            opacity: 0.8;
           `
         }
       });
     }
+
+    // Week progress - more subdued
     const weekProgress = getCurrentWeekProgress(this.app, settings);
     const weekPercentComplete = weekProgress.target > 0 ? Math.round(weekProgress.completed / weekProgress.target * 100) : 0;
-    wrapper.createEl("div", {
-      text: `This Week: ${weekProgress.completed}/${weekProgress.target} (${weekPercentComplete}%)`,
-      cls: "track-habit-rank-metric",
+
+    const weekStatsContainer = wrapper.createDiv({
       attr: {
         style: `
-          font-family: "Times New Roman", serif;
-          font-size: 14px;
-          letter-spacing: 0.5px;
-          margin-bottom: 8px;
-          color: #7a9a7d;
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+          margin-bottom: 16px;
+          opacity: 0.8;
         `
       }
     });
+
+    weekStatsContainer.createEl("div", {
+      text: `Week: ${weekProgress.completed}/${weekProgress.target}`,
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 12px;
+          letter-spacing: 0.5px;
+          color: ${colors.greenMuted};
+        `
+      }
+    });
+
     if (settings.consecutivePerfectWeeks > 0) {
-      wrapper.createEl("div", {
-        text: `\u{1F525} Perfect Weeks: ${settings.consecutivePerfectWeeks}`,
-        cls: "track-habit-rank-metric track-habit-rank-metric-streak",
+      weekStatsContainer.createEl("div", {
+        text: `Streak: ${settings.consecutivePerfectWeeks}wk`,
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 14px;
+            font-size: 12px;
             letter-spacing: 0.5px;
-            margin-bottom: 16px;
-            color: #F59E0B;
+            color: ${colors.goldMuted};
           `
         }
       });
     }
-    this.renderRewardSection(wrapper);
+
+    // Subdued reward boxes instead of "View Rewards" button
+    this.renderRewardBoxes(wrapper, colors);
     if (!settings.inTartarus && settings.systemState === "active") {
       const allActivities = [
         ...getEffectiveActivities(settings).filter((a) => settings.enabledActivities[a._originalName] ?? true),
@@ -1371,58 +1550,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           }
         });
       }
-      if (totalCompletions < requiredCompletions) {
-        const warningBox = wrapper.createDiv({
-          cls: "track-habit-rank-warning track-habit-rank-warning-danger",
-          attr: {
-            style: `
-              margin: 16px 0;
-              padding: 16px 20px;
-              background: #0f0f0f;
-              border: 1px solid rgba(239, 68, 68, 0.4);
-            `
-          }
-        });
-        warningBox.createEl("div", {
-          text: "\u26A0\uFE0F LOW ACTIVITY WARNING",
-          cls: "track-habit-rank-warning-title",
-          attr: {
-            style: `
-              font-family: "Times New Roman", serif;
-              font-size: 12px;
-              font-weight: 500;
-              letter-spacing: 2px;
-              text-transform: uppercase;
-              color: #EF4444;
-              margin-bottom: 8px;
-            `
-          }
-        });
-        warningBox.createEl("div", {
-          text: `Last 3 days: ${totalCompletions} completions | Required: ${requiredCompletions}`,
-          cls: "track-habit-rank-warning-text",
-          attr: {
-            style: `
-              font-family: "Georgia", serif;
-              font-size: 13px;
-              font-style: italic;
-              color: #5a6a5d;
-            `
-          }
-        });
-        warningBox.createEl("div", {
-          text: `Failed checks: ${settings.failedThresholdDays}/3`,
-          attr: {
-            style: `
-              font-family: "Times New Roman", serif;
-              font-size: 12px;
-              letter-spacing: 0.5px;
-              color: #EF4444;
-              margin-top: 8px;
-            `
-          }
-        });
-      }
+      // Moved to death threshold monitor section for cleaner display
     }
     if (settings.inTartarus) {
       const warningBox = wrapper.createDiv({
@@ -1492,36 +1620,13 @@ var TrackRankView = class extends import_obsidian.ItemView {
         new PenanceModal(this.app, this.plugin).open();
       };
     }
-    const nextTier = settings.currentTier + 1;
-    if (nextTier <= 26) {
-      const nextRank = getRankNameForTier(nextTier);
-      wrapper.createEl("div", {
-        text: `Next: ${nextRank} (defeat boss to advance)`,
-        attr: {
-          style: `
-            font-family: "Georgia", serif;
-            font-size: 12px;
-            font-style: italic;
-            color: #5a6a5d;
-            margin-top: 16px;
-          `
-        }
-      });
-    } else {
-      wrapper.createEl("div", {
-        text: "FINAL TIER REACHED",
-        attr: {
-          style: `
-            font-family: "Times New Roman", serif;
-            font-size: 13px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: #F59E0B;
-            margin-top: 16px;
-          `
-        }
-      });
+    // Death threshold monitor - calm and advisory
+    if (!settings.inTartarus && settings.systemState === "active") {
+      this.renderDeathThresholdMonitor(wrapper, colors);
     }
+
+    // Activity radar - subtle and atmospheric
+    this.renderActivityRadar(wrapper, colors);
     if (settings.systemState === "active") {
       const pauseSection = wrapper.createDiv({
         attr: {
@@ -1692,6 +1797,412 @@ var TrackRankView = class extends import_obsidian.ItemView {
     viewBtn.onclick = () => {
       new RewardLogModal(this.app, this.plugin).open();
     };
+  }
+
+  /**
+   * Add floating aura particle effects to container
+   */
+  addAuraParticles(container, color, count = 5) {
+    const particleContainer = container.createDiv({
+      attr: {
+        style: `
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          overflow: hidden;
+          z-index: 1;
+        `
+      }
+    });
+
+    for (let i = 0; i < count; i++) {
+      const particle = particleContainer.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            bottom: ${10 + Math.random() * 20}%;
+            left: ${10 + Math.random() * 80}%;
+            width: ${1 + Math.random() * 2}px;
+            height: ${1 + Math.random() * 2}px;
+            background: ${color};
+            border-radius: 50%;
+            opacity: 0;
+            animation: floatUp ${8 + Math.random() * 6}s ${Math.random() * 10}s ease-out infinite;
+          `
+        }
+      });
+    }
+
+    // Add keyframes if not already present
+    if (!document.getElementById('track-habit-rank-particle-styles')) {
+      const style = document.createElement('style');
+      style.id = 'track-habit-rank-particle-styles';
+      style.textContent = `
+        @keyframes floatUp {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          10% { opacity: 0.4; }
+          90% { opacity: 0.4; }
+          100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
+        }
+        @keyframes breathe {
+          0%, 100% { box-shadow: inset 0 0 20px rgba(154, 140, 122, 0.03); }
+          50% { box-shadow: inset 0 0 40px rgba(154, 140, 122, 0.08); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  /**
+   * Render subdued reward progress boxes
+   */
+  renderRewardBoxes(wrapper, colors) {
+    const settings = this.plugin.settings;
+    const rewardProgress = this.plugin.getRewardProgress();
+
+    const rewardContainer = wrapper.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          gap: 8px;
+          justify-content: center;
+          margin: 16px 0;
+          flex-wrap: wrap;
+        `
+      }
+    });
+
+    // Activity reward box
+    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
+    const activityBox = rewardContainer.createDiv({
+      attr: {
+        style: `
+          padding: 8px 12px;
+          background: ${colors.bgLight};
+          border: 1px solid ${colors.greenBorder};
+          cursor: pointer;
+          transition: all 0.2s ease;
+          opacity: 0.7;
+        `
+      }
+    });
+    activityBox.createEl("div", {
+      text: `${activityRemaining} for reward`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: ${colors.greenMuted};
+          white-space: nowrap;
+        `
+      }
+    });
+    activityBox.onmouseenter = () => {
+      activityBox.style.borderColor = colors.green;
+      activityBox.style.opacity = "1";
+    };
+    activityBox.onmouseleave = () => {
+      activityBox.style.borderColor = colors.greenBorder;
+      activityBox.style.opacity = "0.7";
+    };
+    activityBox.onclick = () => {
+      new RewardLogModal(this.app, this.plugin).open();
+    };
+
+    // Streak reward box
+    const streakRemaining = rewardProgress.streakThreshold - rewardProgress.streakProgress;
+    const streakBox = rewardContainer.createDiv({
+      attr: {
+        style: `
+          padding: 8px 12px;
+          background: ${colors.bgLight};
+          border: 1px solid ${colors.goldBorder};
+          cursor: pointer;
+          transition: all 0.2s ease;
+          opacity: 0.7;
+        `
+      }
+    });
+    streakBox.createEl("div", {
+      text: `${streakRemaining}wk for reward`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: ${colors.goldMuted};
+          white-space: nowrap;
+        `
+      }
+    });
+    streakBox.onmouseenter = () => {
+      streakBox.style.borderColor = colors.gold;
+      streakBox.style.opacity = "1";
+    };
+    streakBox.onmouseleave = () => {
+      streakBox.style.borderColor = colors.goldBorder;
+      streakBox.style.opacity = "0.7";
+    };
+    streakBox.onclick = () => {
+      new RewardLogModal(this.app, this.plugin).open();
+    };
+
+    // Pending rewards indicator (only if there are pending rewards)
+    if (rewardProgress.pendingCount > 0) {
+      const pendingBox = rewardContainer.createDiv({
+        attr: {
+          style: `
+            padding: 8px 12px;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+          `
+        }
+      });
+      pendingBox.createEl("div", {
+        text: `${rewardProgress.pendingCount} unclaimed`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 10px;
+            color: #b8860b;
+            white-space: nowrap;
+          `
+        }
+      });
+      pendingBox.onclick = () => {
+        new RewardLogModal(this.app, this.plugin).open();
+      };
+    }
+  }
+
+  /**
+   * Render death threshold monitor - calm and advisory
+   */
+  renderDeathThresholdMonitor(wrapper, colors) {
+    const settings = this.plugin.settings;
+    const allActivities = [
+      ...getEffectiveActivities(settings).filter((a) => settings.enabledActivities[a._originalName] ?? true),
+      ...settings.customHabits.filter((h) => h.enabled)
+    ];
+
+    const weeklyTarget = allActivities.reduce((sum, a) => {
+      return sum + (a.weeklyTarget || 7);
+    }, 0);
+    const requiredCompletions = Math.ceil(weeklyTarget * 0.1);
+
+    const effectiveNow = getEffectiveNow(settings);
+    const today = new Date(effectiveNow);
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 2);
+
+    let totalCompletions = 0;
+    for (const activity of allActivities) {
+      const completions = getCompletionsFromFolder(this.app, activity.folder, activity.field);
+      completions.forEach((c) => {
+        if (!c.completed) return;
+        const date = new Date(c.date);
+        date.setHours(0, 0, 0, 0);
+        if (date >= startDate && date <= today) {
+          totalCompletions++;
+        }
+      });
+    }
+
+    const isInDanger = totalCompletions < requiredCompletions;
+    const activitiesNeeded = requiredCompletions - totalCompletions;
+
+    if (!isInDanger) return; // Don't show if safe
+
+    const monitorBox = wrapper.createDiv({
+      attr: {
+        style: `
+          margin: 16px 0;
+          padding: 12px 16px;
+          background: ${colors.bgLight};
+          border: 1px solid ${colors.goldBorder};
+          opacity: 0.9;
+        `
+      }
+    });
+
+    // Calm, advisory header
+    monitorBox.createEl("div", {
+      text: "Activity Advisory",
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          color: ${colors.goldMuted};
+          margin-bottom: 6px;
+        `
+      }
+    });
+
+    // Advisory message - not punitive
+    const message = activitiesNeeded === 1
+      ? "One more activity will restore balance."
+      : `${activitiesNeeded} activities will restore balance.`;
+
+    monitorBox.createEl("div", {
+      text: message,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 12px;
+          font-style: italic;
+          color: ${colors.textMuted};
+          line-height: 1.4;
+        `
+      }
+    });
+
+    // Subtle progress indicator
+    monitorBox.createEl("div", {
+      text: `${totalCompletions}/${requiredCompletions} (3-day minimum)`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: ${colors.goldMuted};
+          margin-top: 6px;
+          opacity: 0.8;
+        `
+      }
+    });
+  }
+
+  /**
+   * Render activity radar - subtle and atmospheric
+   */
+  renderActivityRadar(wrapper, colors) {
+    const settings = this.plugin.settings;
+    const allActivities = [
+      ...getEffectiveActivities(settings).filter((a) => settings.enabledActivities[a._originalName] ?? true),
+      ...settings.customHabits.filter((h) => h.enabled)
+    ];
+
+    if (allActivities.length === 0) return;
+
+    const radarContainer = wrapper.createDiv({
+      attr: {
+        style: `
+          margin: 20px 0 16px 0;
+          padding: 16px;
+          background: ${colors.bgLight};
+          border: 1px solid ${colors.greenBorder};
+          opacity: 0.85;
+        `
+      }
+    });
+
+    radarContainer.createEl("div", {
+      text: "Activity Pulse",
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: ${colors.greenMuted};
+          margin-bottom: 12px;
+          opacity: 0.8;
+        `
+      }
+    });
+
+    // Create simple radar dots
+    const dotsContainer = radarContainer.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          justify-content: center;
+          gap: 4px;
+          flex-wrap: wrap;
+        `
+      }
+    });
+
+    const effectiveNow = getEffectiveNow(settings);
+    const today = new Date(effectiveNow);
+    today.setHours(0, 0, 0, 0);
+
+    // Get today's status for each activity
+    allActivities.forEach((activity) => {
+      const completions = getCompletionsFromFolder(this.app, activity.folder, activity.field);
+
+      // Check if completed today
+      const completedToday = completions.some((c) => {
+        if (!c.completed) return false;
+        const date = new Date(c.date);
+        date.setHours(0, 0, 0, 0);
+        return date.getTime() === today.getTime();
+      });
+
+      // Get days since last completion
+      const completedDates = completions
+        .filter((c) => c.completed)
+        .map((c) => new Date(c.date))
+        .sort((a, b) => b.getTime() - a.getTime());
+
+      let daysSince = 999;
+      if (completedDates.length > 0) {
+        const lastDate = completedDates[0];
+        lastDate.setHours(0, 0, 0, 0);
+        daysSince = Math.floor((today.getTime() - lastDate.getTime()) / (24 * 60 * 60 * 1000));
+      }
+
+      // Determine dot color and opacity
+      let dotColor = colors.greenMuted;
+      let dotOpacity = "0.3";
+
+      if (completedToday) {
+        dotColor = colors.gold;
+        dotOpacity = "1";
+      } else if (daysSince <= 1) {
+        dotColor = colors.green;
+        dotOpacity = "0.7";
+      } else if (daysSince >= 3) {
+        dotColor = colors.dangerMuted;
+        dotOpacity = "0.6";
+      }
+
+      const dot = dotsContainer.createDiv({
+        attr: {
+          title: `${activity.name}: ${completedToday ? 'Done today' : daysSince === 0 ? 'Done today' : daysSince + 'd ago'}`,
+          style: `
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: ${dotColor};
+            opacity: ${dotOpacity};
+            transition: all 0.3s ease;
+          `
+        }
+      });
+    });
+
+    // Legend
+    radarContainer.createEl("div", {
+      text: `${allActivities.length} tracked`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 9px;
+          color: ${colors.textMuted};
+          margin-top: 8px;
+          opacity: 0.6;
+        `
+      }
+    });
   }
 };
 var PenanceModal = class extends import_obsidian.Modal {
@@ -3757,6 +4268,20 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           this.plugin.refreshRankView();
         })
       );
+      new import_obsidian.Setting(content).setName("Image at 50% HP").setDesc("Boss image when HP drops below 50% (optional)").addText(
+        (t) => t.setPlaceholder("https://... or vault/path/to/image.png").setValue(customOverride?.image50 || "").onChange(async (v) => {
+          this.updateBossOverride(bossIndex, "image50", v || void 0);
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+        })
+      );
+      new import_obsidian.Setting(content).setName("Image at 20% HP").setDesc("Boss image when HP drops below 20% (optional)").addText(
+        (t) => t.setPlaceholder("https://... or vault/path/to/image.png").setValue(customOverride?.image20 || "").onChange(async (v) => {
+          this.updateBossOverride(bossIndex, "image20", v || void 0);
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+        })
+      );
       new import_obsidian.Setting(content).addButton(
         (btn) => btn.setButtonText("Reset This Boss").onClick(async () => {
           this.plugin.settings.customBosses = this.plugin.settings.customBosses?.filter(
@@ -4426,7 +4951,9 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     else if (field === "description") override.description = value;
     else if (field === "lore") override.lore = value;
     else if (field === "image") override.image = value;
-    const hasCustomizations = override.name || override.ranks || override.description || override.lore || override.image;
+    else if (field === "image50") override.image50 = value;
+    else if (field === "image20") override.image20 = value;
+    const hasCustomizations = override.name || override.ranks || override.description || override.lore || override.image || override.image50 || override.image20;
     if (!hasCustomizations) {
       this.plugin.settings.customBosses = this.plugin.settings.customBosses.filter(
         (c) => c.tier !== bossIndex
