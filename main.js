@@ -513,6 +513,104 @@ function getProgressBarColor(tier, inTartarus) {
   if (inTartarus) return "#DC2626";
   return RANK_TIER_COLORS[tier] ?? "#6B7280";
 }
+
+/**
+ * Get tier-based HP bar color scheme
+ * Tiers 1-4: Sickly green, 5-8: Yellow/gold, 9-12: Purple, 13+: Crimson
+ */
+function getTierHPBarColors(tier, inTartarus) {
+  if (inTartarus) {
+    return {
+      fill: 'linear-gradient(180deg, #8a3030 0%, #6a2020 30%, #5a1818 70%, #4a1010 100%)',
+      border: '#4a2020',
+      glow: 'rgba(220, 38, 38, 0.3)',
+      accent: '#DC2626'
+    };
+  }
+
+  if (tier <= 4) {
+    // Sickly green
+    return {
+      fill: 'linear-gradient(180deg, #6a8a5a 0%, #4a6a3a 30%, #3a5a2a 70%, #2a4a1a 100%)',
+      border: '#3a4a30',
+      glow: 'rgba(106, 138, 90, 0.3)',
+      accent: '#6a8a5a'
+    };
+  } else if (tier <= 8) {
+    // Yellow/gold
+    return {
+      fill: 'linear-gradient(180deg, #b8a070 0%, #9a8860 30%, #8a7850 70%, #6a5840 100%)',
+      border: '#4a4030',
+      glow: 'rgba(184, 160, 112, 0.3)',
+      accent: '#b8a070'
+    };
+  } else if (tier <= 12) {
+    // Purple
+    return {
+      fill: 'linear-gradient(180deg, #8a6a9a 0%, #6a4a7a 30%, #5a3a6a 70%, #4a2a5a 100%)',
+      border: '#4a3050',
+      glow: 'rgba(138, 106, 154, 0.3)',
+      accent: '#8a6a9a'
+    };
+  } else {
+    // Crimson (tier 13+)
+    return {
+      fill: 'linear-gradient(180deg, #9a4a4a 0%, #7a3030 30%, #6a2020 70%, #5a1010 100%)',
+      border: '#4a2020',
+      glow: 'rgba(154, 74, 74, 0.3)',
+      accent: '#9a4a4a'
+    };
+  }
+}
+
+/**
+ * Calculate optimal HP segment configuration for dynamic scaling
+ * Ensures 6-12 segments using "nice" HP values (1, 2, 5, 10, 25, 50, 100)
+ */
+function calculateHPSegments(maxHP) {
+  const niceNumbers = [1, 2, 5, 10, 25, 50, 100];
+
+  // Edge case: very low HP
+  if (maxHP < 6) {
+    return {
+      segmentCount: maxHP,
+      hpPerSegment: 1
+    };
+  }
+
+  // Find the optimal nice number that gives 6-12 segments
+  for (const hpPerSegment of niceNumbers) {
+    const segmentCount = Math.ceil(maxHP / hpPerSegment);
+    if (segmentCount >= 6 && segmentCount <= 12) {
+      return { segmentCount, hpPerSegment };
+    }
+  }
+
+  // Fallback: if no nice number works perfectly, find the closest
+  let bestConfig = { segmentCount: 10, hpPerSegment: Math.ceil(maxHP / 10) };
+  let bestDiff = Infinity;
+
+  for (const hpPerSegment of niceNumbers) {
+    const segmentCount = Math.ceil(maxHP / hpPerSegment);
+    const diff = Math.abs(segmentCount - 9); // Target around 9 segments
+    if (diff < bestDiff && segmentCount >= 6 && segmentCount <= 12) {
+      bestDiff = diff;
+      bestConfig = { segmentCount, hpPerSegment };
+    }
+  }
+
+  // If still outside bounds, force within 6-12
+  if (bestConfig.segmentCount < 6) {
+    bestConfig.hpPerSegment = Math.ceil(maxHP / 6);
+    bestConfig.segmentCount = Math.ceil(maxHP / bestConfig.hpPerSegment);
+  } else if (bestConfig.segmentCount > 12) {
+    bestConfig.hpPerSegment = Math.ceil(maxHP / 12);
+    bestConfig.segmentCount = Math.ceil(maxHP / bestConfig.hpPerSegment);
+  }
+
+  return bestConfig;
+}
+
 function getCompletionsFromFolder(app, folderPath, fieldName) {
   const files = app.vault.getMarkdownFiles();
   const normalizedFolder = folderPath.endsWith("/") ? folderPath : folderPath + "/";
@@ -1323,6 +1421,40 @@ var TrackRankView = class extends import_obsidian.ItemView {
     }
     const hpPercent = Math.round(settings.bossCurrentHP / settings.bossMaxHP * 100);
 
+    // Get tier-based HP bar colors
+    const hpBarColors = getTierHPBarColors(settings.currentTier, settings.inTartarus);
+
+    // Calculate dynamic segments
+    const segmentConfig = calculateHPSegments(settings.bossMaxHP);
+    const { segmentCount, hpPerSegment } = segmentConfig;
+    const segmentWidth = 100 / segmentCount;
+
+    // Calculate which segments are filled
+    const fullSegments = Math.floor(settings.bossCurrentHP / hpPerSegment);
+    const partialFillHP = settings.bossCurrentHP % hpPerSegment;
+    const partialFillPercent = (partialFillHP / hpPerSegment) * 100;
+
+    // Determine if HP is critically low (trigger pulse when HP ≤ 2 segments worth)
+    const criticalThreshold = hpPerSegment * 2;
+    const isCritical = settings.bossCurrentHP <= criticalThreshold && settings.bossCurrentHP > 0;
+
+    // Add pulse animation styles if not present
+    if (!document.getElementById('track-habit-rank-hp-pulse-styles')) {
+      const style = document.createElement('style');
+      style.id = 'track-habit-rank-hp-pulse-styles';
+      style.textContent = `
+        @keyframes hpPulse {
+          0%, 100% { opacity: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3); }
+          50% { opacity: 0.7; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 0 8px currentColor; }
+        }
+        @keyframes hpFramePulse {
+          0%, 100% { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05); }
+          50% { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 12px var(--pulse-glow); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     // HP text display
     wrapper.createEl("div", {
       text: `${settings.bossCurrentHP}/${settings.bossMaxHP} HP`,
@@ -1331,14 +1463,14 @@ var TrackRankView = class extends import_obsidian.ItemView {
           font-family: "Times New Roman", serif;
           font-size: 13px;
           letter-spacing: 1px;
-          color: ${settings.inTartarus ? colors.dangerMuted : colors.goldMuted};
+          color: ${hpBarColors.accent};
           opacity: 0.9;
           margin-bottom: 10px;
         `
       }
     });
 
-    // God of War style HP bar
+    // God of War style HP bar with tier-based colors
     const hpBarContainer = wrapper.createDiv({
       cls: "track-habit-rank-hp-bar-container",
       attr: {
@@ -1350,25 +1482,23 @@ var TrackRankView = class extends import_obsidian.ItemView {
       }
     });
 
-    // Outer frame with embossed effect
+    // Outer frame with embossed effect and tier-based border
     const barFrame = hpBarContainer.createDiv({
       cls: "track-habit-rank-hp-bar-frame",
       attr: {
         style: `
+          --pulse-glow: ${hpBarColors.glow};
           width: 100%;
-          height: 16px;
+          height: 18px;
           background: linear-gradient(180deg, #1a1510 0%, #0d0a08 50%, #1a1510 100%);
-          border: 1px solid ${settings.inTartarus ? '#4a2020' : '#4a4030'};
+          border: 1px solid ${hpBarColors.border};
           box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.05);
           position: relative;
           overflow: hidden;
+          ${isCritical ? 'animation: hpFramePulse 1.5s ease-in-out infinite;' : ''}
         `
       }
     });
-
-    // Calculate segment count (segments give it weight and authority)
-    const segmentCount = 10;
-    const segmentWidth = 100 / segmentCount;
 
     // Damage lingering layer (red - shows HP at start of day)
     const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
@@ -1391,11 +1521,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
     }
 
-    // Main HP fill with gold gradient
-    const hpFillColor = settings.inTartarus
-      ? 'linear-gradient(180deg, #8a3030 0%, #6a2020 30%, #5a1818 70%, #4a1010 100%)'
-      : 'linear-gradient(180deg, #b8a070 0%, #9a8860 30%, #8a7850 70%, #6a5840 100%)';
-
+    // Main HP fill with tier-based gradient
     barFrame.createDiv({
       cls: "track-habit-rank-hp-fill",
       attr: {
@@ -1405,15 +1531,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
           left: 2px;
           width: calc(${hpPercent}% - 4px);
           height: calc(100% - 4px);
-          background: ${hpFillColor};
+          background: ${hpBarColors.fill};
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
           transition: width 0.4s ease;
           z-index: 2;
+          ${isCritical ? `animation: hpPulse 1.5s ease-in-out infinite; color: ${hpBarColors.accent};` : ''}
         `
       }
     });
 
-    // Segment dividers for weight and mythic feel
+    // Dynamic segment dividers
     for (let i = 1; i < segmentCount; i++) {
       barFrame.createDiv({
         attr: {
@@ -1423,7 +1550,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             left: ${i * segmentWidth}%;
             width: 1px;
             height: 100%;
-            background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6) 100%);
+            background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.7) 100%);
             z-index: 3;
           `
         }
@@ -1439,29 +1566,55 @@ var TrackRankView = class extends import_obsidian.ItemView {
           left: 2px;
           right: 2px;
           height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
           z-index: 4;
         `
       }
     });
 
-    // Show damage dealt today if any
+    // Segment info and damage display
+    const hpInfoContainer = wrapper.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          justify-content: space-between;
+          margin-top: -12px;
+          margin-bottom: 12px;
+          padding: 0 4px;
+        `
+      }
+    });
+
+    // Show segment info (left)
+    hpInfoContainer.createEl("div", {
+      text: `${hpPerSegment} HP/seg`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: ${colors.textMuted};
+          opacity: 0.6;
+        `
+      }
+    });
+
+    // Show damage dealt today if any (right)
     if (startOfDayPercent > hpPercent) {
       const damageDealt = startOfDayHP - settings.bossCurrentHP;
-      wrapper.createEl("div", {
+      hpInfoContainer.createEl("div", {
         text: `\u2212${damageDealt} today`,
         attr: {
           style: `
             font-family: "Georgia", serif;
-            font-size: 11px;
+            font-size: 10px;
             font-style: italic;
             color: ${colors.goldMuted};
             opacity: 0.7;
-            margin-top: -12px;
-            margin-bottom: 12px;
           `
         }
       });
+    } else {
+      hpInfoContainer.createEl("div", { text: "" });
     }
     if (boss?.lore) {
       wrapper.createEl("div", {
