@@ -353,41 +353,41 @@ var DEFAULT_SETTINGS = {
     {
       tier: "micro",
       options: [
-        { id: "micro-1", description: "[Add your micro reward 1]" },
-        { id: "micro-2", description: "[Add your micro reward 2]" },
-        { id: "micro-3", description: "[Add your micro reward 3]" }
+        { id: "micro-1", description: "[Add your micro reward 1]", image: "", emoji: "🎁" },
+        { id: "micro-2", description: "[Add your micro reward 2]", image: "", emoji: "✨" },
+        { id: "micro-3", description: "[Add your micro reward 3]", image: "", emoji: "🌟" }
       ]
     },
     {
       tier: "mini",
       options: [
-        { id: "mini-1", description: "[Add your mini reward 1]" },
-        { id: "mini-2", description: "[Add your mini reward 2]" },
-        { id: "mini-3", description: "[Add your mini reward 3]" }
+        { id: "mini-1", description: "[Add your mini reward 1]", image: "", emoji: "🎯" },
+        { id: "mini-2", description: "[Add your mini reward 2]", image: "", emoji: "🏆" },
+        { id: "mini-3", description: "[Add your mini reward 3]", image: "", emoji: "💎" }
       ]
     },
     {
       tier: "standard",
       options: [
-        { id: "standard-1", description: "[Add your standard reward 1]" },
-        { id: "standard-2", description: "[Add your standard reward 2]" },
-        { id: "standard-3", description: "[Add your standard reward 3]" }
+        { id: "standard-1", description: "[Add your standard reward 1]", image: "", emoji: "⚔️" },
+        { id: "standard-2", description: "[Add your standard reward 2]", image: "", emoji: "🛡️" },
+        { id: "standard-3", description: "[Add your standard reward 3]", image: "", emoji: "👑" }
       ]
     },
     {
       tier: "quality",
       options: [
-        { id: "quality-1", description: "[Add your quality reward 1]" },
-        { id: "quality-2", description: "[Add your quality reward 2]" },
-        { id: "quality-3", description: "[Add your quality reward 3]" }
+        { id: "quality-1", description: "[Add your quality reward 1]", image: "", emoji: "🔮" },
+        { id: "quality-2", description: "[Add your quality reward 2]", image: "", emoji: "⚡" },
+        { id: "quality-3", description: "[Add your quality reward 3]", image: "", emoji: "🌙" }
       ]
     },
     {
       tier: "premium",
       options: [
-        { id: "premium-1", description: "[Add your premium reward 1]" },
-        { id: "premium-2", description: "[Add your premium reward 2]" },
-        { id: "premium-3", description: "[Add your premium reward 3]" }
+        { id: "premium-1", description: "[Add your premium reward 1]", image: "", emoji: "🏛️" },
+        { id: "premium-2", description: "[Add your premium reward 2]", image: "", emoji: "⭐" },
+        { id: "premium-3", description: "[Add your premium reward 3]", image: "", emoji: "🔱" }
       ]
     }
   ],
@@ -2010,126 +2010,351 @@ var TrackRankView = class extends import_obsidian.ItemView {
   }
 
   /**
-   * Render subdued reward progress boxes
+   * Render reward card carousel with visual cards
    */
   renderRewardBoxes(wrapper, colors) {
     const settings = this.plugin.settings;
     const rewardProgress = this.plugin.getRewardProgress();
 
-    const rewardContainer = wrapper.createDiv({
+    // Add carousel animation styles if not present
+    if (!document.getElementById('track-habit-rank-reward-card-styles')) {
+      const style = document.createElement('style');
+      style.id = 'track-habit-rank-reward-card-styles';
+      style.textContent = `
+        @keyframes cardPulse {
+          0%, 100% { box-shadow: 0 2px 8px rgba(184, 160, 112, 0.2); }
+          50% { box-shadow: 0 4px 16px rgba(184, 160, 112, 0.4); }
+        }
+        @keyframes cardShine {
+          0% { background-position: -100% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .reward-carousel {
+          display: flex;
+          gap: 12px;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 8px 4px 12px 4px;
+          margin: 0 -8px;
+        }
+        .reward-carousel::-webkit-scrollbar { display: none; }
+        .reward-card {
+          flex: 0 0 auto;
+          width: 100px;
+          scroll-snap-align: start;
+          transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .reward-card:hover { transform: translateY(-4px); }
+        .reward-card.locked { filter: grayscale(0.8) brightness(0.7); }
+        .reward-card.earned { animation: cardPulse 2s ease-in-out infinite; }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Reward section container
+    const rewardSection = wrapper.createDiv({
+      attr: {
+        style: `
+          margin: 16px 0;
+          padding: 12px 8px;
+          background: ${colors.bgLight};
+          border: 1px solid ${colors.greenBorder};
+        `
+      }
+    });
+
+    // Section header
+    const header = rewardSection.createDiv({
       attr: {
         style: `
           display: flex;
-          gap: 8px;
-          justify-content: center;
-          margin: 16px 0;
-          flex-wrap: wrap;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          padding: 0 4px;
         `
       }
     });
 
-    // Activity reward box
-    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
-    const activityBox = rewardContainer.createDiv({
+    header.createEl("div", {
+      text: "Rewards",
       attr: {
         style: `
-          padding: 8px 12px;
-          background: ${colors.bgLight};
-          border: 1px solid ${colors.greenBorder};
-          cursor: pointer;
-          transition: all 0.2s ease;
-          opacity: 0.7;
-        `
-      }
-    });
-    activityBox.createEl("div", {
-      text: `${activityRemaining} for reward`,
-      attr: {
-        style: `
-          font-family: "Georgia", serif;
-          font-size: 10px;
-          color: ${colors.greenMuted};
-          white-space: nowrap;
-        `
-      }
-    });
-    activityBox.onmouseenter = () => {
-      activityBox.style.borderColor = colors.green;
-      activityBox.style.opacity = "1";
-    };
-    activityBox.onmouseleave = () => {
-      activityBox.style.borderColor = colors.greenBorder;
-      activityBox.style.opacity = "0.7";
-    };
-    activityBox.onclick = () => {
-      new RewardLogModal(this.app, this.plugin).open();
-    };
-
-    // Streak reward box
-    const streakRemaining = rewardProgress.streakThreshold - rewardProgress.streakProgress;
-    const streakBox = rewardContainer.createDiv({
-      attr: {
-        style: `
-          padding: 8px 12px;
-          background: ${colors.bgLight};
-          border: 1px solid ${colors.goldBorder};
-          cursor: pointer;
-          transition: all 0.2s ease;
-          opacity: 0.7;
-        `
-      }
-    });
-    streakBox.createEl("div", {
-      text: `${streakRemaining}wk for reward`,
-      attr: {
-        style: `
-          font-family: "Georgia", serif;
-          font-size: 10px;
+          font-family: "Times New Roman", serif;
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
           color: ${colors.goldMuted};
+        `
+      }
+    });
+
+    // Progress indicator
+    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
+    header.createEl("div", {
+      text: `${activityRemaining} to next`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: ${colors.textMuted};
+          opacity: 0.8;
+        `
+      }
+    });
+
+    // Carousel container
+    const carousel = rewardSection.createDiv({ cls: "reward-carousel" });
+
+    // Get current reward tier and pool
+    const tierDisplayNames = {
+      micro: "Micro",
+      mini: "Mini",
+      standard: "Standard",
+      quality: "Quality",
+      premium: "Premium"
+    };
+    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
+    const pendingRewards = settings.pendingRewards || [];
+
+    // Render pending/earned rewards first (highlighted)
+    pendingRewards.forEach((reward) => {
+      const pool = settings.rewardPools?.find(p => p.tier === reward.rewardTier);
+      const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
+      this.createRewardCard(carousel, {
+        emoji: option?.emoji || "🎁",
+        image: option?.image || "",
+        name: option?.description || "Unclaimed Reward",
+        effect: tierDisplayNames[reward.rewardTier] || "Reward",
+        isEarned: true,
+        isLocked: false,
+        colors
+      }, () => new RewardLogModal(this.app, this.plugin).open());
+    });
+
+    // Render available rewards from current pool (locked until earned)
+    if (currentPool?.options) {
+      currentPool.options.slice(0, 3).forEach((option, index) => {
+        // Skip if already pending
+        const isPending = pendingRewards.some(r => r.selectedOptionId === option.id);
+        if (isPending) return;
+
+        this.createRewardCard(carousel, {
+          emoji: option.emoji || "🎁",
+          image: option.image || "",
+          name: option.description,
+          effect: `${activityRemaining} more`,
+          isEarned: false,
+          isLocked: true,
+          colors
+        }, () => new RewardLogModal(this.app, this.plugin).open());
+      });
+    }
+
+    // Add "view all" card at end
+    const viewAllCard = carousel.createDiv({
+      cls: "reward-card",
+      attr: {
+        style: `
+          width: 80px;
+          height: 120px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          background: ${colors.bgLight};
+          border: 1px dashed ${colors.greenBorder};
+          cursor: pointer;
+          transition: all 0.2s ease;
+          opacity: 0.6;
+        `
+      }
+    });
+    viewAllCard.createEl("div", {
+      text: "→",
+      attr: {
+        style: `
+          font-size: 20px;
+          color: ${colors.greenMuted};
+          margin-bottom: 4px;
+        `
+      }
+    });
+    viewAllCard.createEl("div", {
+      text: "View All",
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 9px;
+          color: ${colors.textMuted};
+        `
+      }
+    });
+    viewAllCard.onclick = () => new RewardLogModal(this.app, this.plugin).open();
+    viewAllCard.onmouseenter = () => { viewAllCard.style.opacity = "1"; };
+    viewAllCard.onmouseleave = () => { viewAllCard.style.opacity = "0.6"; };
+
+    // Pending count badge (if any)
+    if (rewardProgress.pendingCount > 0) {
+      const badge = header.createDiv({
+        attr: {
+          style: `
+            background: ${colors.gold};
+            color: ${colors.bg};
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-family: "Georgia", serif;
+            font-size: 9px;
+            font-weight: 600;
+            margin-left: 8px;
+          `
+        }
+      });
+      badge.setText(`${rewardProgress.pendingCount}`);
+    }
+  }
+
+  /**
+   * Create a single reward card element
+   */
+  createRewardCard(container, { emoji, image, name, effect, isEarned, isLocked, colors }, onClick) {
+    const card = container.createDiv({
+      cls: `reward-card ${isEarned ? 'earned' : ''} ${isLocked ? 'locked' : ''}`,
+      attr: {
+        style: `
+          width: 100px;
+          height: 130px;
+          background: ${colors.bgLight};
+          border: 1px solid ${isEarned ? colors.gold : colors.greenBorder};
+          display: flex;
+          flex-direction: column;
+          cursor: pointer;
+          overflow: hidden;
+          position: relative;
+        `
+      }
+    });
+
+    // Top half - image or emoji
+    const imageSection = card.createDiv({
+      attr: {
+        style: `
+          flex: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 100%);
+          position: relative;
+          overflow: hidden;
+        `
+      }
+    });
+
+    if (image) {
+      const img = imageSection.createEl("img", {
+        attr: {
+          src: image,
+          alt: name,
+          style: `
+            max-width: 60px;
+            max-height: 50px;
+            object-fit: contain;
+          `
+        }
+      });
+      img.onerror = () => {
+        img.remove();
+        imageSection.createEl("div", {
+          text: emoji,
+          attr: { style: "font-size: 32px;" }
+        });
+      };
+    } else {
+      imageSection.createEl("div", {
+        text: emoji,
+        attr: { style: "font-size: 32px;" }
+      });
+    }
+
+    // Lock icon overlay for locked cards
+    if (isLocked) {
+      imageSection.createEl("div", {
+        text: "🔒",
+        attr: {
+          style: `
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 12px;
+            opacity: 0.7;
+          `
+        }
+      });
+    }
+
+    // Shine effect for earned cards
+    if (isEarned) {
+      card.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: cardShine 3s ease-in-out infinite;
+            pointer-events: none;
+          `
+        }
+      });
+    }
+
+    // Bottom half - name and effect
+    const textSection = card.createDiv({
+      attr: {
+        style: `
+          padding: 8px 6px;
+          background: ${colors.bg};
+          border-top: 1px solid ${colors.greenBorder};
+        `
+      }
+    });
+
+    textSection.createEl("div", {
+      text: name.length > 18 ? name.substring(0, 16) + "..." : name,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 9px;
+          color: ${isLocked ? colors.textMuted : colors.text};
+          margin-bottom: 2px;
+          line-height: 1.2;
+          overflow: hidden;
+          text-overflow: ellipsis;
           white-space: nowrap;
         `
       }
     });
-    streakBox.onmouseenter = () => {
-      streakBox.style.borderColor = colors.gold;
-      streakBox.style.opacity = "1";
-    };
-    streakBox.onmouseleave = () => {
-      streakBox.style.borderColor = colors.goldBorder;
-      streakBox.style.opacity = "0.7";
-    };
-    streakBox.onclick = () => {
-      new RewardLogModal(this.app, this.plugin).open();
-    };
 
-    // Pending rewards indicator (only if there are pending rewards)
-    if (rewardProgress.pendingCount > 0) {
-      const pendingBox = rewardContainer.createDiv({
-        attr: {
-          style: `
-            padding: 8px 12px;
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.4);
-            cursor: pointer;
-            transition: all 0.2s ease;
-          `
-        }
-      });
-      pendingBox.createEl("div", {
-        text: `${rewardProgress.pendingCount} unclaimed`,
-        attr: {
-          style: `
-            font-family: "Georgia", serif;
-            font-size: 10px;
-            color: #b8860b;
-            white-space: nowrap;
-          `
-        }
-      });
-      pendingBox.onclick = () => {
-        new RewardLogModal(this.app, this.plugin).open();
-      };
-    }
+    textSection.createEl("div", {
+      text: effect,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 8px;
+          color: ${isEarned ? colors.gold : colors.textMuted};
+          opacity: 0.8;
+        `
+      }
+    });
+
+    card.onclick = onClick;
+    return card;
   }
 
   /**
@@ -3082,11 +3307,30 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
     super(app);
     this.plugin = plugin;
   }
+
   onOpen() {
     const { contentEl } = this;
     const settings = this.plugin.settings;
     contentEl.empty();
-    new import_obsidian.Setting(contentEl).setName("Reward Log").setDesc("Track your earned rewards and their status").setHeading();
+
+    // Add modal styles
+    contentEl.style.maxWidth = "500px";
+    contentEl.style.background = "#0a0a0a";
+    contentEl.style.padding = "20px";
+
+    const colors = {
+      gold: "#9a8c7a",
+      goldLight: "#b8a890",
+      goldMuted: "#6a5d4a",
+      green: "#7a9a7d",
+      greenMuted: "#5a6a5d",
+      greenBorder: "#2a3a2d",
+      bg: "#0a0a0a",
+      bgLight: "#0f0f0f",
+      text: "#e5e7eb",
+      textMuted: "#5a6a5d"
+    };
+
     const tierDisplayNames = {
       micro: "Micro",
       mini: "Mini",
@@ -3099,262 +3343,332 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
       boss: "Boss",
       streak: "Streak"
     };
-    if (settings.pendingRewards.length > 0) {
+
+    // Header
+    contentEl.createEl("div", {
+      text: "Reward Armory",
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 18px;
+          font-weight: 600;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: ${colors.gold};
+          text-align: center;
+          margin-bottom: 20px;
+        `
+      }
+    });
+
+    // Earned/Active Rewards Carousel
+    const earnedRewards = [
+      ...settings.pendingRewards.map(r => ({ ...r, status: 'pending' })),
+      ...settings.bankedRewards.map(r => ({ ...r, status: 'banked' })),
+      ...settings.claimedRewards.filter(r => !r.used).map(r => ({ ...r, status: 'active' }))
+    ];
+
+    if (earnedRewards.length > 0) {
       contentEl.createEl("div", {
-        text: `Pending Rewards (${settings.pendingRewards.length})`,
+        text: "Your Rewards",
         attr: {
           style: `
-            margin-top: 16px;
-            margin-bottom: 12px;
             font-family: "Times New Roman", serif;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 500;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: #F59E0B;
+            color: ${colors.goldMuted};
+            margin-bottom: 12px;
           `
         }
       });
-      settings.pendingRewards.forEach((reward) => {
-        const expiresAt = new Date(reward.expiresAt);
-        const now = new Date(getEffectiveNow(settings));
-        const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1e3));
-        const rewardBox = contentEl.createDiv({
-          attr: {
-            style: `
-              margin-bottom: 12px;
-              padding: 16px;
-              border: 1px solid ${daysLeft <= 2 ? "#F59E0B" : "#2a3a2d"};
-              background: #0f0f0f;
-            `
-          }
-        });
-        rewardBox.createEl("div", {
-          text: `${tierDisplayNames[reward.rewardTier]} ${typeDisplayNames[reward.rewardType]} Reward`,
-          attr: {
-            style: `
-              font-family: "Times New Roman", serif;
-              font-size: 14px;
-              color: #e5e7eb;
-              margin-bottom: 8px;
-            `
-          }
-        });
-        rewardBox.createEl("div", {
-          text: `Expires in ${daysLeft} days`,
-          attr: {
-            style: `
-              font-family: "Georgia", serif;
-              font-size: 12px;
-              color: ${daysLeft <= 2 ? "#F59E0B" : "#5a6a5d"};
-            `
-          }
-        });
-        const claimBtn = rewardBox.createEl("button", {
-          text: "Claim Now",
-          cls: "track-habit-rank-btn",
-          attr: {
-            style: `
-              margin-top: 12px;
-              padding: 10px 16px;
-              min-height: 44px;
-              background: #0f0f0f;
-              color: #7a9a7d;
-              border: 1px solid #7a9a7d;
-              cursor: pointer;
-              font-family: "Times New Roman", serif;
-              font-size: 11px;
-              letter-spacing: 1px;
-              text-transform: uppercase;
-            `
-          }
-        });
-        claimBtn.onclick = () => {
-          this.close();
-          new RewardSelectionModal(this.app, this.plugin, reward, () => {
-            new _RewardLogModal(this.app, this.plugin).open();
-          }).open();
+
+      // Carousel for earned rewards
+      const carousel = contentEl.createDiv({
+        attr: {
+          style: `
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding: 8px 0 16px 0;
+            margin-bottom: 20px;
+          `
+        }
+      });
+      carousel.style.scrollbarWidth = "none";
+
+      earnedRewards.forEach((reward) => {
+        const pool = settings.rewardPools?.find(p => p.tier === reward.rewardTier);
+        const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
+
+        const statusColors = {
+          pending: "#F59E0B",
+          banked: "#8B5CF6",
+          active: colors.green
         };
-      });
-    }
-    if (settings.bankedRewards.length > 0) {
-      contentEl.createEl("div", {
-        text: `Banked Rewards (${settings.bankedRewards.length}/${getMaxBankedRewards()})`,
-        attr: {
-          style: `
-            margin-top: 20px;
-            margin-bottom: 12px;
-            font-family: "Times New Roman", serif;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #8B5CF6;
-          `
-        }
-      });
-      settings.bankedRewards.forEach((reward) => {
-        const rewardBox = contentEl.createDiv({
+
+        const card = carousel.createDiv({
           attr: {
             style: `
-              margin-bottom: 12px;
-              padding: 16px;
-              border: 1px solid #8B5CF6;
-              background: rgba(139, 92, 246, 0.1);
-            `
-          }
-        });
-        rewardBox.createEl("div", {
-          text: `${tierDisplayNames[reward.rewardTier]} ${typeDisplayNames[reward.rewardType]} Reward`,
-          attr: {
-            style: `
-              font-family: "Times New Roman", serif;
-              font-size: 14px;
-              color: #e5e7eb;
-              margin-bottom: 8px;
-            `
-          }
-        });
-        rewardBox.createEl("div", {
-          text: `Banked on ${new Date(reward.bankedAt).toLocaleDateString()}`,
-          attr: {
-            style: `
-              font-family: "Georgia", serif;
-              font-size: 12px;
-              color: #5a6a5d;
-            `
-          }
-        });
-        const redeemBtn = rewardBox.createEl("button", {
-          text: "Redeem",
-          cls: "track-habit-rank-btn",
-          attr: {
-            style: `
-              margin-top: 12px;
-              padding: 10px 16px;
-              min-height: 44px;
-              background: #0f0f0f;
-              color: #8B5CF6;
-              border: 1px solid #8B5CF6;
+              flex: 0 0 auto;
+              width: 120px;
+              scroll-snap-align: start;
+              background: ${colors.bgLight};
+              border: 1px solid ${statusColors[reward.status]};
               cursor: pointer;
-              font-family: "Times New Roman", serif;
-              font-size: 11px;
-              letter-spacing: 1px;
-              text-transform: uppercase;
+              transition: transform 0.2s ease;
             `
           }
         });
-        redeemBtn.onclick = () => {
-          const pendingReward = {
-            id: reward.id,
-            rewardTier: reward.rewardTier,
-            rewardType: reward.rewardType,
-            earnedAt: reward.bankedAt,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3).toISOString()
-            // 7 days from now
+        card.onmouseenter = () => { card.style.transform = "translateY(-4px)"; };
+        card.onmouseleave = () => { card.style.transform = "translateY(0)"; };
+
+        // Image section
+        const imageSection = card.createDiv({
+          attr: {
+            style: `
+              height: 70px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 100%);
+            `
+          }
+        });
+
+        if (option?.image) {
+          const img = imageSection.createEl("img", {
+            attr: {
+              src: option.image,
+              style: "max-width: 50px; max-height: 50px; object-fit: contain;"
+            }
+          });
+          img.onerror = () => {
+            img.remove();
+            imageSection.createEl("div", { text: option?.emoji || "🎁", attr: { style: "font-size: 28px;" } });
           };
-          settings.bankedRewards = settings.bankedRewards.filter((r) => r.id !== reward.id);
-          this.close();
-          new RewardSelectionModal(this.app, this.plugin, pendingReward, () => {
-            this.plugin.saveSettings();
-            new _RewardLogModal(this.app, this.plugin).open();
-          }).open();
-        };
-      });
-    }
-    const recentClaimed = settings.claimedRewards.filter((r) => !r.used).sort((a, b) => new Date(b.claimedAt).getTime() - new Date(a.claimedAt).getTime()).slice(0, 10);
-    if (recentClaimed.length > 0) {
-      contentEl.createEl("div", {
-        text: "Active Rewards",
-        attr: {
-          style: `
-            margin-top: 20px;
-            margin-bottom: 12px;
-            font-family: "Times New Roman", serif;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #7a9a7d;
-          `
+        } else {
+          imageSection.createEl("div", { text: option?.emoji || "🎁", attr: { style: "font-size: 28px;" } });
         }
-      });
-      recentClaimed.forEach((reward) => {
-        const rewardBox = contentEl.createDiv({
+
+        // Text section
+        const textSection = card.createDiv({
           attr: {
             style: `
-              margin-bottom: 12px;
-              padding: 16px;
-              border: 1px solid #7a9a7d;
-              background: rgba(122, 154, 125, 0.1);
+              padding: 8px;
+              border-top: 1px solid ${colors.greenBorder};
             `
           }
         });
-        rewardBox.createEl("div", {
-          text: reward.description,
-          attr: {
-            style: `
-              font-family: "Times New Roman", serif;
-              font-size: 14px;
-              color: #e5e7eb;
-              margin-bottom: 8px;
-            `
-          }
-        });
-        rewardBox.createEl("div", {
-          text: `${tierDisplayNames[reward.rewardTier]} | Claimed ${new Date(reward.claimedAt).toLocaleDateString()}`,
+
+        const name = option?.description || `${tierDisplayNames[reward.rewardTier]} Reward`;
+        textSection.createEl("div", {
+          text: name.length > 16 ? name.substring(0, 14) + "..." : name,
           attr: {
             style: `
               font-family: "Georgia", serif;
-              font-size: 12px;
-              color: #5a6a5d;
+              font-size: 10px;
+              color: ${colors.text};
+              margin-bottom: 4px;
             `
           }
         });
-        const markUsedBtn = rewardBox.createEl("button", {
-          text: "Mark as Used",
-          cls: "track-habit-rank-btn",
+
+        const statusText = reward.status === 'pending' ? 'Claim' : reward.status === 'banked' ? 'Banked' : 'Active';
+        textSection.createEl("div", {
+          text: statusText,
           attr: {
             style: `
-              margin-top: 12px;
-              padding: 10px 16px;
-              min-height: 44px;
-              background: transparent;
-              color: #5a6a5d;
-              border: 1px solid #2a3a2d;
-              cursor: pointer;
-              font-family: "Times New Roman", serif;
-              font-size: 11px;
-              letter-spacing: 1px;
-              text-transform: uppercase;
+              font-family: "Georgia", serif;
+              font-size: 9px;
+              color: ${statusColors[reward.status]};
             `
           }
         });
-        markUsedBtn.onclick = async () => {
-          reward.used = true;
-          await this.plugin.saveSettings();
-          this.onOpen();
-          new import_obsidian.Notice("Reward marked as used");
+
+        card.onclick = () => {
+          if (reward.status === 'pending') {
+            this.close();
+            new RewardSelectionModal(this.app, this.plugin, reward, () => {
+              new _RewardLogModal(this.app, this.plugin).open();
+            }).open();
+          } else if (reward.status === 'banked') {
+            const pendingReward = {
+              id: reward.id,
+              rewardTier: reward.rewardTier,
+              rewardType: reward.rewardType,
+              earnedAt: reward.bankedAt,
+              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3).toISOString()
+            };
+            settings.bankedRewards = settings.bankedRewards.filter((r) => r.id !== reward.id);
+            this.close();
+            new RewardSelectionModal(this.app, this.plugin, pendingReward, () => {
+              this.plugin.saveSettings();
+              new _RewardLogModal(this.app, this.plugin).open();
+            }).open();
+          } else if (reward.status === 'active') {
+            reward.used = true;
+            this.plugin.saveSettings();
+            this.onOpen();
+            new import_obsidian.Notice("Reward marked as used");
+          }
         };
       });
     }
-    if (settings.pendingRewards.length === 0 && settings.bankedRewards.length === 0 && recentClaimed.length === 0) {
+
+    // Available Rewards Grid
+    const rewardProgress = this.plugin.getRewardProgress();
+    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
+
+    contentEl.createEl("div", {
+      text: `Available ${tierDisplayNames[rewardProgress.rewardTier]} Rewards`,
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          color: ${colors.greenMuted};
+          margin-bottom: 12px;
+        `
+      }
+    });
+
+    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
+    contentEl.createEl("div", {
+      text: `${activityRemaining} activities until next reward`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 11px;
+          font-style: italic;
+          color: ${colors.textMuted};
+          margin-bottom: 16px;
+        `
+      }
+    });
+
+    // Grid view for available rewards
+    const grid = contentEl.createDiv({
+      attr: {
+        style: `
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-bottom: 20px;
+        `
+      }
+    });
+
+    if (currentPool?.options) {
+      currentPool.options.forEach((option) => {
+        const card = grid.createDiv({
+          attr: {
+            style: `
+              background: ${colors.bgLight};
+              border: 1px solid ${colors.greenBorder};
+              filter: grayscale(0.6) brightness(0.8);
+              opacity: 0.7;
+              transition: all 0.2s ease;
+            `
+          }
+        });
+        card.onmouseenter = () => {
+          card.style.filter = "grayscale(0.3) brightness(0.9)";
+          card.style.opacity = "0.9";
+        };
+        card.onmouseleave = () => {
+          card.style.filter = "grayscale(0.6) brightness(0.8)";
+          card.style.opacity = "0.7";
+        };
+
+        // Image section
+        const imageSection = card.createDiv({
+          attr: {
+            style: `
+              height: 60px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              position: relative;
+            `
+          }
+        });
+
+        if (option.image) {
+          const img = imageSection.createEl("img", {
+            attr: {
+              src: option.image,
+              style: "max-width: 40px; max-height: 40px; object-fit: contain;"
+            }
+          });
+          img.onerror = () => {
+            img.remove();
+            imageSection.createEl("div", { text: option.emoji || "🎁", attr: { style: "font-size: 24px;" } });
+          };
+        } else {
+          imageSection.createEl("div", { text: option.emoji || "🎁", attr: { style: "font-size: 24px;" } });
+        }
+
+        // Lock icon
+        imageSection.createEl("div", {
+          text: "🔒",
+          attr: {
+            style: `
+              position: absolute;
+              top: 4px;
+              right: 4px;
+              font-size: 10px;
+              opacity: 0.6;
+            `
+          }
+        });
+
+        // Text section
+        const textSection = card.createDiv({
+          attr: {
+            style: `
+              padding: 6px;
+              border-top: 1px solid ${colors.greenBorder};
+            `
+          }
+        });
+
+        textSection.createEl("div", {
+          text: option.description.length > 14 ? option.description.substring(0, 12) + "..." : option.description,
+          attr: {
+            style: `
+              font-family: "Georgia", serif;
+              font-size: 9px;
+              color: ${colors.textMuted};
+            `
+          }
+        });
+      });
+    }
+
+    // Empty state
+    if (earnedRewards.length === 0 && (!currentPool || currentPool.options.length === 0)) {
       contentEl.createEl("div", {
         text: "No rewards yet. Keep completing activities to earn rewards!",
         attr: {
           style: `
-            margin-top: 20px;
             padding: 20px;
             text-align: center;
             font-family: "Georgia", serif;
             font-size: 14px;
             font-style: italic;
-            color: #5a6a5d;
+            color: ${colors.textMuted};
           `
         }
       });
     }
   }
+
   onClose() {
     const { contentEl } = this;
     contentEl.empty();
@@ -4944,21 +5258,86 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         const optionBox = content.createDiv({
           attr: {
             style: `
-              margin-bottom: 8px;
-              padding: 8px;
+              margin-bottom: 12px;
+              padding: 12px;
               background: var(--background-primary);
               border-radius: 6px;
               border: 1px solid var(--background-modifier-border);
             `
           }
         });
-        new import_obsidian.Setting(optionBox).setName(`Reward ${optionIndex + 1}`).addText(
+
+        // Preview card
+        const previewRow = optionBox.createDiv({
+          attr: {
+            style: `
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              margin-bottom: 12px;
+            `
+          }
+        });
+        const previewCard = previewRow.createDiv({
+          attr: {
+            style: `
+              width: 60px;
+              height: 70px;
+              background: #0f0f0f;
+              border: 1px solid #2a3a2d;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+            `
+          }
+        });
+        if (option.image) {
+          const img = previewCard.createEl("img", {
+            attr: {
+              src: option.image,
+              style: "max-width: 40px; max-height: 40px; object-fit: contain;"
+            }
+          });
+          img.onerror = () => {
+            img.remove();
+            previewCard.createEl("div", { text: option.emoji || "🎁", attr: { style: "font-size: 24px;" } });
+          };
+        } else {
+          previewCard.createEl("div", { text: option.emoji || "🎁", attr: { style: "font-size: 24px;" } });
+        }
+        previewRow.createEl("div", {
+          text: option.description || "[Reward name]",
+          attr: { style: "font-size: 12px; color: var(--text-muted);" }
+        });
+
+        // Description field
+        new import_obsidian.Setting(optionBox).setName(`Reward ${optionIndex + 1} Name`).addText(
           (t) => t.setPlaceholder("Reward description").setValue(option.description).onChange(async (v) => {
-            this.updateRewardOption(tier, optionIndex, v);
+            this.updateRewardOption(tier, optionIndex, "description", v);
             await this.plugin.saveSettings();
           })
-        ).addButton(
-          (btn) => btn.setButtonText("\xD7").setWarning().onClick(async () => {
+        );
+
+        // Emoji field
+        new import_obsidian.Setting(optionBox).setName("Emoji").setDesc("Display emoji for this reward").addText(
+          (t) => t.setPlaceholder("🎁").setValue(option.emoji || "").onChange(async (v) => {
+            this.updateRewardOption(tier, optionIndex, "emoji", v);
+            await this.plugin.saveSettings();
+          })
+        );
+
+        // Image field
+        new import_obsidian.Setting(optionBox).setName("Image URL").setDesc("Vault path or external URL (optional)").addText(
+          (t) => t.setPlaceholder("path/to/image.png").setValue(option.image || "").onChange(async (v) => {
+            this.updateRewardOption(tier, optionIndex, "image", v);
+            await this.plugin.saveSettings();
+          })
+        );
+
+        // Delete button
+        new import_obsidian.Setting(optionBox).addButton(
+          (btn) => btn.setButtonText("Delete Reward").setWarning().onClick(async () => {
             this.removeRewardOption(tier, optionIndex);
             await this.plugin.saveSettings();
             this.display();
@@ -4985,9 +5364,9 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     );
   }
   /**
-   * Update a reward option description.
+   * Update a reward option field.
    */
-  updateRewardOption(tier, index, description) {
+  updateRewardOption(tier, index, field, value) {
     let pool = this.plugin.settings.rewardPools?.find((p) => p.tier === tier);
     if (!pool) {
       pool = { tier, options: [] };
@@ -4995,7 +5374,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.rewardPools.push(pool);
     }
     if (pool.options[index]) {
-      pool.options[index].description = description;
+      pool.options[index][field] = value;
     }
   }
   /**
@@ -5009,7 +5388,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.rewardPools.push(pool);
     }
     const newId = `${tier}-${Date.now()}`;
-    pool.options.push({ id: newId, description: "[New reward]" });
+    pool.options.push({ id: newId, description: "[New reward]", emoji: "🎁", image: "" });
   }
   /**
    * Remove a reward option from a pool.
