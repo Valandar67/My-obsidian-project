@@ -1117,22 +1117,22 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const rankName = getRankNameForTier(settings.currentTier, settings);
     const barColor = getProgressBarColor(settings.currentTier, settings.inTartarus);
 
-    // Color palette: combining gold with green
+    // Color palette: lighter aesthetic with gold and green accents
     const colors = {
-      gold: "#9a8c7a",
-      goldLight: "#b8a890",
-      goldMuted: "#6a5d4a",
-      goldBorder: "#3a342a",
-      green: "#7a9a7d",
-      greenLight: "#8aaa8d",
-      greenMuted: "#5a6a5d",
-      greenBorder: "#2a3a2d",
-      bg: "#0a0a0a",
-      bgLight: "#0f0f0f",
-      text: "#e5e7eb",
-      textMuted: "#5a6a5d",
-      danger: "#DC2626",
-      dangerMuted: "#6a2a2a"
+      gold: "#b8a070",
+      goldLight: "#d0c0a0",
+      goldMuted: "#8a7a5a",
+      goldBorder: "#4a4030",
+      green: "#8aaa8d",
+      greenLight: "#a0c0a5",
+      greenMuted: "#6a8a6d",
+      greenBorder: "#3a4a3d",
+      bg: "#121418",
+      bgLight: "#181c20",
+      text: "#e8eaec",
+      textMuted: "#7a8a7d",
+      danger: "#e04040",
+      dangerMuted: "#8a4040"
     };
 
     // Check and reset start-of-day HP tracking
@@ -1151,11 +1151,13 @@ var TrackRankView = class extends import_obsidian.ItemView {
           margin: 0 auto;
           padding: 24px;
           text-align: center;
-          background: ${colors.bg};
+          background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 50%, ${colors.bgLight} 100%);
           border: 1px solid ${colors.greenBorder};
+          border-radius: 8px;
           position: relative;
           font-family: "Georgia", serif;
           overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         `
       }
     });
@@ -1259,12 +1261,81 @@ var TrackRankView = class extends import_obsidian.ItemView {
       };
     }
     if (settings.inTartarus) {
+      // Add hellfire gradient animation styles
+      if (!document.getElementById('track-habit-rank-hellfire-styles')) {
+        const hellfireStyle = document.createElement('style');
+        hellfireStyle.id = 'track-habit-rank-hellfire-styles';
+        hellfireStyle.textContent = `
+          @keyframes hellfireFlow {
+            0% { background-position: 0% 0%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 50% 100%; }
+            75% { background-position: 0% 50%; }
+            100% { background-position: 0% 0%; }
+          }
+          @keyframes emberFloat {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+            50% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+          }
+          @keyframes hellPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+          }
+          .tartarus-hellfire-bg {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(-45deg,
+              #1a0505 0%,
+              #2a0a0a 15%,
+              #3a1010 30%,
+              #4a1515 45%,
+              #3a1010 60%,
+              #2a0a0a 75%,
+              #1a0505 100%
+            );
+            background-size: 400% 400%;
+            animation: hellfireFlow 15s ease-in-out infinite;
+            z-index: 0;
+          }
+          .tartarus-hellfire-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 80%, rgba(220, 38, 38, 0.15) 0%, transparent 60%);
+            animation: hellPulse 4s ease-in-out infinite;
+          }
+          .tartarus-hellfire-bg::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 30% 20%, rgba(255, 100, 50, 0.1) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 30%, rgba(200, 60, 20, 0.08) 0%, transparent 40%);
+            animation: hellPulse 6s ease-in-out infinite reverse;
+          }
+        `;
+        document.head.appendChild(hellfireStyle);
+      }
+
+      // Add flowing hellfire background
+      const hellfireBg = wrapper.createDiv({ cls: 'tartarus-hellfire-bg' });
+
+      // Tartarus content container (above the background)
+      const tartarusContent = wrapper.createDiv({
+        attr: {
+          style: `
+            position: relative;
+            z-index: 1;
+            padding-top: 20px;
+          `
+        }
+      });
+
       const tartarusImage = settings.tartarusImage;
       if (tartarusImage) {
-        const imgContainer = wrapper.createDiv({
+        const imgContainer = tartarusContent.createDiv({
           attr: {
             style: `
-              margin-bottom: 16px;
+              margin-bottom: 20px;
               display: flex;
               justify-content: center;
             `
@@ -1275,15 +1346,25 @@ var TrackRankView = class extends import_obsidian.ItemView {
             src: tartarusImage,
             alt: "Tartarus",
             style: `
-              max-width: 200px;
-              max-height: 200px;
-              border: 1px solid ${colors.danger};
+              max-width: 180px;
+              max-height: 180px;
+              border: 2px solid rgba(220, 38, 38, 0.6);
+              border-radius: 8px;
               object-fit: cover;
-              filter: grayscale(0.3) contrast(1.2) brightness(0.9);
-              transition: filter 0.4s ease;
+              filter: contrast(1.1) brightness(0.95);
+              box-shadow: 0 0 30px rgba(220, 38, 38, 0.3), 0 0 60px rgba(150, 30, 20, 0.2);
+              transition: all 0.4s ease;
             `
           }
         });
+        img.onmouseenter = () => {
+          img.style.filter = 'contrast(1.2) brightness(1)';
+          img.style.boxShadow = '0 0 40px rgba(220, 38, 38, 0.5), 0 0 80px rgba(150, 30, 20, 0.3)';
+        };
+        img.onmouseleave = () => {
+          img.style.filter = 'contrast(1.1) brightness(0.95)';
+          img.style.boxShadow = '0 0 30px rgba(220, 38, 38, 0.3), 0 0 60px rgba(150, 30, 20, 0.2)';
+        };
         img.onerror = () => {
           imgContainer.empty();
           imgContainer.createEl("div", {
@@ -1292,56 +1373,59 @@ var TrackRankView = class extends import_obsidian.ItemView {
               style: `
                 font-size: 80px;
                 line-height: 1;
-                filter: drop-shadow(0 4px 8px rgba(220, 38, 38, 0.5));
+                filter: drop-shadow(0 4px 20px rgba(220, 38, 38, 0.6));
               `
             }
           });
         };
       } else {
-        wrapper.createEl("div", {
+        tartarusContent.createEl("div", {
           text: "\u{1F480}",
           attr: {
             style: `
               font-size: 80px;
               line-height: 1;
-              margin-bottom: 12px;
-              filter: drop-shadow(0 4px 8px rgba(220, 38, 38, 0.5));
+              margin-bottom: 16px;
+              filter: drop-shadow(0 4px 20px rgba(220, 38, 38, 0.6));
             `
           }
         });
       }
-      // Boss name is PRIMARY (large)
-      wrapper.createEl("div", {
+
+      // TARTARUS title - large and ominous
+      tartarusContent.createEl("div", {
         text: "TARTARUS",
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 2.4em;
-            font-weight: 600;
-            letter-spacing: 4px;
-            margin-bottom: 8px;
+            font-size: 2.6em;
+            font-weight: 700;
+            letter-spacing: 6px;
+            margin-bottom: 12px;
             text-transform: uppercase;
             color: ${colors.danger};
-            text-shadow: 0 2px 12px rgba(220, 38, 38, 0.3);
+            text-shadow: 0 0 20px rgba(220, 38, 38, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8);
           `
         }
       });
-      // User title is SECONDARY (smaller, muted)
-      wrapper.createEl("div", {
-        text: rankName,
+
+      // Subtitle - muted
+      tartarusContent.createEl("div", {
+        text: "The Pit of Eternal Penance",
         attr: {
           style: `
-            font-family: "Times New Roman", serif;
-            font-size: 12px;
-            font-weight: 400;
-            letter-spacing: 2px;
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            color: ${colors.dangerMuted};
-            opacity: 0.8;
+            font-family: "Georgia", serif;
+            font-size: 13px;
+            font-style: italic;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+            color: rgba(220, 38, 38, 0.6);
           `
         }
       });
+
+      // Note: No boss info, HP bar, or rewards shown in Tartarus
+      // User can only see penance tasks via the warning box below
     } else {
       // Get HP-threshold appropriate boss image
       const hpPercent = settings.bossCurrentHP / settings.bossMaxHP;
@@ -1445,6 +1529,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
     }
+
+    // Only show HP bar, stats, and rewards when NOT in Tartarus
+    if (!settings.inTartarus) {
     const hpPercent = Math.round(settings.bossCurrentHP / settings.bossMaxHP * 100);
 
     // Get tier-based HP bar colors
@@ -1458,123 +1545,176 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const criticalThreshold = hpPerSegment * 2;
     const isCritical = settings.bossCurrentHP <= criticalThreshold && settings.bossCurrentHP > 0;
 
-    // Add beautiful 3.0 HP bar styles
-    if (!document.getElementById('track-habit-rank-hp-v3-styles')) {
+    // Add ornate fantasy HP bar styles
+    if (!document.getElementById('track-habit-rank-ornate-fantasy-hp')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-hp-v3-styles';
+      style.id = 'track-habit-rank-ornate-fantasy-hp';
       style.textContent = `
-        @keyframes hpPulseV3 {
-          0%, 100% { filter: brightness(1) saturate(1); }
-          50% { filter: brightness(1.4) saturate(1.2); }
+        @keyframes moltenFlow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
-        @keyframes hpCriticalPulse {
-          0%, 100% {
-            box-shadow: 0 0 15px var(--glow-color),
-                        inset 0 0 10px rgba(255,100,100,0.2);
-          }
-          50% {
-            box-shadow: 0 0 30px var(--glow-color),
-                        0 0 50px var(--glow-color),
-                        inset 0 0 15px rgba(255,100,100,0.4);
-          }
+        @keyframes emberGlow {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.2); }
         }
-        @keyframes hpShine {
-          0% { left: -100%; }
-          100% { left: 200%; }
+        @keyframes criticalPulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(255,80,40,0.5); }
+          50% { box-shadow: 0 0 40px rgba(255,80,40,0.8), 0 0 60px rgba(255,40,0,0.4); }
         }
-        @keyframes bossNameGlow {
-          0%, 100% { text-shadow: 0 0 10px var(--name-glow), 0 2px 4px rgba(0,0,0,0.8); }
-          50% { text-shadow: 0 0 20px var(--name-glow), 0 0 40px var(--name-glow), 0 2px 4px rgba(0,0,0,0.8); }
-        }
-        .hp-bar-v3 {
+        .ornate-hp-frame {
           position: relative;
+          padding: 8px 40px;
+        }
+        .ornate-hp-inner {
+          position: relative;
+          height: 24px;
+          background: linear-gradient(180deg, #1a1510 0%, #0a0805 50%, #151210 100%);
           border-radius: 12px;
           overflow: hidden;
+          box-shadow: inset 0 3px 10px rgba(0,0,0,0.8), inset 0 -2px 6px rgba(0,0,0,0.4);
         }
-        .hp-bar-v3::before {
+        .ornate-hp-fill {
+          position: absolute;
+          left: 2px;
+          top: 2px;
+          bottom: 2px;
+          border-radius: 10px;
+          overflow: hidden;
+          transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .ornate-hp-fill.molten {
+          background: linear-gradient(180deg,
+            #ff6030 0%,
+            #e84020 15%,
+            #c03010 30%,
+            #a02808 50%,
+            #c03010 70%,
+            #e84020 85%,
+            #ff6030 100%
+          );
+          background-size: 100% 200%;
+          animation: moltenFlow 3s ease-in-out infinite, emberGlow 2s ease-in-out infinite;
+        }
+        .ornate-hp-fill.ethereal {
+          background: linear-gradient(180deg,
+            #60a0d0 0%,
+            #4080b0 15%,
+            #306090 30%,
+            #204070 50%,
+            #306090 70%,
+            #4080b0 85%,
+            #60a0d0 100%
+          );
+          background-size: 100% 200%;
+          animation: moltenFlow 4s ease-in-out infinite;
+        }
+        .ornate-hp-fill::after {
           content: '';
           position: absolute;
           inset: 0;
-          border-radius: 12px;
-          background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
+          background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255,255,255,0.15) 30%,
+            rgba(255,255,255,0.3) 50%,
+            rgba(255,255,255,0.15) 70%,
+            transparent 100%
+          );
+        }
+        .hp-frame-border {
+          position: absolute;
+          inset: 0;
+          border: 3px solid;
+          border-image: linear-gradient(180deg, #c9a227 0%, #8b6914 30%, #5a4510 50%, #8b6914 70%, #c9a227 100%) 1;
+          border-radius: 14px;
           pointer-events: none;
-          z-index: 3;
         }
-        .hp-fill-v3 {
+        .hp-decoration {
           position: absolute;
-          left: 0;
-          top: 0;
-          height: 100%;
-          border-radius: 10px 0 0 10px;
-          overflow: hidden;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 32px;
+          height: 32px;
         }
-        .hp-fill-v3::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 50%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-          animation: hpShine 4s ease-in-out infinite;
-        }
-        .hp-damage-linger {
-          position: absolute;
-          left: 0;
-          top: 0;
-          height: 100%;
-          background: linear-gradient(180deg, #6a2525 0%, #4a1515 50%, #3a0a0a 100%);
-          opacity: 0.8;
-        }
+        .hp-decoration.left { left: 4px; }
+        .hp-decoration.right { right: 4px; }
       `;
       document.head.appendChild(style);
     }
 
-    // Boss name in epic runic style
-    const bossNameEl = wrapper.createEl("div", {
+    // Tier-based exquisiteness (1-4 simple, 5-8 refined, 9-12 ornate, 13+ legendary)
+    const tierLevel = settings.currentTier <= 4 ? 'simple' : settings.currentTier <= 8 ? 'refined' : settings.currentTier <= 12 ? 'ornate' : 'legendary';
+    const frameColors = {
+      simple: { outer: '#8b7355', inner: '#5a4a3a', glow: 'rgba(139, 115, 85, 0.3)' },
+      refined: { outer: '#b8963f', inner: '#8b6914', glow: 'rgba(184, 150, 63, 0.4)' },
+      ornate: { outer: '#d4a84b', inner: '#c9a227', glow: 'rgba(212, 168, 75, 0.5)' },
+      legendary: { outer: '#ffd700', inner: '#daa520', glow: 'rgba(255, 215, 0, 0.6)' }
+    };
+    const frameStyle = frameColors[tierLevel];
+
+    // Boss name with tier-appropriate styling
+    wrapper.createEl("div", {
       text: `⚔ ${boss?.name || "UNKNOWN"} ⚔`,
       attr: {
         style: `
-          --name-glow: ${hpBarColors.glow};
           font-family: "Times New Roman", serif;
-          font-size: 16px;
+          font-size: ${tierLevel === 'legendary' ? '18px' : tierLevel === 'ornate' ? '17px' : '16px'};
           font-weight: 700;
-          letter-spacing: 4px;
+          letter-spacing: ${tierLevel === 'legendary' ? '5px' : '4px'};
           text-transform: uppercase;
-          color: ${hpBarColors.accent};
+          color: ${frameStyle.outer};
           text-align: center;
-          margin-bottom: 12px;
-          animation: bossNameGlow 4s ease-in-out infinite;
+          margin-bottom: 10px;
+          text-shadow: 0 0 ${tierLevel === 'legendary' ? '15px' : '10px'} ${frameStyle.glow}, 0 2px 4px rgba(0,0,0,0.8);
         `
       }
     });
 
-    // Beautiful HP bar container
+    // Ornate HP bar container
     const hpBarContainer = wrapper.createDiv({
-      cls: "track-habit-rank-hp-bar-container",
+      cls: "ornate-hp-frame",
       attr: {
         style: `
-          width: 100%;
-          margin-bottom: 12px;
           position: relative;
+          margin: 0 auto 16px auto;
+          max-width: 320px;
         `
       }
     });
 
-    // Main bar frame - beautiful 3.0 style
-    const barFrame = hpBarContainer.createDiv({
-      cls: "hp-bar-v3",
+    // Left decoration (tier-based complexity)
+    const leftDeco = hpBarContainer.createDiv({ cls: "hp-decoration left" });
+    leftDeco.innerHTML = tierLevel === 'legendary' ? `
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M28 16 L20 8 L20 12 L8 12 L8 8 L0 16 L8 24 L8 20 L20 20 L20 24 Z" fill="url(#goldGrad)" stroke="#5a4510" stroke-width="1"/>
+        <circle cx="16" cy="16" r="4" fill="#ffd700" stroke="#daa520" stroke-width="1"/>
+        <defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ffd700"/><stop offset="50%" stop-color="#b8860b"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs>
+      </svg>
+    ` : tierLevel === 'ornate' ? `
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M26 16 L18 10 L18 14 L6 14 L6 10 L0 16 L6 22 L6 18 L18 18 L18 22 Z" fill="${frameStyle.outer}" stroke="${frameStyle.inner}" stroke-width="1"/>
+        <circle cx="14" cy="16" r="3" fill="${frameStyle.inner}"/>
+      </svg>
+    ` : `
+      <svg viewBox="0 0 32 32" fill="none">
+        <rect x="6" y="12" width="20" height="8" rx="4" fill="${frameStyle.outer}" stroke="${frameStyle.inner}" stroke-width="1"/>
+      </svg>
+    `;
+
+    // Right decoration (mirror)
+    const rightDeco = hpBarContainer.createDiv({ cls: "hp-decoration right" });
+    rightDeco.innerHTML = leftDeco.innerHTML.replace('left', 'right');
+    rightDeco.style.transform = 'translateY(-50%) scaleX(-1)';
+
+    // Inner bar container
+    const barInner = hpBarContainer.createDiv({
+      cls: "ornate-hp-inner",
       attr: {
         style: `
-          --glow-color: ${hpBarColors.glow};
-          width: 100%;
-          height: 28px;
-          background: linear-gradient(180deg, #1a1815 0%, #0d0b0a 40%, #151310 100%);
-          border: 2px solid ${hpBarColors.border || '#3a3530'};
-          box-shadow: inset 0 3px 8px rgba(0,0,0,0.6),
-                      0 4px 12px rgba(0,0,0,0.4),
-                      ${isCritical ? `0 0 20px ${hpBarColors.glow}` : `0 0 8px ${hpBarColors.glow}`};
-          ${isCritical ? 'animation: hpCriticalPulse 1.5s ease-in-out infinite;' : ''}
+          border: 2px solid ${frameStyle.inner};
+          box-shadow: 0 0 15px ${frameStyle.glow}, inset 0 3px 10px rgba(0,0,0,0.8);
+          ${isCritical ? 'animation: criticalPulse 1s ease-in-out infinite;' : ''}
         `
       }
     });
@@ -1584,49 +1724,35 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
     const startOfDayPercent = (startOfDayHP / settings.bossMaxHP) * 100;
 
-    // Beautiful metallic gradient based on tier
-    const metallicFill = settings.inTartarus
-      ? 'linear-gradient(180deg, #c05050 0%, #a03535 25%, #802525 50%, #a03535 75%, #c05050 100%)'
-      : hpBarColors.accent === '#6a8a5a'
-        ? 'linear-gradient(180deg, #9ac08a 0%, #7aa06a 25%, #5a804a 50%, #7aa06a 75%, #9ac08a 100%)'  // Green
-        : hpBarColors.accent === '#b8a070'
-          ? 'linear-gradient(180deg, #e8d0a0 0%, #c8b080 25%, #a89060 50%, #c8b080 75%, #e8d0a0 100%)'  // Gold
-          : hpBarColors.accent === '#8a6a9a'
-            ? 'linear-gradient(180deg, #ba9aca 0%, #9a7aaa 25%, #7a5a8a 50%, #9a7aaa 75%, #ba9aca 100%)'  // Purple
-            : 'linear-gradient(180deg, #da7a7a 0%, #ba5a5a 25%, #9a3a3a 50%, #ba5a5a 75%, #da7a7a 100%)'; // Crimson
-
-    // Damage linger layer (red area showing today's damage)
+    // Damage linger layer (darker red showing today's damage)
     if (startOfDayPercent > hpFillPercent) {
-      barFrame.createDiv({
-        cls: 'hp-damage-linger',
+      barInner.createDiv({
         attr: {
           style: `
-            width: ${startOfDayPercent}%;
-            border-radius: 10px 0 0 10px;
+            position: absolute;
+            left: 2px;
+            top: 2px;
+            bottom: 2px;
+            width: calc(${startOfDayPercent}% - 4px);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #5a2020 0%, #3a1010 50%, #4a1818 100%);
             transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
           `
         }
       });
     }
 
-    // Main HP fill (continuous bar showing true HP)
-    const hpFill = barFrame.createDiv({
-      cls: 'hp-fill-v3',
+    // Main HP fill with molten/ethereal effect based on tier
+    const fillClass = tierLevel === 'legendary' || tierLevel === 'ornate' ? 'molten' : 'ethereal';
+    barInner.createDiv({
+      cls: `ornate-hp-fill ${fillClass}`,
       attr: {
-        style: `
-          width: ${hpFillPercent}%;
-          background: ${metallicFill};
-          box-shadow: inset 0 2px 0 rgba(255,255,255,0.4),
-                      inset 0 -2px 0 rgba(0,0,0,0.3),
-                      4px 0 8px rgba(0,0,0,0.5);
-          transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-          ${isCritical ? 'animation: hpPulseV3 1.2s ease-in-out infinite;' : ''}
-        `
+        style: `width: calc(${hpFillPercent}% - 4px);`
       }
     });
 
     // HP text overlay centered in bar
-    barFrame.createEl("div", {
+    barInner.createEl("div", {
       text: `${settings.bossCurrentHP} / ${settings.bossMaxHP}`,
       attr: {
         style: `
@@ -1635,11 +1761,11 @@ var TrackRankView = class extends import_obsidian.ItemView {
           top: 50%;
           transform: translate(-50%, -50%);
           font-family: "Times New Roman", serif;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 700;
           letter-spacing: 2px;
           color: #fff;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5);
+          text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7);
           z-index: 4;
           pointer-events: none;
         `
@@ -1653,10 +1779,10 @@ var TrackRankView = class extends import_obsidian.ItemView {
         attr: {
           style: `
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
           `
         }
-      }).innerHTML = `<span style="font-family: Georgia, serif; font-size: 11px; color: #da6a6a; font-style: italic; text-shadow: 0 0 8px rgba(218, 106, 106, 0.3);">−${damageDealt} damage dealt today</span>`;
+      }).innerHTML = `<span style="font-family: Georgia, serif; font-size: 10px; color: #e06050; font-style: italic;">−${damageDealt} today</span>`;
     }
 
     if (boss?.lore) {
@@ -1720,6 +1846,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
 
     // Subdued reward boxes instead of "View Rewards" button
     this.renderRewardBoxes(wrapper, colors);
+    } // End of !inTartarus block for HP bar and rewards
+
     if (!settings.inTartarus && settings.systemState === "active") {
       const allActivities = [
         ...getEffectiveActivities(settings).filter((a) => settings.enabledActivities[a._originalName] ?? true),
@@ -2053,189 +2181,177 @@ var TrackRankView = class extends import_obsidian.ItemView {
   }
 
   /**
-   * Render dual-card swipeable reward carousel (Activity + Streak)
+   * Render two side-by-side reward modals (Activity + Streak) - each with swipeable rewards
    */
   renderRewardBoxes(wrapper, colors) {
     const settings = this.plugin.settings;
     const rewardProgress = this.plugin.getRewardProgress();
 
-    // Add beautiful dual-card carousel styles
-    if (!document.getElementById('track-habit-rank-dual-carousel-v3')) {
+    // Get current reward pool
+    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier) || { options: [] };
+    const rewards = currentPool.options || [];
+
+    // Add dual-modal styles
+    if (!document.getElementById('track-habit-rank-dual-modals-v4')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-dual-carousel-v3';
+      style.id = 'track-habit-rank-dual-modals-v4';
       style.textContent = `
-        @keyframes cardGlow3 {
-          0%, 100% {
-            box-shadow: 0 8px 32px var(--glow-color),
-                        0 0 0 1px var(--border-glow),
-                        inset 0 1px 0 rgba(255,255,255,0.1);
-          }
-          50% {
-            box-shadow: 0 12px 48px var(--glow-color),
-                        0 0 0 1px var(--border-glow),
-                        inset 0 1px 0 rgba(255,255,255,0.15);
-          }
+        @keyframes rewardCardPulse {
+          0%, 100% { box-shadow: 0 4px 20px var(--glow-color); }
+          50% { box-shadow: 0 6px 30px var(--glow-color), 0 0 40px var(--glow-color); }
         }
-        @keyframes segmentShine {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
+        @keyframes claimableGlow {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.15); }
         }
-        @keyframes claimPulse3 {
-          0%, 100% { transform: scale(1); filter: brightness(1); }
-          50% { transform: scale(1.03); filter: brightness(1.15); }
+        @keyframes rewardSlide {
+          0% { opacity: 0; transform: translateX(20px); }
+          100% { opacity: 1; transform: translateX(0); }
         }
-        @keyframes dotPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.3); }
+        .dual-modals-container {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+          padding: 16px 0;
         }
-        .dual-carousel-v3 {
+        .reward-modal-v4 {
+          flex: 1;
+          max-width: 180px;
+          min-height: 160px;
+          background: var(--modal-bg);
+          border: 2px solid var(--modal-border);
+          border-radius: 12px;
+          padding: 14px 12px;
           position: relative;
-          width: 100%;
-          padding: 20px 0;
           overflow: hidden;
+          --glow-color: var(--modal-glow);
+          animation: rewardCardPulse 4s ease-in-out infinite;
         }
-        .carousel-viewport {
+        .reward-modal-v4::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+          pointer-events: none;
+          border-radius: 10px;
+        }
+        .reward-modal-v4.claimable {
+          animation: rewardCardPulse 3s ease-in-out infinite, claimableGlow 2s ease-in-out infinite;
+        }
+        .modal-header-v4 {
+          font-family: "Times New Roman", serif;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          text-align: center;
+          color: var(--modal-text);
+          margin-bottom: 10px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--modal-border);
+        }
+        .modal-progress-v4 {
+          display: flex;
+          justify-content: center;
+          gap: 4px;
+          margin-bottom: 12px;
+        }
+        .progress-pip-v4 {
+          width: 16px;
+          height: 20px;
+          border-radius: 3px;
+          transition: all 0.3s ease;
+        }
+        .progress-pip-v4.filled {
+          background: var(--modal-filled);
+          box-shadow: 0 0 8px var(--modal-glow);
+        }
+        .progress-pip-v4.empty {
+          background: linear-gradient(180deg, #1a1815 0%, #0f0d0a 100%);
+          border: 1px solid rgba(255,255,255,0.05);
+        }
+        .modal-reward-display {
+          position: relative;
+          min-height: 60px;
           display: flex;
           align-items: center;
           justify-content: center;
-          position: relative;
-          height: 140px;
+          margin-bottom: 8px;
         }
-        .reward-card-v3 {
-          position: absolute;
-          width: 150px;
-          padding: 18px 16px;
-          border-radius: 12px;
-          cursor: pointer;
-          transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-          backface-visibility: hidden;
-          will-change: transform, opacity;
-        }
-        .reward-card-v3::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 12px;
-          background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
-          pointer-events: none;
-        }
-        .reward-card-v3::after {
-          content: '';
-          position: absolute;
-          top: -50%;
-          left: -50%;
-          width: 200%;
-          height: 200%;
-          background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
-          opacity: 0;
-          transition: opacity 0.5s ease;
-          pointer-events: none;
-        }
-        .reward-card-v3.active {
-          z-index: 2;
-          transform: translateX(0) scale(1);
-          opacity: 1;
-          animation: cardGlow3 4s ease-in-out infinite;
-        }
-        .reward-card-v3.active::after {
-          opacity: 0.15;
-        }
-        .reward-card-v3.inactive-left {
-          z-index: 1;
-          transform: translateX(-85%) scale(0.8);
-          opacity: 0.35;
-        }
-        .reward-card-v3.inactive-right {
-          z-index: 1;
-          transform: translateX(85%) scale(0.8);
-          opacity: 0.35;
-        }
-        .reward-card-v3.claimable.active {
-          animation: cardGlow3 4s ease-in-out infinite, claimPulse3 2s ease-in-out infinite;
-        }
-        .card-title-v3 {
-          font-family: "Georgia", serif;
-          font-size: 15px;
-          font-style: italic;
+        .reward-item-v4 {
           text-align: center;
-          margin-bottom: 14px;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-          letter-spacing: 0.5px;
+          animation: rewardSlide 0.3s ease-out;
         }
-        .segments-container-v3 {
+        .reward-emoji-v4 {
+          font-size: 28px;
+          margin-bottom: 4px;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+        .reward-name-v4 {
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: var(--modal-text);
+          opacity: 0.9;
+          line-height: 1.3;
+          max-height: 26px;
+          overflow: hidden;
+        }
+        .modal-nav-v4 {
           display: flex;
           justify-content: center;
-          gap: 5px;
-          margin-bottom: 12px;
+          gap: 6px;
+          margin-top: 8px;
         }
-        .segment-v3 {
-          width: 22px;
-          height: 30px;
-          border-radius: 4px;
-          position: relative;
-          overflow: hidden;
+        .modal-nav-dot-v4 {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.2);
+          cursor: pointer;
           transition: all 0.3s ease;
         }
-        .segment-v3.filled {
-          background-size: 200% 100%;
+        .modal-nav-dot-v4.active {
+          background: var(--modal-accent);
+          box-shadow: 0 0 8px var(--modal-glow);
         }
-        .segment-v3.filled::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
-        }
-        .segment-v3.filled::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-          animation: segmentShine 3s ease-in-out infinite;
-        }
-        .segment-v3.empty {
-          background: linear-gradient(180deg, #252220 0%, #151310 50%, #1a1815 100%);
-          box-shadow: inset 0 2px 6px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.03);
-        }
-        .status-text-v3 {
+        .modal-status-v4 {
           font-family: "Georgia", serif;
-          font-size: 12px;
+          font-size: 10px;
+          font-style: italic;
           text-align: center;
-          font-style: italic;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+          color: var(--modal-accent);
+          margin-top: 6px;
+          opacity: 0.9;
         }
-        .carousel-nav-v3 {
-          display: flex;
-          justify-content: center;
-          gap: 12px;
-          margin-top: 16px;
-        }
-        .nav-dot-v3 {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          cursor: pointer;
-          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-          border: 2px solid transparent;
-        }
-        .nav-dot-v3.active {
-          animation: dotPulse 2s ease-in-out infinite;
-        }
-        .swipe-hint {
-          position: absolute;
-          bottom: -8px;
-          left: 50%;
-          transform: translateX(-50%);
+        .modal-swipe-hint {
           font-family: "Georgia", serif;
-          font-size: 9px;
-          color: rgba(255,255,255,0.3);
-          font-style: italic;
+          font-size: 8px;
+          color: rgba(255,255,255,0.25);
+          text-align: center;
+          margin-top: 4px;
         }
       `;
       document.head.appendChild(style);
     }
+
+    // Color schemes - lighter aesthetic
+    const activityColors = {
+      bg: 'linear-gradient(160deg, #1a2820 0%, #141c18 50%, #182420 100%)',
+      border: 'rgba(90, 160, 95, 0.5)',
+      glow: 'rgba(90, 160, 95, 0.35)',
+      text: '#a0e0a5',
+      accent: '#70c875',
+      filled: 'linear-gradient(180deg, #80d885 0%, #5cb860 100%)',
+    };
+
+    const streakColors = {
+      bg: 'linear-gradient(160deg, #282418 0%, #1c1810 50%, #242010 100%)',
+      border: 'rgba(220, 180, 60, 0.5)',
+      glow: 'rgba(220, 180, 60, 0.35)',
+      text: '#f8e070',
+      accent: '#e8c840',
+      filled: 'linear-gradient(180deg, #f0d050 0%, #d4b030 100%)',
+    };
 
     // Progress data
     const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
@@ -2243,138 +2359,32 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const activityClaimable = activityRemaining <= 0;
     const streakClaimable = streakRemaining <= 0;
 
-    // Beautiful card color schemes
-    const activityStyle = {
-      bg: 'linear-gradient(160deg, #1e3222 0%, #0f1a12 40%, #162318 100%)',
-      border: '#4a8a4d',
-      glow: 'rgba(74, 138, 77, 0.5)',
-      borderGlow: 'rgba(90, 160, 95, 0.4)',
-      text: '#8ed492',
-      accent: '#5cb85f',
-      filled: 'linear-gradient(180deg, #7ed482 0%, #5cb85f 40%, #4a9a4d 100%)',
-    };
+    // Create container
+    const container = wrapper.createDiv({ cls: 'dual-modals-container' });
 
-    const streakStyle = {
-      bg: 'linear-gradient(160deg, #2e2815 0%, #1a1408 40%, #252010 100%)',
-      border: '#c9a227',
-      glow: 'rgba(201, 162, 39, 0.5)',
-      borderGlow: 'rgba(220, 180, 50, 0.4)',
-      text: '#f0d860',
-      accent: '#dbb830',
-      filled: 'linear-gradient(180deg, #f0d860 0%, #dbb830 40%, #c9a227 100%)',
-    };
-
-    // Create carousel
-    const carousel = wrapper.createDiv({ cls: 'dual-carousel-v3' });
-    const viewport = carousel.createDiv({ cls: 'carousel-viewport' });
-
-    let currentIndex = 0;
-
-    // Create Activity card
-    const activityCard = this.createRewardCardV3(viewport, {
-      title: `week ${rewardProgress.activityProgress}/${rewardProgress.activityThreshold}`,
+    // Create Activity Modal
+    this.createRewardModalV4(container, {
+      title: 'Activity',
       current: rewardProgress.activityProgress,
       total: rewardProgress.activityThreshold,
       remaining: activityRemaining,
       isClaimable: activityClaimable,
-      style: activityStyle,
-      position: 'active'
+      colors: activityColors,
+      rewards: rewards,
+      type: 'activity'
     });
 
-    // Create Streak card
-    const streakCard = this.createRewardCardV3(viewport, {
-      title: `Streak ${rewardProgress.streakProgress}w`,
+    // Create Streak Modal
+    this.createRewardModalV4(container, {
+      title: 'Streak',
       current: rewardProgress.streakProgress,
       total: rewardProgress.streakThreshold,
       remaining: streakRemaining,
       isClaimable: streakClaimable,
-      style: streakStyle,
-      position: 'inactive-right'
+      colors: streakColors,
+      rewards: rewards,
+      type: 'streak'
     });
-
-    // Navigation dots
-    const nav = carousel.createDiv({ cls: 'carousel-nav-v3' });
-
-    const activityDot = nav.createDiv({
-      cls: 'nav-dot-v3 active',
-      attr: {
-        style: `
-          background: ${activityStyle.accent};
-          box-shadow: 0 0 12px ${activityStyle.glow};
-          border-color: ${activityStyle.text};
-        `
-      }
-    });
-
-    const streakDot = nav.createDiv({
-      cls: 'nav-dot-v3',
-      attr: {
-        style: `
-          background: ${streakStyle.accent}50;
-          border-color: ${streakStyle.accent}50;
-        `
-      }
-    });
-
-    // Swipe hint
-    carousel.createDiv({
-      cls: 'swipe-hint',
-      text: '← swipe →'
-    });
-
-    // Update function
-    const updateCarousel = (index) => {
-      currentIndex = index;
-      if (index === 0) {
-        activityCard.className = 'reward-card-v3 active' + (activityClaimable ? ' claimable' : '');
-        streakCard.className = 'reward-card-v3 inactive-right' + (streakClaimable ? ' claimable' : '');
-        activityDot.className = 'nav-dot-v3 active';
-        activityDot.style.background = activityStyle.accent;
-        activityDot.style.boxShadow = `0 0 12px ${activityStyle.glow}`;
-        activityDot.style.borderColor = activityStyle.text;
-        streakDot.className = 'nav-dot-v3';
-        streakDot.style.background = `${streakStyle.accent}50`;
-        streakDot.style.boxShadow = 'none';
-        streakDot.style.borderColor = `${streakStyle.accent}50`;
-      } else {
-        streakCard.className = 'reward-card-v3 active' + (streakClaimable ? ' claimable' : '');
-        activityCard.className = 'reward-card-v3 inactive-left' + (activityClaimable ? ' claimable' : '');
-        streakDot.className = 'nav-dot-v3 active';
-        streakDot.style.background = streakStyle.accent;
-        streakDot.style.boxShadow = `0 0 12px ${streakStyle.glow}`;
-        streakDot.style.borderColor = streakStyle.text;
-        activityDot.className = 'nav-dot-v3';
-        activityDot.style.background = `${activityStyle.accent}50`;
-        activityDot.style.boxShadow = 'none';
-        activityDot.style.borderColor = `${activityStyle.accent}50`;
-      }
-    };
-
-    // Touch handling
-    let touchStartX = 0;
-    viewport.addEventListener('touchstart', (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-
-    viewport.addEventListener('touchend', (e) => {
-      const diff = touchStartX - e.changedTouches[0].screenX;
-      if (Math.abs(diff) > 40) {
-        updateCarousel(diff > 0 ? 1 : 0);
-      }
-    }, { passive: true });
-
-    // Click handlers
-    activityDot.onclick = () => updateCarousel(0);
-    streakDot.onclick = () => updateCarousel(1);
-
-    activityCard.onclick = () => {
-      if (currentIndex !== 0) updateCarousel(0);
-      else new RewardLogModal(this.app, this.plugin).open();
-    };
-    streakCard.onclick = () => {
-      if (currentIndex !== 1) updateCarousel(1);
-      else new RewardLogModal(this.app, this.plugin).open();
-    };
 
     // Pending rewards badge
     const pendingRewards = settings.pendingRewards || [];
@@ -2383,19 +2393,145 @@ var TrackRankView = class extends import_obsidian.ItemView {
         attr: {
           style: `
             text-align: center;
-            margin-top: 12px;
+            margin-top: 8px;
             padding: 8px 16px;
-            background: linear-gradient(90deg, transparent, rgba(212, 168, 75, 0.1), transparent);
-            border-top: 1px solid rgba(212, 168, 75, 0.2);
-            border-bottom: 1px solid rgba(212, 168, 75, 0.2);
+            background: linear-gradient(90deg, transparent, rgba(212, 168, 75, 0.08), transparent);
+            border-top: 1px solid rgba(212, 168, 75, 0.15);
           `
         }
-      }).innerHTML = `<span style="font-family: Georgia, serif; font-size: 11px; color: #f0d860; font-style: italic; text-shadow: 0 0 10px rgba(240, 216, 96, 0.3);">✦ ${pendingRewards.length} reward${pendingRewards.length > 1 ? 's' : ''} ready to claim! ✦</span>`;
+      }).innerHTML = `<span style="font-family: Georgia, serif; font-size: 10px; color: #f0d860; font-style: italic;">✦ ${pendingRewards.length} reward${pendingRewards.length > 1 ? 's' : ''} ready ✦</span>`;
     }
   }
 
   /**
-   * Create a beautiful v3 reward progress card
+   * Create a swipeable reward modal (v4)
+   */
+  createRewardModalV4(container, { title, current, total, remaining, isClaimable, colors, rewards, type }) {
+    const modal = container.createDiv({
+      cls: `reward-modal-v4${isClaimable ? ' claimable' : ''}`,
+      attr: {
+        style: `
+          --modal-bg: ${colors.bg};
+          --modal-border: ${colors.border};
+          --modal-glow: ${colors.glow};
+          --modal-text: ${colors.text};
+          --modal-accent: ${colors.accent};
+          --modal-filled: ${colors.filled};
+        `
+      }
+    });
+
+    // Header
+    modal.createEl('div', {
+      cls: 'modal-header-v4',
+      text: title
+    });
+
+    // Progress pips
+    const progressContainer = modal.createDiv({ cls: 'modal-progress-v4' });
+    const maxPips = Math.min(total, 5);
+    const ratio = total / maxPips;
+    const filledPips = Math.min(Math.ceil(current / ratio), maxPips);
+
+    for (let i = 0; i < maxPips; i++) {
+      progressContainer.createDiv({
+        cls: `progress-pip-v4 ${i < filledPips ? 'filled' : 'empty'}`
+      });
+    }
+
+    // Reward display area (swipeable)
+    const rewardDisplay = modal.createDiv({ cls: 'modal-reward-display' });
+    let currentRewardIndex = 0;
+
+    const updateRewardDisplay = () => {
+      rewardDisplay.empty();
+      if (rewards.length === 0) {
+        rewardDisplay.createEl('div', {
+          cls: 'reward-item-v4',
+          attr: { style: 'opacity: 0.5;' }
+        }).innerHTML = `<div class="reward-emoji-v4">🎁</div><div class="reward-name-v4">No rewards set</div>`;
+        return;
+      }
+      const reward = rewards[currentRewardIndex % rewards.length];
+      const rewardItem = rewardDisplay.createDiv({ cls: 'reward-item-v4' });
+      rewardItem.innerHTML = `
+        <div class="reward-emoji-v4">${reward.emoji || '🎁'}</div>
+        <div class="reward-name-v4">${(reward.description || 'Reward').substring(0, 30)}</div>
+      `;
+    };
+
+    updateRewardDisplay();
+
+    // Navigation dots
+    if (rewards.length > 1) {
+      const navContainer = modal.createDiv({ cls: 'modal-nav-v4' });
+      const dots = [];
+
+      for (let i = 0; i < Math.min(rewards.length, 5); i++) {
+        const dot = navContainer.createDiv({
+          cls: `modal-nav-dot-v4${i === 0 ? ' active' : ''}`
+        });
+        dot.onclick = () => {
+          currentRewardIndex = i;
+          updateRewardDisplay();
+          dots.forEach((d, idx) => {
+            d.className = `modal-nav-dot-v4${idx === i ? ' active' : ''}`;
+          });
+        };
+        dots.push(dot);
+      }
+
+      // Swipe handling
+      let touchStartX = 0;
+      rewardDisplay.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      rewardDisplay.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > 30) {
+          if (diff > 0) {
+            currentRewardIndex = (currentRewardIndex + 1) % rewards.length;
+          } else {
+            currentRewardIndex = (currentRewardIndex - 1 + rewards.length) % rewards.length;
+          }
+          updateRewardDisplay();
+          dots.forEach((d, idx) => {
+            d.className = `modal-nav-dot-v4${idx === (currentRewardIndex % dots.length) ? ' active' : ''}`;
+          });
+        }
+      }, { passive: true });
+
+      // Click to cycle
+      rewardDisplay.onclick = () => {
+        currentRewardIndex = (currentRewardIndex + 1) % rewards.length;
+        updateRewardDisplay();
+        dots.forEach((d, idx) => {
+          d.className = `modal-nav-dot-v4${idx === (currentRewardIndex % dots.length) ? ' active' : ''}`;
+        });
+      };
+
+      modal.createEl('div', { cls: 'modal-swipe-hint', text: '← swipe →' });
+    }
+
+    // Status
+    modal.createEl('div', {
+      cls: 'modal-status-v4',
+      text: isClaimable ? '✦ Claim!' : `${remaining} to go`
+    });
+
+    // Click to open reward log
+    modal.onclick = (e) => {
+      if (!e.target.closest('.modal-nav-v4') && !e.target.closest('.modal-reward-display')) {
+        new RewardLogModal(this.app, this.plugin).open();
+      }
+    };
+
+    return modal;
+  }
+
+  /**
+   * Create a beautiful v3 reward progress card (legacy, kept for compatibility)
    */
   createRewardCardV3(container, { title, current, total, remaining, isClaimable, style, position }) {
     const card = container.createDiv({
@@ -4367,6 +4503,58 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
         `
       }
     });
+    // Add "Choose Boss" option to developer dashboard
+    const bossSection = content.createDiv({ attr: { style: "margin-bottom: 16px;" } });
+    bossSection.createEl("div", {
+      text: "Choose Boss Tier:",
+      attr: { style: "font-weight: 600; margin-bottom: 8px;" }
+    });
+
+    const bossRow = bossSection.createDiv({
+      attr: { style: "display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" }
+    });
+
+    const tierSelect = bossRow.createEl("select", {
+      attr: {
+        style: `
+          padding: 8px 12px;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
+          background: var(--background-secondary);
+          color: var(--text-normal);
+          min-width: 180px;
+        `
+      }
+    });
+
+    // Add tier options
+    for (let t = 1; t <= 26; t++) {
+      const boss = getCustomizedBossForTier(t, settings);
+      const opt = tierSelect.createEl("option", {
+        text: `Tier ${t}: ${boss?.name || 'Unknown'}`,
+        attr: { value: t.toString() }
+      });
+      if (t === settings.currentTier) opt.selected = true;
+    }
+
+    const setTierBtn = bossRow.createEl("button", {
+      text: "Set Tier",
+      cls: "track-habit-rank-btn",
+      attr: { style: "padding: 8px 16px; min-height: 44px;" }
+    });
+    setTierBtn.onclick = async () => {
+      const newTier = parseInt(tierSelect.value);
+      const oldTier = this.plugin.settings.currentTier;
+      this.plugin.settings.currentTier = newTier;
+      this.plugin.settings.bossMaxHP = calculateBossMaxHP(newTier, this.plugin.settings);
+      this.plugin.settings.bossCurrentHP = this.plugin.settings.bossMaxHP;
+      debugLog.log("DEV", "Boss tier changed", { oldTier, newTier });
+      await this.plugin.saveSettings();
+      this.plugin.refreshRankView();
+      this.render();
+      new import_obsidian.Notice(`Changed to Tier ${newTier}`);
+    };
+
     const dateSection = content.createDiv({ attr: { style: "margin-bottom: 16px;" } });
     dateSection.createEl("div", {
       text: "Simulate Date (override effective time):",
