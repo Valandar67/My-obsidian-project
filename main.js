@@ -1379,9 +1379,35 @@ var TrackRankView = class extends import_obsidian.ItemView {
               object-fit: cover;
               filter: grayscale(0.2) contrast(1.1) brightness(0.95) sepia(0.1);
               transition: filter 0.6s ease, transform 0.6s ease, opacity 0.6s ease;
+              cursor: pointer;
             `
           }
         });
+
+        // Click boss to see rewards
+        img.onclick = () => {
+          const pendingRewards = settings.pendingRewards || [];
+          if (pendingRewards.length > 0) {
+            // Open selection for first pending reward
+            new RewardSelectionModal(this.app, this.plugin, pendingRewards[0], () => {
+              this.plugin.refreshRankView();
+            }).open();
+          } else {
+            // No pending rewards, show reward log
+            new RewardLogModal(this.app, this.plugin).open();
+          }
+        };
+
+        // Hover effect
+        img.onmouseenter = () => {
+          img.style.transform = 'scale(1.02)';
+          img.style.filter = 'grayscale(0.1) contrast(1.15) brightness(1) sepia(0.05)';
+        };
+        img.onmouseleave = () => {
+          img.style.transform = 'scale(1)';
+          img.style.filter = 'grayscale(0.2) contrast(1.1) brightness(0.95) sepia(0.1)';
+        };
+
         img.onerror = () => {
           imgContainer.remove();
         };
@@ -1521,7 +1547,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       </svg>
     `;
 
-    // Main bar frame
+    // Main bar frame - continuous HP display
     const barFrame = hpBarContainer.createDiv({
       cls: "track-habit-rank-hp-bar-frame",
       attr: {
@@ -1533,20 +1559,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
           border-top: 1px solid #4a4030;
           border-bottom: 1px solid #1a1510;
           position: relative;
-          display: flex;
-          gap: 2px;
-          padding: 2px;
+          overflow: hidden;
           ${isCritical ? 'animation: hpGlowPulse 1.5s ease-in-out infinite;' : ''}
         `
       }
     });
 
-    // Calculate filled segments
-    const filledSegments = Math.ceil((settings.bossCurrentHP / settings.bossMaxHP) * segmentCount);
-
-    // Damage lingering segments (shows HP at start of day)
+    // Calculate true HP percentages
+    const hpFillPercent = (settings.bossCurrentHP / settings.bossMaxHP) * 100;
     const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
-    const startOfDaySegments = Math.ceil((startOfDayHP / settings.bossMaxHP) * segmentCount);
+    const startOfDayPercent = (startOfDayHP / settings.bossMaxHP) * 100;
 
     // Metallic gradient based on tier
     const metallicFill = settings.inTartarus
@@ -1559,30 +1581,67 @@ var TrackRankView = class extends import_obsidian.ItemView {
             ? 'linear-gradient(180deg, #aa8aba 0%, #8a6a9a 20%, #6a4a7a 50%, #8a6a9a 80%, #aa8aba 100%)'  // Purple
             : 'linear-gradient(180deg, #ba6a6a 0%, #9a4a4a 20%, #7a3030 50%, #9a4a4a 80%, #ba6a6a 100%)'; // Crimson
 
-    // Create individual plate segments
-    for (let i = 0; i < segmentCount; i++) {
-      const isFilled = i < filledSegments;
-      const wasFilled = i < startOfDaySegments && i >= filledSegments; // Damage linger
-
-      const segment = barFrame.createDiv({
-        cls: `ornate-hp-segment ${isFilled ? 'filled' : 'empty'}`,
+    // Damage linger layer (red area showing today's damage)
+    if (startOfDayPercent > hpFillPercent) {
+      barFrame.createDiv({
         attr: {
           style: `
-            --segment-fill: ${metallicFill};
-            flex: 1;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: ${startOfDayPercent}%;
             height: 100%;
-            background: ${isFilled
-              ? metallicFill
-              : wasFilled
-                ? 'linear-gradient(180deg, #5a2a2a 0%, #4a1a1a 50%, #3a1010 100%)'
-                : 'linear-gradient(180deg, #1a1510 0%, #0d0a08 50%, #1a1510 100%)'
-            };
-            border-radius: 1px;
-            box-shadow: ${isFilled
-              ? 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.4), 0 0 2px rgba(0,0,0,0.5)'
-              : 'inset 0 1px 2px rgba(0,0,0,0.5)'
-            };
-            ${isCritical && isFilled ? 'animation: hpPulseOrnate 1.5s ease-in-out infinite;' : ''}
+            background: linear-gradient(180deg, #5a2a2a 0%, #4a1a1a 50%, #3a1010 100%);
+            transition: width 0.5s ease;
+          `
+        }
+      });
+    }
+
+    // Main HP fill (continuous bar showing true HP)
+    const hpFill = barFrame.createDiv({
+      attr: {
+        style: `
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: ${hpFillPercent}%;
+          height: 100%;
+          background: ${metallicFill};
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.4), 2px 0 4px rgba(0,0,0,0.5);
+          transition: width 0.5s ease;
+          ${isCritical ? 'animation: hpPulseOrnate 1.5s ease-in-out infinite;' : ''}
+        `
+      }
+    });
+
+    // Add subtle segment lines overlay for visual texture (decorative only)
+    const segmentOverlay = barFrame.createDiv({
+      attr: {
+        style: `
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          gap: 0;
+          pointer-events: none;
+        `
+      }
+    });
+
+    // Add thin segment dividers for texture
+    for (let i = 1; i < segmentCount; i++) {
+      segmentOverlay.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            left: ${(i / segmentCount) * 100}%;
+            top: 2px;
+            bottom: 2px;
+            width: 1px;
+            background: rgba(0, 0, 0, 0.3);
           `
         }
       });
@@ -1642,10 +1701,10 @@ var TrackRankView = class extends import_obsidian.ItemView {
     });
 
     // Show damage dealt today if any
-    if (startOfDaySegments > filledSegments) {
+    if (startOfDayPercent > hpFillPercent) {
       const damageDealt = startOfDayHP - settings.bossCurrentHP;
       hpInfoContainer.createEl("div", {
-        text: `\u2212${damageDealt} today`,
+        text: `−${damageDealt} today`,
         attr: {
           style: `
             font-family: "Georgia", serif;
@@ -2057,227 +2116,223 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const settings = this.plugin.settings;
     const rewardProgress = this.plugin.getRewardProgress();
 
-    // Add center-focused carousel styles if not present
-    if (!document.getElementById('track-habit-rank-center-carousel-styles')) {
+    // Add priority carousel styles
+    if (!document.getElementById('track-habit-rank-priority-carousel-styles')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-center-carousel-styles';
+      style.id = 'track-habit-rank-priority-carousel-styles';
       style.textContent = `
-        @keyframes ancientGlow {
-          0%, 100% {
-            box-shadow: 0 0 8px rgba(184, 160, 112, 0.3), inset 0 0 12px rgba(184, 160, 112, 0.1);
-          }
-          50% {
-            box-shadow: 0 0 16px rgba(184, 160, 112, 0.5), inset 0 0 20px rgba(184, 160, 112, 0.2);
-          }
+        @keyframes progressGlow {
+          0%, 100% { box-shadow: 0 0 8px var(--glow-color, rgba(122, 154, 125, 0.4)); }
+          50% { box-shadow: 0 0 16px var(--glow-color, rgba(122, 154, 125, 0.6)); }
         }
-        @keyframes runeShimmer {
-          0% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-          100% { opacity: 0.4; }
+        @keyframes claimPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 12px var(--glow-color); }
+          50% { transform: scale(1.02); box-shadow: 0 0 24px var(--glow-color); }
         }
-        .center-carousel-container {
-          position: relative;
-          overflow: hidden;
-          padding: 12px 0;
-        }
-        .center-carousel {
+        .priority-carousel {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 12px;
           overflow-x: auto;
           scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
-          padding: 8px calc(50% - 55px);
+          padding: 16px 8px;
         }
-        .center-carousel::-webkit-scrollbar { display: none; }
-        .center-card {
+        .priority-carousel::-webkit-scrollbar { display: none; }
+        .progress-card {
           flex: 0 0 auto;
           scroll-snap-align: center;
           transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          cursor: pointer;
         }
-        .center-card.side {
-          opacity: 0.6;
+        .progress-card.side {
+          opacity: 0.5;
           transform: scale(0.85);
         }
-        .center-card.center {
+        .progress-card.center {
           opacity: 1;
           transform: scale(1);
         }
-        .center-card.earned {
-          animation: ancientGlow 3s ease-in-out infinite;
-        }
-        .center-card.locked {
-          filter: grayscale(0.7) brightness(0.6);
+        .progress-card.claimable {
+          animation: claimPulse 2s ease-in-out infinite;
         }
       `;
       document.head.appendChild(style);
     }
 
-    // Reward section container
-    const rewardSection = wrapper.createDiv({
-      attr: {
-        style: `
-          margin: 16px 0;
-          padding: 8px 0;
-          background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 100%);
-          border: 1px solid ${colors.greenBorder};
-          position: relative;
-        `
-      }
-    });
-
-    // Section header with progress
+    // Calculate progress data
     const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
-    const header = rewardSection.createDiv({
-      attr: {
-        style: `
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 12px;
-          padding: 0 12px 8px 12px;
-        `
-      }
+    const streakRemaining = rewardProgress.streakThreshold - rewardProgress.streakProgress;
+    const pendingRewards = settings.pendingRewards || [];
+
+    // Build priority-ordered cards
+    const progressCards = [];
+
+    // First: Add any pending/claimable rewards (highest priority)
+    pendingRewards.forEach((reward, idx) => {
+      progressCards.push({
+        type: 'claimable',
+        title: reward.rewardType === 'activity' ? 'Activity' : reward.rewardType === 'streak' ? 'Streak' : 'Boss',
+        subtitle: 'READY!',
+        current: 1,
+        total: 1,
+        remaining: 0,
+        color: '#d4a84b', // Gold for claimable
+        borderColor: '#b8963f',
+        reward: reward,
+        priority: 0
+      });
     });
 
-    header.createEl("div", {
-      text: `${activityRemaining} to next reward`,
-      attr: {
-        style: `
-          font-family: "Georgia", serif;
-          font-size: 10px;
-          font-style: italic;
-          color: ${colors.textMuted};
-        `
-      }
+    // Second: Activity progress (green)
+    progressCards.push({
+      type: 'activity',
+      title: `week ${rewardProgress.activityProgress}/${rewardProgress.activityThreshold}`,
+      subtitle: '',
+      current: rewardProgress.activityProgress,
+      total: rewardProgress.activityThreshold,
+      remaining: activityRemaining,
+      color: '#7a9a7d', // Green
+      borderColor: '#5a7a5d',
+      priority: activityRemaining === 0 ? 0 : 1
     });
 
-    // Pending badge
-    if (rewardProgress.pendingCount > 0) {
-      header.createEl("div", {
-        text: `${rewardProgress.pendingCount} unclaimed`,
+    // Third: Streak progress (gold/yellow)
+    progressCards.push({
+      type: 'streak',
+      title: `Streak ${rewardProgress.streakProgress}w`,
+      subtitle: '',
+      current: rewardProgress.streakProgress,
+      total: rewardProgress.streakThreshold,
+      remaining: streakRemaining,
+      color: '#d4a84b', // Gold/yellow
+      borderColor: '#b8963f',
+      priority: streakRemaining === 0 ? 0 : 2
+    });
+
+    // Sort by priority (claimable first, then closest to completion)
+    progressCards.sort((a, b) => a.priority - b.priority);
+
+    // Create carousel
+    const carousel = wrapper.createDiv({ cls: 'priority-carousel' });
+
+    progressCards.forEach((cardData, index) => {
+      const isCenter = index === 0; // First card (highest priority) is centered
+      const isClaimable = cardData.type === 'claimable' || cardData.remaining === 0;
+
+      const card = carousel.createDiv({
+        cls: `progress-card ${isCenter ? 'center' : 'side'} ${isClaimable ? 'claimable' : ''}`,
+        attr: {
+          style: `
+            --glow-color: ${cardData.color}80;
+            width: ${isCenter ? '130px' : '110px'};
+            padding: 12px 16px;
+            background: linear-gradient(180deg, #1a1815 0%, #0f0d0a 100%);
+            border: 2px solid ${cardData.borderColor};
+            border-radius: 4px;
+          `
+        }
+      });
+
+      // Card title
+      card.createEl('div', {
+        text: cardData.title,
         attr: {
           style: `
             font-family: "Georgia", serif;
-            font-size: 9px;
-            color: ${colors.gold};
-            padding: 2px 8px;
-            border: 1px solid ${colors.goldMuted};
-            background: rgba(154, 140, 122, 0.1);
+            font-size: ${isCenter ? '14px' : '12px'};
+            font-style: italic;
+            color: ${cardData.color};
+            text-align: center;
+            margin-bottom: 10px;
           `
         }
       });
-    }
 
-    // Center-focused carousel container
-    const carouselContainer = rewardSection.createDiv({ cls: "center-carousel-container" });
-    const carousel = carouselContainer.createDiv({ cls: "center-carousel" });
-
-    // Collect all cards to render
-    const cards = [];
-    const tierDisplayNames = {
-      micro: "Micro",
-      mini: "Mini",
-      standard: "Standard",
-      quality: "Quality",
-      premium: "Premium"
-    };
-    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
-    const pendingRewards = settings.pendingRewards || [];
-
-    // Add pending rewards first
-    pendingRewards.forEach((reward) => {
-      const pool = settings.rewardPools?.find(p => p.tier === reward.rewardTier);
-      const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
-      cards.push({
-        emoji: option?.emoji || "🎁",
-        image: option?.image || "",
-        name: option?.description || "Unclaimed",
-        effect: tierDisplayNames[reward.rewardTier] || "Reward",
-        isEarned: true,
-        isLocked: false
-      });
-    });
-
-    // Add available rewards from current pool
-    if (currentPool?.options) {
-      currentPool.options.slice(0, 3).forEach((option) => {
-        const isPending = pendingRewards.some(r => r.selectedOptionId === option.id);
-        if (isPending) return;
-        cards.push({
-          emoji: option.emoji || "🎁",
-          image: option.image || "",
-          name: option.description,
-          effect: `${activityRemaining} more`,
-          isEarned: false,
-          isLocked: true
-        });
-      });
-    }
-
-    // Ensure we have at least 3 cards for the carousel effect
-    while (cards.length < 3) {
-      cards.push({
-        emoji: "🎁",
-        image: "",
-        name: "Future Reward",
-        effect: "Keep going",
-        isEarned: false,
-        isLocked: true
-      });
-    }
-
-    // Render cards with center/side positioning
-    cards.forEach((cardData, index) => {
-      const isCenter = index === Math.floor(cards.length / 2) || (cards.length <= 2 && index === 0);
-      this.createCenterCard(carousel, cardData, isCenter, colors, () => {
-        new RewardLogModal(this.app, this.plugin).open();
-      });
-    });
-
-    // Scroll hint indicators
-    if (cards.length > 3) {
-      const scrollHint = rewardSection.createDiv({
+      // Progress bar container
+      const progressContainer = card.createDiv({
         attr: {
           style: `
-            text-align: center;
-            margin-top: 4px;
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 8px;
           `
         }
       });
-      for (let i = 0; i < Math.min(cards.length, 5); i++) {
-        scrollHint.createEl("span", {
-          text: "•",
+
+      // Calculate segment display (max 5 visible segments for UI clarity)
+      const maxVisibleSegments = Math.min(cardData.total, 5);
+      const segmentRatio = cardData.total / maxVisibleSegments;
+      const filledVisibleSegments = Math.min(Math.ceil(cardData.current / segmentRatio), maxVisibleSegments);
+
+      // Create progress segments
+      for (let i = 0; i < maxVisibleSegments; i++) {
+        const isFilled = i < filledVisibleSegments;
+        const segmentWidth = isCenter ? '20px' : '16px';
+        const segmentHeight = isCenter ? '24px' : '20px';
+
+        progressContainer.createDiv({
           attr: {
             style: `
-              font-size: 8px;
-              color: ${i === Math.floor(cards.length / 2) ? colors.gold : colors.textMuted};
-              margin: 0 2px;
-              opacity: 0.6;
+              width: ${segmentWidth};
+              height: ${segmentHeight};
+              background: ${isFilled
+                ? `linear-gradient(180deg, ${cardData.color} 0%, ${cardData.borderColor} 100%)`
+                : 'linear-gradient(180deg, #2a2520 0%, #1a1510 100%)'
+              };
+              border: 1px solid ${isFilled ? cardData.color : '#3a3530'};
+              border-radius: 2px;
+              box-shadow: ${isFilled ? `inset 0 1px 0 rgba(255,255,255,0.2), 0 0 4px ${cardData.color}40` : 'inset 0 1px 2px rgba(0,0,0,0.4)'};
             `
           }
         });
       }
-    }
 
-    // View all link
-    rewardSection.createEl("div", {
-      text: "View All Rewards →",
-      attr: {
-        style: `
-          text-align: center;
-          margin-top: 8px;
-          font-family: "Georgia", serif;
-          font-size: 10px;
-          color: ${colors.textMuted};
-          cursor: pointer;
-          opacity: 0.7;
-          transition: opacity 0.2s ease;
-        `
-      }
-    }).onclick = () => new RewardLogModal(this.app, this.plugin).open();
+      // Remaining text
+      card.createEl('div', {
+        text: isClaimable ? 'Claim!' : `${cardData.remaining} more`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: ${isCenter ? '11px' : '10px'};
+            color: ${isClaimable ? cardData.color : colors.textMuted};
+            text-align: center;
+            font-style: italic;
+          `
+        }
+      });
+
+      // Click handler
+      card.onclick = () => {
+        if (cardData.type === 'claimable' && cardData.reward) {
+          new RewardSelectionModal(this.app, this.plugin, cardData.reward, () => {
+            this.plugin.refreshRankView();
+          }).open();
+        } else {
+          new RewardLogModal(this.app, this.plugin).open();
+        }
+      };
+    });
+
+    // Unclaimed count badge if any
+    if (pendingRewards.length > 0) {
+      wrapper.createEl('div', {
+        text: `${pendingRewards.length} reward${pendingRewards.length > 1 ? 's' : ''} ready to claim!`,
+        attr: {
+          style: `
+            text-align: center;
+            font-family: "Georgia", serif;
+            font-size: 10px;
+            color: #d4a84b;
+            margin-top: 4px;
+            font-style: italic;
+          `
+        }
+      });
+    }
   }
 
   /**

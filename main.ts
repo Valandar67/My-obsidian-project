@@ -3307,7 +3307,164 @@ class RewardSelectionModal extends Modal {
           font-size: 12px;
           font-style: italic;
           color: #8a7a65;
+          margin-bottom: 16px;
+        `
+      }
+    });
+
+    // Progress cards section (like the image)
+    const rewardProgress = this.plugin.getRewardProgress();
+    const progressCardsContainer = container.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          justify-content: center;
+          gap: 16px;
           margin-bottom: 20px;
+        `
+      }
+    });
+
+    // Activity progress card
+    const activityCard = progressCardsContainer.createDiv({
+      attr: {
+        style: `
+          width: 120px;
+          padding: 12px;
+          background: linear-gradient(180deg, #1a1815 0%, #0f0d0a 100%);
+          border: 2px solid #5a7a5d;
+          border-radius: 4px;
+        `
+      }
+    });
+
+    activityCard.createEl('div', {
+      text: `week ${rewardProgress.activityProgress}/${rewardProgress.activityThreshold}`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 12px;
+          font-style: italic;
+          color: #7a9a7d;
+          text-align: center;
+          margin-bottom: 8px;
+        `
+      }
+    });
+
+    // Activity progress bar
+    const activityProgressBar = activityCard.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          justify-content: center;
+          gap: 3px;
+          margin-bottom: 6px;
+        `
+      }
+    });
+
+    const activitySegments = Math.min(rewardProgress.activityThreshold, 5);
+    const activityFilled = Math.min(Math.ceil((rewardProgress.activityProgress / rewardProgress.activityThreshold) * activitySegments), activitySegments);
+    for (let i = 0; i < activitySegments; i++) {
+      activityProgressBar.createDiv({
+        attr: {
+          style: `
+            width: 18px;
+            height: 22px;
+            background: ${i < activityFilled
+              ? 'linear-gradient(180deg, #7a9a7d 0%, #5a7a5d 100%)'
+              : 'linear-gradient(180deg, #2a2520 0%, #1a1510 100%)'
+            };
+            border: 1px solid ${i < activityFilled ? '#7a9a7d' : '#3a3530'};
+            border-radius: 2px;
+          `
+        }
+      });
+    }
+
+    const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
+    activityCard.createEl('div', {
+      text: activityRemaining === 0 ? 'Complete!' : `${activityRemaining} more`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: #5a6a5d;
+          text-align: center;
+          font-style: italic;
+        `
+      }
+    });
+
+    // Streak progress card
+    const streakCard = progressCardsContainer.createDiv({
+      attr: {
+        style: `
+          width: 120px;
+          padding: 12px;
+          background: linear-gradient(180deg, #1a1815 0%, #0f0d0a 100%);
+          border: 2px solid #b8963f;
+          border-radius: 4px;
+        `
+      }
+    });
+
+    streakCard.createEl('div', {
+      text: `Streak ${rewardProgress.streakProgress}w`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 12px;
+          font-style: italic;
+          color: #d4a84b;
+          text-align: center;
+          margin-bottom: 8px;
+        `
+      }
+    });
+
+    // Streak progress bar
+    const streakProgressBar = streakCard.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          justify-content: center;
+          gap: 3px;
+          margin-bottom: 6px;
+        `
+      }
+    });
+
+    const streakSegments = Math.min(rewardProgress.streakThreshold, 5);
+    const streakFilled = Math.min(Math.ceil((rewardProgress.streakProgress / rewardProgress.streakThreshold) * streakSegments), streakSegments);
+    for (let i = 0; i < streakSegments; i++) {
+      streakProgressBar.createDiv({
+        attr: {
+          style: `
+            width: 18px;
+            height: 22px;
+            background: ${i < streakFilled
+              ? 'linear-gradient(180deg, #d4a84b 0%, #b8963f 100%)'
+              : 'linear-gradient(180deg, #2a2520 0%, #1a1510 100%)'
+            };
+            border: 1px solid ${i < streakFilled ? '#d4a84b' : '#3a3530'};
+            border-radius: 2px;
+          `
+        }
+      });
+    }
+
+    const streakRemaining = rewardProgress.streakThreshold - rewardProgress.streakProgress;
+    streakCard.createEl('div', {
+      text: streakRemaining === 0 ? 'Complete!' : `${streakRemaining} more`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          color: #8a7a55;
+          text-align: center;
+          font-style: italic;
         `
       }
     });
