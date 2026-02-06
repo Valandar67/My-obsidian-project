@@ -225,8 +225,8 @@ var RANK_TIER_COLORS = {
   22: "#DC2626",
   23: "#7C3AED",
   24: "#7C3AED",
-  25: "#BE185D",
-  26: "#BE185D"
+  25: "#c9a227",  // Royal gold - excellent
+  26: "#c9a227"   // Royal gold - excellent
 };
 function getBossForTier(tier) {
   return BOSSES.find((b) => tier >= b.tier[0] && tier <= b.tier[1]) || null;
@@ -396,7 +396,10 @@ var DEFAULT_SETTINGS = {
   pendingRewards: [],
   claimedRewards: [],
   bankedRewards: [],
-  lastRewardCheck: null
+  lastRewardCheck: null,
+  // Tier figure settings
+  tierFigures: [],  // Array of { tier, image, position ('left' or 'right'), hideTierTitle }
+  showTierFigure: false
 };
 function todayISO() {
   const d = /* @__PURE__ */ new Date();
@@ -552,13 +555,21 @@ function getTierHPBarColors(tier, inTartarus) {
       glow: 'rgba(138, 106, 154, 0.3)',
       accent: '#8a6a9a'
     };
-  } else {
-    // Crimson (tier 13+)
+  } else if (tier <= 24) {
+    // Crimson (tier 13-24)
     return {
       fill: 'linear-gradient(180deg, #9a4a4a 0%, #7a3030 30%, #6a2020 70%, #5a1010 100%)',
       border: '#4a2020',
       glow: 'rgba(154, 74, 74, 0.3)',
       accent: '#9a4a4a'
+    };
+  } else {
+    // Tier 25-26: Excellent but Dangerous - Royal gold with dark crimson undertones
+    return {
+      fill: 'linear-gradient(180deg, #c9a227 0%, #a08020 20%, #8b6914 40%, #6a3010 60%, #5a2010 80%, #4a1510 100%)',
+      border: '#5a3010',
+      glow: 'rgba(201, 162, 39, 0.4)',
+      accent: '#c9a227'
     };
   }
 }
@@ -1117,22 +1128,25 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const rankName = getRankNameForTier(settings.currentTier, settings);
     const barColor = getProgressBarColor(settings.currentTier, settings.inTartarus);
 
-    // Color palette: lighter aesthetic with gold and green accents
+    // Color palette: Gothic moodboard aesthetic - lighter variant with gold/bronze, deep red
     const colors = {
-      gold: "#b8a070",
-      goldLight: "#d0c0a0",
-      goldMuted: "#8a7a5a",
-      goldBorder: "#4a4030",
-      green: "#8aaa8d",
-      greenLight: "#a0c0a5",
-      greenMuted: "#6a8a6d",
-      greenBorder: "#3a4a3d",
-      bg: "#121418",
-      bgLight: "#181c20",
-      text: "#e8eaec",
-      textMuted: "#7a8a7d",
-      danger: "#e04040",
-      dangerMuted: "#8a4040"
+      gold: "#c9a227",
+      goldLight: "#dab842",
+      goldMuted: "#8b6914",
+      goldBorder: "#6a5520",
+      bronze: "#b8860b",
+      bronzeLight: "#d4a84b",
+      bronzeMuted: "#8b6914",
+      bg: "#141414",        // Lighter background
+      bgLight: "#1a1a1a",   // Lighter secondary bg
+      bgCard: "#181818",    // Lighter card bg
+      text: "#f0ece0",      // Slightly brighter text
+      textMuted: "#8a8a7a", // Lighter muted text
+      greenMuted: "#7a8a7a", // Muted green for titles
+      danger: "#8b0000",
+      dangerLight: "#a03030",
+      dangerMuted: "#5a2020",
+      accent: "#c9a227"
     };
 
     // Check and reset start-of-day HP tracking
@@ -1149,18 +1163,27 @@ var TrackRankView = class extends import_obsidian.ItemView {
         style: `
           max-width: 420px;
           margin: 0 auto;
-          padding: 24px;
+          padding: 28px;
           text-align: center;
-          background: linear-gradient(180deg, ${colors.bgLight} 0%, ${colors.bg} 50%, ${colors.bgLight} 100%);
-          border: 1px solid ${colors.greenBorder};
-          border-radius: 8px;
+          background: ${colors.bg};
+          border: 1px solid ${colors.goldBorder};
           position: relative;
           font-family: "Georgia", serif;
           overflow: hidden;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         `
       }
     });
+
+    // Add ornate art deco gold corners (moodboard style)
+    const cornerSVG = `
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0 0 L40 0 L40 4 L4 4 L4 40 L0 40 Z" fill="${colors.goldMuted}"/>
+        <path d="M0 0 L32 0 L32 2 L2 2 L2 32 L0 32 Z" fill="${colors.gold}"/>
+        <path d="M8 0 L12 0 L12 8 L8 8 Z" fill="${colors.goldMuted}"/>
+        <path d="M0 8 L8 8 L8 12 L0 12 Z" fill="${colors.goldMuted}"/>
+        <circle cx="6" cy="6" r="2" fill="${colors.gold}"/>
+      </svg>
+    `;
 
     // Add aura particle effects
     this.addAuraParticles(wrapper, settings.inTartarus ? colors.dangerMuted : colors.goldMuted);
@@ -1261,71 +1284,100 @@ var TrackRankView = class extends import_obsidian.ItemView {
       };
     }
     if (settings.inTartarus) {
-      // Add hellfire gradient animation styles
-      if (!document.getElementById('track-habit-rank-hellfire-styles')) {
-        const hellfireStyle = document.createElement('style');
-        hellfireStyle.id = 'track-habit-rank-hellfire-styles';
-        hellfireStyle.textContent = `
-          @keyframes hellfireFlow {
-            0% { background-position: 0% 0%; }
-            25% { background-position: 100% 50%; }
-            50% { background-position: 50% 100%; }
-            75% { background-position: 0% 50%; }
-            100% { background-position: 0% 0%; }
+      // Gothic Tartarus styling - matching moodboard aesthetic
+      if (!document.getElementById('track-habit-rank-tartarus-gothic')) {
+        const tartarusStyle = document.createElement('style');
+        tartarusStyle.id = 'track-habit-rank-tartarus-gothic';
+        tartarusStyle.textContent = `
+          @keyframes darkBreath {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
           }
-          @keyframes emberFloat {
-            0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
-            50% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+          @keyframes subtleEmber {
+            0%, 100% { transform: translateY(0); opacity: 0.3; }
+            50% { transform: translateY(-5px); opacity: 0.5; }
           }
-          @keyframes hellPulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.6; }
-          }
-          .tartarus-hellfire-bg {
+          .tartarus-gothic-bg {
             position: absolute;
             inset: 0;
-            background: linear-gradient(-45deg,
-              #1a0505 0%,
-              #2a0a0a 15%,
-              #3a1010 30%,
-              #4a1515 45%,
-              #3a1010 60%,
-              #2a0a0a 75%,
-              #1a0505 100%
+            background: linear-gradient(180deg,
+              #080404 0%,
+              #0c0606 30%,
+              #100808 50%,
+              #0c0606 70%,
+              #080404 100%
             );
-            background-size: 400% 400%;
-            animation: hellfireFlow 15s ease-in-out infinite;
             z-index: 0;
           }
-          .tartarus-hellfire-bg::before {
+          .tartarus-gothic-bg::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse at 50% 80%, rgba(220, 38, 38, 0.15) 0%, transparent 60%);
-            animation: hellPulse 4s ease-in-out infinite;
+            background: radial-gradient(ellipse at 50% 90%, rgba(139, 0, 0, 0.15) 0%, transparent 50%);
+            animation: darkBreath 8s ease-in-out infinite;
           }
-          .tartarus-hellfire-bg::after {
+          .tartarus-gothic-frame {
+            position: absolute;
+            inset: 8px;
+            border: 1px solid rgba(139, 0, 0, 0.4);
+            pointer-events: none;
+            z-index: 1;
+          }
+          .tartarus-gothic-frame::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse at 30% 20%, rgba(255, 100, 50, 0.1) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 30%, rgba(200, 60, 20, 0.08) 0%, transparent 40%);
-            animation: hellPulse 6s ease-in-out infinite reverse;
+            inset: 4px;
+            border: 1px solid rgba(100, 70, 40, 0.3);
+          }
+          .tartarus-corner-ornament {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            z-index: 2;
+          }
+          .tartarus-corner-ornament svg {
+            width: 100%;
+            height: 100%;
           }
         `;
-        document.head.appendChild(hellfireStyle);
+        document.head.appendChild(tartarusStyle);
       }
 
-      // Add flowing hellfire background
-      const hellfireBg = wrapper.createDiv({ cls: 'tartarus-hellfire-bg' });
+      // Add gothic background
+      wrapper.createDiv({ cls: 'tartarus-gothic-bg' });
+
+      // Add inner frame with gold/burgundy corners
+      const gothicFrame = wrapper.createDiv({ cls: 'tartarus-gothic-frame' });
+
+      // Corner ornaments (art deco style with burgundy)
+      const tartarusCornerSVG = `
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 0 L24 0 L24 3 L3 3 L3 24 L0 24 Z" fill="rgba(139, 0, 0, 0.6)"/>
+          <path d="M0 0 L18 0 L18 1.5 L1.5 1.5 L1.5 18 L0 18 Z" fill="rgba(201, 162, 39, 0.5)"/>
+          <circle cx="4" cy="4" r="1.5" fill="rgba(201, 162, 39, 0.6)"/>
+        </svg>
+      `;
+
+      const tartarusCornerPositions = [
+        { top: '4px', left: '4px', transform: 'rotate(0deg)' },
+        { top: '4px', right: '4px', transform: 'rotate(90deg)' },
+        { bottom: '4px', left: '4px', transform: 'rotate(-90deg)' },
+        { bottom: '4px', right: '4px', transform: 'rotate(180deg)' }
+      ];
+
+      tartarusCornerPositions.forEach(pos => {
+        const corner = wrapper.createDiv({ cls: 'tartarus-corner-ornament' });
+        corner.innerHTML = tartarusCornerSVG;
+        Object.assign(corner.style, pos, { position: 'absolute' });
+      });
 
       // Tartarus content container (above the background)
       const tartarusContent = wrapper.createDiv({
         attr: {
           style: `
             position: relative;
-            z-index: 1;
-            padding-top: 20px;
+            z-index: 3;
+            padding-top: 24px;
           `
         }
       });
@@ -1335,7 +1387,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         const imgContainer = tartarusContent.createDiv({
           attr: {
             style: `
-              margin-bottom: 20px;
+              margin-bottom: 24px;
               display: flex;
               justify-content: center;
             `
@@ -1346,24 +1398,24 @@ var TrackRankView = class extends import_obsidian.ItemView {
             src: tartarusImage,
             alt: "Tartarus",
             style: `
-              max-width: 180px;
-              max-height: 180px;
-              border: 2px solid rgba(220, 38, 38, 0.6);
-              border-radius: 8px;
+              max-width: 200px;
+              max-height: 200px;
+              border: 2px solid rgba(139, 0, 0, 0.5);
+              border-radius: 4px;
               object-fit: cover;
-              filter: contrast(1.1) brightness(0.95);
-              box-shadow: 0 0 30px rgba(220, 38, 38, 0.3), 0 0 60px rgba(150, 30, 20, 0.2);
+              filter: contrast(1.1) brightness(0.9) sepia(0.1);
+              box-shadow: 0 0 20px rgba(139, 0, 0, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.3);
               transition: all 0.4s ease;
             `
           }
         });
         img.onmouseenter = () => {
-          img.style.filter = 'contrast(1.2) brightness(1)';
-          img.style.boxShadow = '0 0 40px rgba(220, 38, 38, 0.5), 0 0 80px rgba(150, 30, 20, 0.3)';
+          img.style.filter = 'contrast(1.15) brightness(0.95) sepia(0.05)';
+          img.style.boxShadow = '0 0 30px rgba(139, 0, 0, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.2)';
         };
         img.onmouseleave = () => {
-          img.style.filter = 'contrast(1.1) brightness(0.95)';
-          img.style.boxShadow = '0 0 30px rgba(220, 38, 38, 0.3), 0 0 60px rgba(150, 30, 20, 0.2)';
+          img.style.filter = 'contrast(1.1) brightness(0.9) sepia(0.1)';
+          img.style.boxShadow = '0 0 20px rgba(139, 0, 0, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.3)';
         };
         img.onerror = () => {
           imgContainer.empty();
@@ -1371,9 +1423,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
             text: "\u{1F480}",
             attr: {
               style: `
-                font-size: 80px;
+                font-size: 72px;
                 line-height: 1;
-                filter: drop-shadow(0 4px 20px rgba(220, 38, 38, 0.6));
+                filter: drop-shadow(0 4px 12px rgba(139, 0, 0, 0.4));
               `
             }
           });
@@ -1383,43 +1435,56 @@ var TrackRankView = class extends import_obsidian.ItemView {
           text: "\u{1F480}",
           attr: {
             style: `
-              font-size: 80px;
+              font-size: 72px;
               line-height: 1;
               margin-bottom: 16px;
-              filter: drop-shadow(0 4px 20px rgba(220, 38, 38, 0.6));
+              filter: drop-shadow(0 4px 12px rgba(139, 0, 0, 0.4));
             `
           }
         });
       }
 
-      // TARTARUS title - large and ominous
+      // TARTARUS title - Gothic elegance
       tartarusContent.createEl("div", {
         text: "TARTARUS",
         attr: {
           style: `
             font-family: "Times New Roman", serif;
-            font-size: 2.6em;
-            font-weight: 700;
-            letter-spacing: 6px;
-            margin-bottom: 12px;
+            font-size: 2.4em;
+            font-weight: 600;
+            letter-spacing: 8px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             color: ${colors.danger};
-            text-shadow: 0 0 20px rgba(220, 38, 38, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8);
+            text-shadow: 0 2px 8px rgba(139, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 1);
           `
         }
       });
 
-      // Subtitle - muted
+      // Decorative divider
+      tartarusContent.createEl("div", {
+        attr: {
+          style: `
+            width: 120px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, ${colors.danger} 30%, ${colors.gold} 50%, ${colors.danger} 70%, transparent 100%);
+            margin: 0 auto 12px auto;
+            opacity: 0.6;
+          `
+        }
+      });
+
+      // Subtitle - muted gold accent
       tartarusContent.createEl("div", {
         text: "The Pit of Eternal Penance",
         attr: {
           style: `
             font-family: "Georgia", serif;
-            font-size: 13px;
+            font-size: 12px;
             font-style: italic;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             margin-bottom: 24px;
-            color: rgba(220, 38, 38, 0.6);
+            color: rgba(201, 162, 39, 0.5);
           `
         }
       });
@@ -1442,60 +1507,103 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       }
 
-      if (bossImage) {
+      // Check for tier figure
+      const tierFigure = settings.tierFigures?.find(f => f.tier === settings.currentTier);
+      const showFigure = settings.showTierFigure && tierFigure?.image;
+      const figurePosition = tierFigure?.position || 'left';
+
+      if (bossImage || showFigure) {
         const imgContainer = wrapper.createDiv({
           attr: {
             style: `
-              margin-bottom: 16px;
+              margin-bottom: 20px;
               display: flex;
               justify-content: center;
-            `
-          }
-        });
-        const img = imgContainer.createEl("img", {
-          attr: {
-            src: bossImage,
-            alt: boss?.name || "Boss",
-            style: `
-              max-width: 200px;
-              max-height: 200px;
-              border: 1px solid ${colors.goldBorder};
-              object-fit: cover;
-              filter: grayscale(0.2) contrast(1.1) brightness(0.95) sepia(0.1);
-              transition: filter 0.6s ease, transform 0.6s ease, opacity 0.6s ease;
-              cursor: pointer;
+              align-items: flex-end;
+              gap: 16px;
+              position: relative;
             `
           }
         });
 
-        // Click boss to see rewards
-        img.onclick = () => {
-          const pendingRewards = settings.pendingRewards || [];
-          if (pendingRewards.length > 0) {
-            // Open selection for first pending reward
-            new RewardSelectionModal(this.app, this.plugin, pendingRewards[0], () => {
-              this.plugin.refreshRankView();
-            }).open();
-          } else {
-            // No pending rewards, show reward log
-            new RewardLogModal(this.app, this.plugin).open();
-          }
+        // Helper to create tier figure
+        const createFigure = () => {
+          if (!showFigure) return null;
+          const figureDiv = document.createElement('div');
+          figureDiv.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          `;
+          const figImg = document.createElement('img');
+          figImg.src = tierFigure.image;
+          figImg.alt = "Tier Figure";
+          figImg.style.cssText = `
+            max-width: 80px;
+            max-height: 120px;
+            border-radius: 4px;
+            object-fit: contain;
+            filter: contrast(1.05);
+            transition: filter 0.3s ease;
+          `;
+          figImg.onerror = () => figureDiv.remove();
+          figureDiv.appendChild(figImg);
+          return figureDiv;
         };
 
-        // Hover effect
-        img.onmouseenter = () => {
-          img.style.transform = 'scale(1.02)';
-          img.style.filter = 'grayscale(0.1) contrast(1.15) brightness(1) sepia(0.05)';
-        };
-        img.onmouseleave = () => {
-          img.style.transform = 'scale(1)';
-          img.style.filter = 'grayscale(0.2) contrast(1.1) brightness(0.95) sepia(0.1)';
-        };
+        // Add left figure
+        if (showFigure && figurePosition === 'left') {
+          const leftFigure = createFigure();
+          if (leftFigure) imgContainer.appendChild(leftFigure);
+        }
 
-        img.onerror = () => {
-          imgContainer.remove();
-        };
+        // Boss image
+        if (bossImage) {
+          const img = imgContainer.createEl("img", {
+            attr: {
+              src: bossImage,
+              alt: boss?.name || "Boss",
+              style: `
+                max-width: 280px;
+                max-height: 280px;
+                border: 2px solid ${colors.goldBorder};
+                border-radius: 8px;
+                object-fit: cover;
+                filter: contrast(1.05) brightness(0.98);
+                transition: filter 0.4s ease, transform 0.4s ease;
+                cursor: pointer;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+              `
+            }
+          });
+
+          // Click boss to show boss reward simply
+          img.onclick = () => {
+            new BossRewardModal(this.app, this.plugin).open();
+          };
+
+          // Subtle hover effect
+          img.onmouseenter = () => {
+            img.style.transform = 'scale(1.01)';
+            img.style.filter = 'contrast(1.1) brightness(1)';
+          };
+          img.onmouseleave = () => {
+            img.style.transform = 'scale(1)';
+            img.style.filter = 'contrast(1.05) brightness(0.98)';
+          };
+
+          img.onerror = () => {
+            img.remove();
+          };
+        }
+
+        // Add right figure
+        if (showFigure && figurePosition === 'right') {
+          const rightFigure = createFigure();
+          if (rightFigure) imgContainer.appendChild(rightFigure);
+        }
       }
+
       // Boss name is PRIMARY (large, commanding)
       wrapper.createEl("div", {
         text: boss?.name || "No Boss",
@@ -1512,22 +1620,25 @@ var TrackRankView = class extends import_obsidian.ItemView {
           `
         }
       });
-      // User title is SECONDARY (smaller, subdued)
-      wrapper.createEl("div", {
-        text: rankName,
-        attr: {
-          style: `
-            font-family: "Times New Roman", serif;
-            font-size: 12px;
-            font-weight: 400;
-            letter-spacing: 2px;
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            color: ${colors.greenMuted};
-            opacity: 0.8;
-          `
-        }
-      });
+
+      // User title is SECONDARY (smaller, subdued) - hide if tier figure has hideTierTitle
+      if (!(tierFigure?.hideTierTitle && tierFigure?.image)) {
+        wrapper.createEl("div", {
+          text: rankName,
+          attr: {
+            style: `
+              font-family: "Times New Roman", serif;
+              font-size: 12px;
+              font-weight: 400;
+              letter-spacing: 2px;
+              margin-bottom: 16px;
+              text-transform: uppercase;
+              color: ${colors.greenMuted};
+              opacity: 0.8;
+            `
+          }
+        });
+      }
     }
 
     // Only show HP bar, stats, and rewards when NOT in Tartarus
@@ -1545,100 +1656,110 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const criticalThreshold = hpPerSegment * 2;
     const isCritical = settings.bossCurrentHP <= criticalThreshold && settings.bossCurrentHP > 0;
 
-    // Add ornate fantasy HP bar styles
-    if (!document.getElementById('track-habit-rank-ornate-fantasy-hp')) {
+    // Add mythical HP bar styles with gentle inner pulse
+    if (!document.getElementById('track-habit-rank-mythical-hp')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-ornate-fantasy-hp';
+      style.id = 'track-habit-rank-mythical-hp';
       style.textContent = `
-        @keyframes moltenFlow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+        @keyframes gentleInnerPulse {
+          0%, 100% { opacity: 0.85; }
+          50% { opacity: 1; }
         }
-        @keyframes emberGlow {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.2); }
+        @keyframes subtleShimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
         }
-        @keyframes criticalPulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(255,80,40,0.5); }
-          50% { box-shadow: 0 0 40px rgba(255,80,40,0.8), 0 0 60px rgba(255,40,0,0.4); }
+        @keyframes breathe {
+          0%, 100% { filter: brightness(0.95); }
+          50% { filter: brightness(1.05); }
         }
-        .ornate-hp-frame {
+        .mythical-hp-container {
           position: relative;
-          padding: 8px 40px;
+          padding: 6px 0;
+          margin: 0 auto 16px auto;
+          max-width: 320px;
         }
-        .ornate-hp-inner {
+        .mythical-hp-frame {
           position: relative;
-          height: 24px;
-          background: linear-gradient(180deg, #1a1510 0%, #0a0805 50%, #151210 100%);
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: inset 0 3px 10px rgba(0,0,0,0.8), inset 0 -2px 6px rgba(0,0,0,0.4);
+          height: 22px;
+          background: linear-gradient(180deg, #242018 0%, #181410 40%, #1e1a16 100%);
+          border-radius: 11px;
+          overflow: visible;
+          box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), inset 0 -1px 3px rgba(0,0,0,0.2);
         }
-        .ornate-hp-fill {
+        .mythical-hp-fill {
           position: absolute;
           left: 2px;
           top: 2px;
           bottom: 2px;
-          border-radius: 10px;
+          border-radius: 9px;
           overflow: hidden;
-          transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          animation: gentleInnerPulse 4s ease-in-out infinite, breathe 6s ease-in-out infinite;
         }
-        .ornate-hp-fill.molten {
-          background: linear-gradient(180deg,
-            #ff6030 0%,
-            #e84020 15%,
-            #c03010 30%,
-            #a02808 50%,
-            #c03010 70%,
-            #e84020 85%,
-            #ff6030 100%
-          );
-          background-size: 100% 200%;
-          animation: moltenFlow 3s ease-in-out infinite, emberGlow 2s ease-in-out infinite;
+        .mythical-hp-fill.life {
+          background: linear-gradient(180deg, #c45040 0%, #a03530 40%, #802520 60%, #a03530 100%);
         }
-        .ornate-hp-fill.ethereal {
-          background: linear-gradient(180deg,
-            #60a0d0 0%,
-            #4080b0 15%,
-            #306090 30%,
-            #204070 50%,
-            #306090 70%,
-            #4080b0 85%,
-            #60a0d0 100%
-          );
-          background-size: 100% 200%;
-          animation: moltenFlow 4s ease-in-out infinite;
+        .mythical-hp-fill.arcane {
+          background: linear-gradient(180deg, #6080b0 0%, #405880 40%, #304060 60%, #405880 100%);
         }
-        .ornate-hp-fill::after {
+        .mythical-hp-fill.divine {
+          background: linear-gradient(180deg, #c9a050 0%, #a08030 40%, #806020 60%, #a08030 100%);
+        }
+        .mythical-hp-fill::before {
           content: '';
           position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg,
-            transparent 0%,
-            rgba(255,255,255,0.15) 30%,
-            rgba(255,255,255,0.3) 50%,
-            rgba(255,255,255,0.15) 70%,
-            transparent 100%
-          );
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 40%;
+          background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
+          border-radius: 9px 9px 0 0;
         }
-        .hp-frame-border {
+        .mythical-hp-fill::after {
+          content: '';
           position: absolute;
-          inset: 0;
-          border: 3px solid;
-          border-image: linear-gradient(180deg, #c9a227 0%, #8b6914 30%, #5a4510 50%, #8b6914 70%, #c9a227 100%) 1;
-          border-radius: 14px;
+          top: 0;
+          left: 0;
+          width: 40%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+          animation: subtleShimmer 8s ease-in-out infinite;
+        }
+        .mythical-hp-border {
+          position: absolute;
+          inset: -2px;
+          border-radius: 13px;
           pointer-events: none;
         }
-        .hp-decoration {
+        .mythical-hp-text {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          font-family: "Georgia", serif;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          color: #f0ece0;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.5);
+          z-index: 3;
+        }
+        .mythical-hp-endcap {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
-          width: 32px;
-          height: 32px;
+          width: 28px;
+          height: 28px;
+          z-index: 2;
         }
-        .hp-decoration.left { left: 4px; }
-        .hp-decoration.right { right: 4px; }
+        .mythical-hp-endcap.left { left: -14px; }
+        .mythical-hp-endcap.right { right: -14px; }
+        .mythical-hp-endcap svg {
+          width: 100%;
+          height: 100%;
+          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+        }
       `;
       document.head.appendChild(style);
     }
@@ -1671,62 +1792,87 @@ var TrackRankView = class extends import_obsidian.ItemView {
       }
     });
 
-    // Ornate HP bar container
+    // Mythical HP bar container
     const hpBarContainer = wrapper.createDiv({
-      cls: "ornate-hp-frame",
-      attr: {
-        style: `
-          position: relative;
-          margin: 0 auto 16px auto;
-          max-width: 320px;
-        `
-      }
+      cls: "mythical-hp-container"
     });
 
-    // Left decoration (tier-based complexity)
-    const leftDeco = hpBarContainer.createDiv({ cls: "hp-decoration left" });
-    leftDeco.innerHTML = tierLevel === 'legendary' ? `
-      <svg viewBox="0 0 32 32" fill="none">
-        <path d="M28 16 L20 8 L20 12 L8 12 L8 8 L0 16 L8 24 L8 20 L20 20 L20 24 Z" fill="url(#goldGrad)" stroke="#5a4510" stroke-width="1"/>
-        <circle cx="16" cy="16" r="4" fill="#ffd700" stroke="#daa520" stroke-width="1"/>
-        <defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ffd700"/><stop offset="50%" stop-color="#b8860b"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs>
-      </svg>
-    ` : tierLevel === 'ornate' ? `
-      <svg viewBox="0 0 32 32" fill="none">
-        <path d="M26 16 L18 10 L18 14 L6 14 L6 10 L0 16 L6 22 L6 18 L18 18 L18 22 Z" fill="${frameStyle.outer}" stroke="${frameStyle.inner}" stroke-width="1"/>
-        <circle cx="14" cy="16" r="3" fill="${frameStyle.inner}"/>
-      </svg>
-    ` : `
-      <svg viewBox="0 0 32 32" fill="none">
-        <rect x="6" y="12" width="20" height="8" rx="4" fill="${frameStyle.outer}" stroke="${frameStyle.inner}" stroke-width="1"/>
-      </svg>
-    `;
-
-    // Right decoration (mirror)
-    const rightDeco = hpBarContainer.createDiv({ cls: "hp-decoration right" });
-    rightDeco.innerHTML = leftDeco.innerHTML.replace('left', 'right');
-    rightDeco.style.transform = 'translateY(-50%) scaleX(-1)';
-
-    // Inner bar container
-    const barInner = hpBarContainer.createDiv({
-      cls: "ornate-hp-inner",
-      attr: {
-        style: `
-          border: 2px solid ${frameStyle.inner};
-          box-shadow: 0 0 15px ${frameStyle.glow}, inset 0 3px 10px rgba(0,0,0,0.8);
-          ${isCritical ? 'animation: criticalPulse 1s ease-in-out infinite;' : ''}
-        `
-      }
-    });
-
-    // Calculate true HP percentages
+    // Calculate HP percentages
     const hpFillPercent = (settings.bossCurrentHP / settings.bossMaxHP) * 100;
     const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
     const startOfDayPercent = (startOfDayHP / settings.bossMaxHP) * 100;
 
-    // Damage linger layer (darker red showing today's damage)
+    // Determine fill color based on tier
+    const fillType = tierLevel === 'legendary' ? 'divine' : tierLevel === 'ornate' ? 'life' : 'arcane';
+
+    // SVG end cap design based on tier
+    const endCapSVG = tierLevel === 'legendary' ? `
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" fill="url(#legendaryGrad)" stroke="${frameStyle.outer}" stroke-width="1.5"/>
+        <path d="M14 4 L16 10 L22 10 L17 14 L19 20 L14 16 L9 20 L11 14 L6 10 L12 10 Z" fill="${frameStyle.inner}" opacity="0.8"/>
+        <circle cx="14" cy="14" r="4" fill="${frameStyle.outer}"/>
+        <defs>
+          <radialGradient id="legendaryGrad" cx="30%" cy="30%">
+            <stop offset="0%" stop-color="#ffd700"/>
+            <stop offset="100%" stop-color="#8b6914"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    ` : tierLevel === 'ornate' ? `
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="11" fill="url(#ornateGrad)" stroke="${frameStyle.outer}" stroke-width="1.5"/>
+        <path d="M14 6 L17 11 L14 9 L11 11 Z M14 22 L11 17 L14 19 L17 17 Z" fill="${frameStyle.inner}"/>
+        <circle cx="14" cy="14" r="3" fill="${frameStyle.outer}"/>
+        <defs>
+          <radialGradient id="ornateGrad" cx="30%" cy="30%">
+            <stop offset="0%" stop-color="${frameStyle.outer}"/>
+            <stop offset="100%" stop-color="${frameStyle.inner}"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    ` : `
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="url(#simpleGrad)" stroke="${frameStyle.outer}" stroke-width="1"/>
+        <circle cx="14" cy="14" r="4" fill="${frameStyle.inner}"/>
+        <defs>
+          <radialGradient id="simpleGrad" cx="30%" cy="30%">
+            <stop offset="0%" stop-color="${frameStyle.outer}"/>
+            <stop offset="100%" stop-color="${frameStyle.inner}"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    `;
+
+    // Left endcap
+    const leftCap = hpBarContainer.createDiv({ cls: "mythical-hp-endcap left" });
+    leftCap.innerHTML = endCapSVG;
+
+    // Right endcap
+    const rightCap = hpBarContainer.createDiv({ cls: "mythical-hp-endcap right" });
+    rightCap.innerHTML = endCapSVG;
+
+    // HP bar frame with border
+    const hpFrame = hpBarContainer.createDiv({
+      cls: "mythical-hp-frame",
+      attr: {
+        style: `border: 2px solid ${frameStyle.inner};`
+      }
+    });
+
+    // Border glow overlay
+    hpFrame.createDiv({
+      cls: "mythical-hp-border",
+      attr: {
+        style: `
+          border: 2px solid ${frameStyle.outer};
+          box-shadow: 0 0 8px ${frameStyle.glow};
+        `
+      }
+    });
+
+    // Damage linger layer (darker showing today's damage)
     if (startOfDayPercent > hpFillPercent) {
-      barInner.createDiv({
+      hpFrame.createDiv({
         attr: {
           style: `
             position: absolute;
@@ -1734,42 +1880,27 @@ var TrackRankView = class extends import_obsidian.ItemView {
             top: 2px;
             bottom: 2px;
             width: calc(${startOfDayPercent}% - 4px);
-            border-radius: 10px;
-            background: linear-gradient(180deg, #5a2020 0%, #3a1010 50%, #4a1818 100%);
-            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 9px;
+            background: linear-gradient(180deg, #4a2525 0%, #2a1515 50%, #3a2020 100%);
+            opacity: 0.7;
+            transition: width 0.8s ease;
           `
         }
       });
     }
 
-    // Main HP fill with molten/ethereal effect based on tier
-    const fillClass = tierLevel === 'legendary' || tierLevel === 'ornate' ? 'molten' : 'ethereal';
-    barInner.createDiv({
-      cls: `ornate-hp-fill ${fillClass}`,
+    // Main HP fill with gentle pulse
+    hpFrame.createDiv({
+      cls: `mythical-hp-fill ${fillType}`,
       attr: {
         style: `width: calc(${hpFillPercent}% - 4px);`
       }
     });
 
-    // HP text overlay centered in bar
-    barInner.createEl("div", {
-      text: `${settings.bossCurrentHP} / ${settings.bossMaxHP}`,
-      attr: {
-        style: `
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          font-family: "Times New Roman", serif;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 2px;
-          color: #fff;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7);
-          z-index: 4;
-          pointer-events: none;
-        `
-      }
+    // HP text overlay
+    hpFrame.createEl("div", {
+      cls: "mythical-hp-text",
+      text: `${settings.bossCurrentHP} / ${settings.bossMaxHP}`
     });
 
     // Show damage dealt today below bar if any
@@ -2181,176 +2312,126 @@ var TrackRankView = class extends import_obsidian.ItemView {
   }
 
   /**
-   * Render two side-by-side reward modals (Activity + Streak) - each with swipeable rewards
+   * Render simple side-by-side reward cards (Activity + Streak) - no glow, click to claim
    */
   renderRewardBoxes(wrapper, colors) {
     const settings = this.plugin.settings;
     const rewardProgress = this.plugin.getRewardProgress();
 
-    // Get current reward pool
+    // Get current reward pool - separate by type
     const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier) || { options: [] };
-    const rewards = currentPool.options || [];
+    const allRewards = currentPool.options || [];
+    const activityRewards = allRewards.filter(r => r.type === 'activity' || !r.type);
+    const streakRewards = allRewards.filter(r => r.type === 'streak' || !r.type);
 
-    // Add dual-modal styles
-    if (!document.getElementById('track-habit-rank-dual-modals-v4')) {
+    // Add simple reward card styles (no glow)
+    if (!document.getElementById('track-habit-rank-simple-rewards')) {
       const style = document.createElement('style');
-      style.id = 'track-habit-rank-dual-modals-v4';
+      style.id = 'track-habit-rank-simple-rewards';
       style.textContent = `
-        @keyframes rewardCardPulse {
-          0%, 100% { box-shadow: 0 4px 20px var(--glow-color); }
-          50% { box-shadow: 0 6px 30px var(--glow-color), 0 0 40px var(--glow-color); }
-        }
-        @keyframes claimableGlow {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.15); }
-        }
-        @keyframes rewardSlide {
-          0% { opacity: 0; transform: translateX(20px); }
-          100% { opacity: 1; transform: translateX(0); }
-        }
-        .dual-modals-container {
+        .simple-rewards-container {
           display: flex;
           gap: 12px;
           justify-content: center;
-          padding: 16px 0;
+          padding: 12px 0;
         }
-        .reward-modal-v4 {
+        .simple-reward-card {
           flex: 1;
-          max-width: 180px;
-          min-height: 160px;
-          background: var(--modal-bg);
-          border: 2px solid var(--modal-border);
-          border-radius: 12px;
-          padding: 14px 12px;
-          position: relative;
-          overflow: hidden;
-          --glow-color: var(--modal-glow);
-          animation: rewardCardPulse 4s ease-in-out infinite;
+          max-width: 170px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 8px;
+          padding: 14px 10px;
+          cursor: pointer;
+          transition: border-color 0.2s ease, transform 0.2s ease;
         }
-        .reward-modal-v4::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
-          pointer-events: none;
-          border-radius: 10px;
+        .simple-reward-card:hover {
+          border-color: var(--card-accent);
+          transform: translateY(-1px);
         }
-        .reward-modal-v4.claimable {
-          animation: rewardCardPulse 3s ease-in-out infinite, claimableGlow 2s ease-in-out infinite;
+        .simple-reward-card.claimable {
+          border-color: var(--card-accent);
         }
-        .modal-header-v4 {
+        .simple-card-header {
           font-family: "Times New Roman", serif;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 2px;
           text-transform: uppercase;
           text-align: center;
-          color: var(--modal-text);
+          color: var(--card-text);
           margin-bottom: 10px;
-          padding-bottom: 8px;
-          border-bottom: 1px solid var(--modal-border);
+          padding-bottom: 6px;
+          border-bottom: 1px solid var(--card-border);
         }
-        .modal-progress-v4 {
+        .simple-card-progress {
           display: flex;
           justify-content: center;
-          gap: 4px;
-          margin-bottom: 12px;
+          gap: 3px;
+          margin-bottom: 10px;
         }
-        .progress-pip-v4 {
-          width: 16px;
-          height: 20px;
-          border-radius: 3px;
-          transition: all 0.3s ease;
+        .simple-pip {
+          width: 14px;
+          height: 16px;
+          border-radius: 2px;
         }
-        .progress-pip-v4.filled {
-          background: var(--modal-filled);
-          box-shadow: 0 0 8px var(--modal-glow);
+        .simple-pip.filled {
+          background: var(--card-filled);
         }
-        .progress-pip-v4.empty {
-          background: linear-gradient(180deg, #1a1815 0%, #0f0d0a 100%);
+        .simple-pip.empty {
+          background: #1a1815;
           border: 1px solid rgba(255,255,255,0.05);
         }
-        .modal-reward-display {
-          position: relative;
-          min-height: 60px;
+        .simple-card-reward {
+          text-align: center;
+          min-height: 50px;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
-          margin-bottom: 8px;
         }
-        .reward-item-v4 {
-          text-align: center;
-          animation: rewardSlide 0.3s ease-out;
-        }
-        .reward-emoji-v4 {
-          font-size: 28px;
-          margin-bottom: 4px;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-        }
-        .reward-name-v4 {
+        .simple-card-status {
           font-family: "Georgia", serif;
-          font-size: 10px;
-          color: var(--modal-text);
-          opacity: 0.9;
-          line-height: 1.3;
-          max-height: 26px;
-          overflow: hidden;
-        }
-        .modal-nav-v4 {
-          display: flex;
-          justify-content: center;
-          gap: 6px;
+          font-size: 11px;
+          text-align: center;
+          color: var(--card-text);
           margin-top: 8px;
         }
-        .modal-nav-dot-v4 {
-          width: 6px;
-          height: 6px;
+        .simple-nav-dots {
+          display: flex;
+          justify-content: center;
+          gap: 5px;
+          margin-top: 6px;
+        }
+        .simple-nav-dot {
+          width: 5px;
+          height: 5px;
           border-radius: 50%;
           background: rgba(255,255,255,0.2);
           cursor: pointer;
-          transition: all 0.3s ease;
         }
-        .modal-nav-dot-v4.active {
-          background: var(--modal-accent);
-          box-shadow: 0 0 8px var(--modal-glow);
-        }
-        .modal-status-v4 {
-          font-family: "Georgia", serif;
-          font-size: 10px;
-          font-style: italic;
-          text-align: center;
-          color: var(--modal-accent);
-          margin-top: 6px;
-          opacity: 0.9;
-        }
-        .modal-swipe-hint {
-          font-family: "Georgia", serif;
-          font-size: 8px;
-          color: rgba(255,255,255,0.25);
-          text-align: center;
-          margin-top: 4px;
+        .simple-nav-dot.active {
+          background: var(--card-accent);
         }
       `;
       document.head.appendChild(style);
     }
 
-    // Color schemes - lighter aesthetic
-    const activityColors = {
-      bg: 'linear-gradient(160deg, #1a2820 0%, #141c18 50%, #182420 100%)',
-      border: 'rgba(90, 160, 95, 0.5)',
-      glow: 'rgba(90, 160, 95, 0.35)',
-      text: '#a0e0a5',
-      accent: '#70c875',
-      filled: 'linear-gradient(180deg, #80d885 0%, #5cb860 100%)',
+    // Simple color schemes - lighter variant
+    const activityStyle = {
+      bg: '#1c2420',       // Lighter green-tinted bg
+      border: '#4a6a4d',   // Lighter border
+      text: '#a0d0a5',     // Brighter text
+      accent: '#70b075',   // Brighter accent
+      filled: '#60b065',   // Brighter filled
     };
 
-    const streakColors = {
-      bg: 'linear-gradient(160deg, #282418 0%, #1c1810 50%, #242010 100%)',
-      border: 'rgba(220, 180, 60, 0.5)',
-      glow: 'rgba(220, 180, 60, 0.35)',
-      text: '#f8e070',
-      accent: '#e8c840',
-      filled: 'linear-gradient(180deg, #f0d050 0%, #d4b030 100%)',
+    const streakStyle = {
+      bg: '#22201a',       // Lighter gold-tinted bg
+      border: '#6a5a40',   // Lighter border
+      text: '#e0c070',     // Brighter text
+      accent: '#d0b050',   // Brighter accent
+      filled: '#c0a040',   // Brighter filled
     };
 
     // Progress data
@@ -2360,227 +2441,169 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const streakClaimable = streakRemaining <= 0;
 
     // Create container
-    const container = wrapper.createDiv({ cls: 'dual-modals-container' });
+    const container = wrapper.createDiv({ cls: 'simple-rewards-container' });
 
-    // Create Activity Modal
-    this.createRewardModalV4(container, {
+    // Create Activity Card
+    this.createSimpleRewardCard(container, {
       title: 'Activity',
       current: rewardProgress.activityProgress,
       total: rewardProgress.activityThreshold,
       remaining: activityRemaining,
       isClaimable: activityClaimable,
-      colors: activityColors,
-      rewards: rewards,
+      style: activityStyle,
+      rewards: activityRewards,
       type: 'activity'
     });
 
-    // Create Streak Modal
-    this.createRewardModalV4(container, {
+    // Create Streak Card
+    this.createSimpleRewardCard(container, {
       title: 'Streak',
       current: rewardProgress.streakProgress,
       total: rewardProgress.streakThreshold,
       remaining: streakRemaining,
       isClaimable: streakClaimable,
-      colors: streakColors,
-      rewards: rewards,
+      style: streakStyle,
+      rewards: streakRewards,
       type: 'streak'
     });
-
-    // Pending rewards badge
-    const pendingRewards = settings.pendingRewards || [];
-    if (pendingRewards.length > 0) {
-      wrapper.createEl('div', {
-        attr: {
-          style: `
-            text-align: center;
-            margin-top: 8px;
-            padding: 8px 16px;
-            background: linear-gradient(90deg, transparent, rgba(212, 168, 75, 0.08), transparent);
-            border-top: 1px solid rgba(212, 168, 75, 0.15);
-          `
-        }
-      }).innerHTML = `<span style="font-family: Georgia, serif; font-size: 10px; color: #f0d860; font-style: italic;">✦ ${pendingRewards.length} reward${pendingRewards.length > 1 ? 's' : ''} ready ✦</span>`;
-    }
   }
 
   /**
-   * Create a swipeable reward modal (v4)
+   * Create a simple reward card - click to claim if available, otherwise show remaining
    */
-  createRewardModalV4(container, { title, current, total, remaining, isClaimable, colors, rewards, type }) {
-    const modal = container.createDiv({
-      cls: `reward-modal-v4${isClaimable ? ' claimable' : ''}`,
+  createSimpleRewardCard(container, { title, current, total, remaining, isClaimable, style, rewards, type }) {
+    const settings = this.plugin.settings;
+    const card = container.createDiv({
+      cls: `simple-reward-card${isClaimable ? ' claimable' : ''}`,
       attr: {
         style: `
-          --modal-bg: ${colors.bg};
-          --modal-border: ${colors.border};
-          --modal-glow: ${colors.glow};
-          --modal-text: ${colors.text};
-          --modal-accent: ${colors.accent};
-          --modal-filled: ${colors.filled};
+          --card-bg: ${style.bg};
+          --card-border: ${style.border};
+          --card-text: ${style.text};
+          --card-accent: ${style.accent};
+          --card-filled: ${style.filled};
+          background: ${style.bg};
         `
       }
     });
 
     // Header
-    modal.createEl('div', {
-      cls: 'modal-header-v4',
+    card.createEl('div', {
+      cls: 'simple-card-header',
       text: title
     });
 
     // Progress pips
-    const progressContainer = modal.createDiv({ cls: 'modal-progress-v4' });
+    const progressContainer = card.createDiv({ cls: 'simple-card-progress' });
     const maxPips = Math.min(total, 5);
     const ratio = total / maxPips;
     const filledPips = Math.min(Math.ceil(current / ratio), maxPips);
 
     for (let i = 0; i < maxPips; i++) {
       progressContainer.createDiv({
-        cls: `progress-pip-v4 ${i < filledPips ? 'filled' : 'empty'}`
+        cls: `simple-pip ${i < filledPips ? 'filled' : 'empty'}`
       });
     }
 
-    // Reward display area (swipeable)
-    const rewardDisplay = modal.createDiv({ cls: 'modal-reward-display' });
+    // Reward display area
+    const rewardDisplay = card.createDiv({ cls: 'simple-card-reward' });
     let currentRewardIndex = 0;
 
     const updateRewardDisplay = () => {
       rewardDisplay.empty();
       if (rewards.length === 0) {
-        rewardDisplay.createEl('div', {
-          cls: 'reward-item-v4',
-          attr: { style: 'opacity: 0.5;' }
-        }).innerHTML = `<div class="reward-emoji-v4">🎁</div><div class="reward-name-v4">No rewards set</div>`;
+        rewardDisplay.innerHTML = `<div style="font-size: 24px; opacity: 0.4;">🎁</div>`;
         return;
       }
       const reward = rewards[currentRewardIndex % rewards.length];
-      const rewardItem = rewardDisplay.createDiv({ cls: 'reward-item-v4' });
-      rewardItem.innerHTML = `
-        <div class="reward-emoji-v4">${reward.emoji || '🎁'}</div>
-        <div class="reward-name-v4">${(reward.description || 'Reward').substring(0, 30)}</div>
-      `;
+      // Use image if available, otherwise emoji
+      if (reward.image) {
+        const img = rewardDisplay.createEl("img", {
+          attr: {
+            src: reward.image,
+            style: "max-width: 36px; max-height: 36px; border-radius: 4px;"
+          }
+        });
+        img.onerror = () => {
+          img.remove();
+          rewardDisplay.createEl("div", { text: reward.emoji || '🎁', attr: { style: "font-size: 24px;" } });
+        };
+      } else {
+        rewardDisplay.createEl("div", {
+          text: reward.emoji || '🎁',
+          attr: { style: "font-size: 24px;" }
+        });
+      }
+      rewardDisplay.createEl("div", {
+        text: (reward.description || 'Reward').substring(0, 25),
+        attr: { style: `font-family: Georgia, serif; font-size: 9px; color: ${style.text}; opacity: 0.8; margin-top: 4px;` }
+      });
     };
 
     updateRewardDisplay();
 
-    // Navigation dots
+    // Navigation dots (only if multiple rewards)
     if (rewards.length > 1) {
-      const navContainer = modal.createDiv({ cls: 'modal-nav-v4' });
+      const navContainer = card.createDiv({ cls: 'simple-nav-dots' });
       const dots = [];
 
       for (let i = 0; i < Math.min(rewards.length, 5); i++) {
         const dot = navContainer.createDiv({
-          cls: `modal-nav-dot-v4${i === 0 ? ' active' : ''}`
+          cls: `simple-nav-dot${i === 0 ? ' active' : ''}`
         });
-        dot.onclick = () => {
+        dot.onclick = (e) => {
+          e.stopPropagation();
           currentRewardIndex = i;
           updateRewardDisplay();
           dots.forEach((d, idx) => {
-            d.className = `modal-nav-dot-v4${idx === i ? ' active' : ''}`;
+            d.className = `simple-nav-dot${idx === i ? ' active' : ''}`;
           });
         };
         dots.push(dot);
       }
 
-      // Swipe handling
-      let touchStartX = 0;
-      rewardDisplay.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-      }, { passive: true });
-
-      rewardDisplay.addEventListener('touchend', (e) => {
-        const diff = touchStartX - e.changedTouches[0].screenX;
-        if (Math.abs(diff) > 30) {
-          if (diff > 0) {
-            currentRewardIndex = (currentRewardIndex + 1) % rewards.length;
-          } else {
-            currentRewardIndex = (currentRewardIndex - 1 + rewards.length) % rewards.length;
-          }
-          updateRewardDisplay();
-          dots.forEach((d, idx) => {
-            d.className = `modal-nav-dot-v4${idx === (currentRewardIndex % dots.length) ? ' active' : ''}`;
-          });
-        }
-      }, { passive: true });
-
-      // Click to cycle
-      rewardDisplay.onclick = () => {
+      // Click on reward area to cycle
+      rewardDisplay.onclick = (e) => {
+        e.stopPropagation();
         currentRewardIndex = (currentRewardIndex + 1) % rewards.length;
         updateRewardDisplay();
         dots.forEach((d, idx) => {
-          d.className = `modal-nav-dot-v4${idx === (currentRewardIndex % dots.length) ? ' active' : ''}`;
+          d.className = `simple-nav-dot${idx === (currentRewardIndex % dots.length) ? ' active' : ''}`;
         });
       };
-
-      modal.createEl('div', { cls: 'modal-swipe-hint', text: '← swipe →' });
     }
 
-    // Status
-    modal.createEl('div', {
-      cls: 'modal-status-v4',
-      text: isClaimable ? '✦ Claim!' : `${remaining} to go`
+    // Status text - shows claim or remaining
+    card.createEl('div', {
+      cls: 'simple-card-status',
+      text: isClaimable ? 'Claim!' : `${remaining} to go`
     });
 
-    // Click to open reward log
-    modal.onclick = (e) => {
-      if (!e.target.closest('.modal-nav-v4') && !e.target.closest('.modal-reward-display')) {
-        new RewardLogModal(this.app, this.plugin).open();
+    // Click handler - claim if available, otherwise show remaining needed
+    card.onclick = async (e) => {
+      if (e.target.closest('.simple-nav-dots') || e.target.closest('.simple-card-reward')) {
+        return; // Don't trigger on nav dots or reward cycling
+      }
+
+      if (isClaimable) {
+        // Find pending reward of this type and claim it
+        const pendingReward = settings.pendingRewards?.find(r => r.type === type);
+        if (pendingReward) {
+          settings.pendingRewards = settings.pendingRewards.filter(r => r !== pendingReward);
+          settings.claimedRewards = settings.claimedRewards || [];
+          settings.claimedRewards.push({
+            ...pendingReward,
+            claimedAt: new Date().toISOString(),
+            used: false
+          });
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+          new import_obsidian.Notice(`${title} reward claimed!`);
+        }
+      } else {
+        new import_obsidian.Notice(`${remaining} more ${type === 'activity' ? 'activities' : 'weeks'} needed`);
       }
     };
-
-    return modal;
-  }
-
-  /**
-   * Create a beautiful v3 reward progress card (legacy, kept for compatibility)
-   */
-  createRewardCardV3(container, { title, current, total, remaining, isClaimable, style, position }) {
-    const card = container.createDiv({
-      cls: `reward-card-v3 ${position}${isClaimable ? ' claimable' : ''}`,
-      attr: {
-        style: `
-          --glow-color: ${style.glow};
-          --border-glow: ${style.borderGlow};
-          background: ${style.bg};
-          border: 2px solid ${style.border};
-        `
-      }
-    });
-
-    // Title
-    card.createEl('div', {
-      cls: 'card-title-v3',
-      text: title,
-      attr: { style: `color: ${style.text};` }
-    });
-
-    // Segments
-    const segments = card.createDiv({ cls: 'segments-container-v3' });
-    const maxSegs = Math.min(total, 5);
-    const ratio = total / maxSegs;
-    const filled = Math.min(Math.ceil(current / ratio), maxSegs);
-
-    for (let i = 0; i < maxSegs; i++) {
-      const isFilled = i < filled;
-      segments.createDiv({
-        cls: `segment-v3 ${isFilled ? 'filled' : 'empty'}`,
-        attr: {
-          style: isFilled ? `
-            background: ${style.filled};
-            border: 1px solid ${style.accent};
-            box-shadow: 0 0 12px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.3);
-          ` : ''
-        }
-      });
-    }
-
-    // Status
-    card.createEl('div', {
-      cls: 'status-text-v3',
-      text: isClaimable ? '✦ Claim! ✦' : `${remaining} more`,
-      attr: {
-        style: `color: ${isClaimable ? style.text : style.accent}; opacity: ${isClaimable ? 1 : 0.8};`
-      }
-    });
 
     return card;
   }
@@ -3802,6 +3825,182 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
     contentEl.empty();
   }
 };
+var BossRewardModal = class extends import_obsidian.Modal {
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    const settings = this.plugin.settings;
+    contentEl.empty();
+
+    contentEl.style.maxWidth = "360px";
+    contentEl.style.background = "#181a1c";
+    contentEl.style.padding = "24px";
+    contentEl.style.borderRadius = "12px";
+
+    const rewardProgress = this.plugin.getRewardProgress();
+    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
+    const bossRewards = currentPool?.options?.filter(r => r.type === 'boss') || currentPool?.options || [];
+
+    // Header
+    contentEl.createEl("div", {
+      text: "Boss Reward",
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #c9a227;
+          text-align: center;
+          margin-bottom: 20px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid rgba(201, 162, 39, 0.3);
+        `
+      }
+    });
+
+    // Check if boss reward is available
+    const bossDefeated = settings.bossCurrentHP <= 0;
+    const pendingBossReward = settings.pendingRewards?.find(r => r.type === 'boss');
+
+    if (pendingBossReward || bossDefeated) {
+      // Show claimable boss reward
+      const rewardOption = bossRewards[0] || { emoji: '👑', description: 'Boss Defeated Reward' };
+
+      const rewardCard = contentEl.createDiv({
+        attr: {
+          style: `
+            background: linear-gradient(160deg, #22201c 0%, #181614 100%);
+            border: 2px solid rgba(201, 162, 39, 0.5);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 16px;
+          `
+        }
+      });
+
+      if (rewardOption.image) {
+        const img = rewardCard.createEl("img", {
+          attr: {
+            src: rewardOption.image,
+            style: "max-width: 80px; max-height: 80px; margin-bottom: 12px; border-radius: 8px;"
+          }
+        });
+        img.onerror = () => {
+          img.remove();
+          rewardCard.createEl("div", { text: rewardOption.emoji || '👑', attr: { style: "font-size: 48px; margin-bottom: 12px;" } });
+        };
+      } else {
+        rewardCard.createEl("div", {
+          text: rewardOption.emoji || '👑',
+          attr: { style: "font-size: 48px; margin-bottom: 12px;" }
+        });
+      }
+
+      rewardCard.createEl("div", {
+        text: rewardOption.description || 'Boss Reward',
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 14px;
+            color: #e8eaec;
+            margin-bottom: 16px;
+          `
+        }
+      });
+
+      const claimBtn = rewardCard.createEl("button", {
+        text: "Claim Reward",
+        attr: {
+          style: `
+            background: linear-gradient(180deg, #c9a227 0%, #8b6914 100%);
+            color: #0a0a0a;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-family: "Times New Roman", serif;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+          `
+        }
+      });
+      claimBtn.onclick = async () => {
+        if (pendingBossReward) {
+          settings.pendingRewards = settings.pendingRewards.filter(r => r !== pendingBossReward);
+          settings.claimedRewards = settings.claimedRewards || [];
+          settings.claimedRewards.push({
+            ...pendingBossReward,
+            claimedAt: new Date().toISOString(),
+            used: false
+          });
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+        }
+        this.close();
+        new import_obsidian.Notice("Boss reward claimed!");
+      };
+    } else {
+      // Show progress toward boss reward
+      const hpPercent = Math.round((settings.bossCurrentHP / settings.bossMaxHP) * 100);
+      const damageNeeded = settings.bossCurrentHP;
+
+      contentEl.createDiv({
+        attr: {
+          style: `
+            text-align: center;
+            padding: 20px;
+          `
+        }
+      }).innerHTML = `
+        <div style="font-size: 40px; margin-bottom: 12px; opacity: 0.5;">👑</div>
+        <div style="font-family: Georgia, serif; font-size: 13px; color: #8a8a8a; margin-bottom: 8px;">
+          Defeat the boss to claim this reward
+        </div>
+        <div style="font-family: Georgia, serif; font-size: 16px; color: #c9a227;">
+          ${damageNeeded} damage remaining
+        </div>
+        <div style="font-family: Georgia, serif; font-size: 11px; color: #6a6a6a; margin-top: 8px;">
+          (${hpPercent}% HP left)
+        </div>
+      `;
+    }
+
+    // Close button
+    const closeBtn = contentEl.createEl("button", {
+      text: "Close",
+      attr: {
+        style: `
+          display: block;
+          width: 100%;
+          background: transparent;
+          color: #8a8a8a;
+          border: 1px solid #3a3a3a;
+          padding: 10px;
+          border-radius: 6px;
+          font-family: "Georgia", serif;
+          font-size: 12px;
+          cursor: pointer;
+          margin-top: 12px;
+        `
+      }
+    });
+    closeBtn.onclick = () => this.close();
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
 var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
   constructor(app, plugin) {
     super(app);
@@ -4546,13 +4745,27 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
       const newTier = parseInt(tierSelect.value);
       const oldTier = this.plugin.settings.currentTier;
       this.plugin.settings.currentTier = newTier;
-      this.plugin.settings.bossMaxHP = calculateBossMaxHP(newTier, this.plugin.settings);
-      this.plugin.settings.bossCurrentHP = this.plugin.settings.bossMaxHP;
-      debugLog.log("DEV", "Boss tier changed", { oldTier, newTier });
+
+      // Calculate weekly stats to get proper HP
+      const weekProgress = getCurrentWeekProgress(this.app, this.plugin.settings);
+      const allActivities = [
+        ...getEffectiveActivities(this.plugin.settings).filter((a) => this.plugin.settings.enabledActivities[a._originalName] ?? true),
+        ...this.plugin.settings.customHabits.filter((h) => h.enabled)
+      ];
+      const weeklyTargets = allActivities.map(a => a.weeklyTarget || 7);
+      const totalWeeklyTarget = weeklyTargets.reduce((sum, t) => sum + t, 0);
+      const lowestWeeklyTarget = weeklyTargets.length > 0 ? Math.min(...weeklyTargets) : 7;
+
+      // Calculate new HP for the tier
+      const newMaxHP = calculateBossHP(totalWeeklyTarget, newTier, this.plugin.settings, lowestWeeklyTarget);
+      this.plugin.settings.bossMaxHP = newMaxHP;
+      this.plugin.settings.bossCurrentHP = newMaxHP;
+
+      debugLog.log("DEV", "Boss tier changed", { oldTier, newTier, newMaxHP });
       await this.plugin.saveSettings();
       this.plugin.refreshRankView();
       this.render();
-      new import_obsidian.Notice(`Changed to Tier ${newTier}`);
+      new import_obsidian.Notice(`Changed to Tier ${newTier} (HP: ${newMaxHP})`);
     };
 
     const dateSection = content.createDiv({ attr: { style: "margin-bottom: 16px;" } });
@@ -5313,6 +5526,104 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     });
+
+    // Tier Figure Settings
+    new import_obsidian.Setting(containerEl).setName("Tier Figure").setDesc("Display a character figure next to the boss (your avatar/champion)").setHeading();
+
+    new import_obsidian.Setting(containerEl).setName("Show Tier Figure").setDesc("Enable to display your tier figure next to the boss").addToggle(
+      (t) => t.setValue(this.plugin.settings.showTierFigure || false).onChange(async (v) => {
+        this.plugin.settings.showTierFigure = v;
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
+      })
+    );
+
+    // Add tier figure for each tier
+    for (let tier = 1; tier <= 26; tier++) {
+      const existingFigure = this.plugin.settings.tierFigures?.find(f => f.tier === tier);
+      const boss = getBossForTier(tier);
+
+      if (tier % 2 === 1 || tier === 26) {
+        // Show one entry per boss pair
+        const tierRange = tier === 26 ? '25-26' : `${tier}-${tier + 1}`;
+        const bossName = boss?.name || 'Unknown Boss';
+
+        const figureContainer = containerEl.createDiv({
+          cls: "track-habit-rank-dev-section",
+          attr: {
+            style: `
+              margin-top: 8px;
+              border: 1px solid var(--background-modifier-border);
+              border-radius: 6px;
+              overflow: hidden;
+            `
+          }
+        });
+
+        const figureHeader = figureContainer.createDiv({
+          attr: {
+            style: `
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 8px 12px;
+              background: var(--background-secondary);
+              cursor: pointer;
+            `
+          }
+        });
+
+        const hasImage = existingFigure?.image;
+        figureHeader.createEl("span", {
+          text: `Tiers ${tierRange}: ${bossName}${hasImage ? ' ✓' : ''}`,
+          attr: { style: `font-size: 12px; ${hasImage ? 'color: var(--text-accent);' : ''}` }
+        });
+
+        const expandIcon = figureHeader.createEl("span", {
+          text: "▼",
+          attr: { style: "transition: transform 0.2s; font-size: 10px;" }
+        });
+
+        const figureContent = figureContainer.createDiv({
+          attr: { style: "padding: 8px 12px; display: none;" }
+        });
+
+        let isExpanded = false;
+        figureHeader.addEventListener("click", () => {
+          isExpanded = !isExpanded;
+          figureContent.style.display = isExpanded ? "block" : "none";
+          expandIcon.style.transform = isExpanded ? "rotate(180deg)" : "rotate(0deg)";
+        });
+
+        // Image URL
+        new import_obsidian.Setting(figureContent).setName("Figure Image").setDesc("Your avatar/champion image for this tier").addText(
+          (t) => t.setPlaceholder("vault/path/to/figure.png").setValue(existingFigure?.image || "").onChange(async (v) => {
+            this.updateTierFigure(tier, "image", v || "");
+            await this.plugin.saveSettings();
+            this.plugin.refreshRankView();
+          })
+        );
+
+        // Position toggle
+        new import_obsidian.Setting(figureContent).setName("Position").setDesc("Where to display the figure relative to the boss").addDropdown(
+          (d) => d.addOption("left", "Left of Boss").addOption("right", "Right of Boss").setValue(existingFigure?.position || "left").onChange(async (v) => {
+            this.updateTierFigure(tier, "position", v);
+            await this.plugin.saveSettings();
+            this.plugin.refreshRankView();
+          })
+        );
+
+        // Hide tier title toggle
+        new import_obsidian.Setting(figureContent).setName("Hide Tier Title").setDesc("Hide the tier title when this figure is displayed").addToggle(
+          (t) => t.setValue(existingFigure?.hideTierTitle || false).onChange(async (v) => {
+            this.updateTierFigure(tier, "hideTierTitle", v);
+            await this.plugin.saveSettings();
+            this.plugin.refreshRankView();
+          })
+        );
+      }
+    }
+
     new import_obsidian.Setting(containerEl).setName("Tartarus Task Editor").setDesc("Customize penance tasks for each tier range").setHeading();
     new import_obsidian.Setting(containerEl).setName("Tartarus Image").setDesc("Custom image URL shown when in Tartarus (leave empty for default skull)").addText(
       (t) => t.setPlaceholder("https://... or vault/path/to/image.png").setValue(this.plugin.settings.tartarusImage || "").onChange(async (v) => {
@@ -5887,6 +6198,18 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           })
         );
 
+        // Reward Type selector
+        new import_obsidian.Setting(optionBox).setName("Reward Type").setDesc("When is this reward earned?").addDropdown(
+          (d) => d.addOption("activity", "Activity (completion milestones)")
+                  .addOption("streak", "Streak (consecutive weeks)")
+                  .addOption("boss", "Boss (defeating boss)")
+                  .setValue(option.type || "activity")
+                  .onChange(async (v) => {
+                    this.updateRewardOption(tier, optionIndex, "type", v);
+                    await this.plugin.saveSettings();
+                  })
+        );
+
         // Delete button
         new import_obsidian.Setting(optionBox).addButton(
           (btn) => btn.setButtonText("Delete Reward").setWarning().onClick(async () => {
@@ -6043,6 +6366,40 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         (c) => c.tier !== bossIndex
       );
     }
+  }
+  /**
+   * Updates or creates a tier figure entry.
+   * If image is empty and no settings, removes the entry.
+   */
+  updateTierFigure(tier, field, value) {
+    if (!this.plugin.settings.tierFigures) {
+      this.plugin.settings.tierFigures = [];
+    }
+    let figure = this.plugin.settings.tierFigures.find((f) => f.tier === tier);
+    if (!figure) {
+      figure = { tier, position: 'left', hideTierTitle: false, image: '' };
+      this.plugin.settings.tierFigures.push(figure);
+    }
+    if (field === "tier") return;
+    if (field === "image") figure.image = value;
+    else if (field === "position") figure.position = value;
+    else if (field === "hideTierTitle") figure.hideTierTitle = value;
+
+    // Also apply to the paired tier
+    const pairedTier = tier % 2 === 1 ? tier + 1 : tier - 1;
+    if (pairedTier >= 1 && pairedTier <= 26) {
+      let pairedFigure = this.plugin.settings.tierFigures.find((f) => f.tier === pairedTier);
+      if (!pairedFigure) {
+        pairedFigure = { tier: pairedTier, position: 'left', hideTierTitle: false, image: '' };
+        this.plugin.settings.tierFigures.push(pairedFigure);
+      }
+      if (field === "image") pairedFigure.image = value;
+      else if (field === "position") pairedFigure.position = value;
+      else if (field === "hideTierTitle") pairedFigure.hideTierTitle = value;
+    }
+
+    // Remove entries with no image
+    this.plugin.settings.tierFigures = this.plugin.settings.tierFigures.filter(f => f.image);
   }
   /**
    * Helper method to update activity overrides.
