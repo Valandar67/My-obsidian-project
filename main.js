@@ -401,7 +401,15 @@ var DEFAULT_SETTINGS = {
   tierFigures: [],  // Array of { tier, image, position ('left' or 'right'), hideTierTitle }
   showTierFigure: false,
   // Dashboard background image (9:16 aspect ratio, vignette auto-applied)
-  dashboardBgImage: ""
+  dashboardBgImage: "",
+  // Theme settings
+  activeTheme: "age-of-concern",
+  customTheme: {
+    primary: "#613134",
+    secondary: "#faddb3",
+    accent: "#967b4d",
+    muted: "#928d85"
+  }
 };
 function todayISO() {
   const d = /* @__PURE__ */ new Date();
@@ -1130,29 +1138,53 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const rankName = getRankNameForTier(settings.currentTier, settings);
     const barColor = getProgressBarColor(settings.currentTier, settings.inTartarus);
 
-    // Color palette: Moodboard aesthetic
-    // Buccaneer #613134, Peach Yellow #faddb3, Leather #967b4d, Natural Grey #928d85
+    // Theme presets
+    const THEME_PRESETS = {
+      "age-of-concern": { primary: "#613134", secondary: "#faddb3", accent: "#967b4d", muted: "#928d85" },
+      "dark-knight": { primary: "#1a1a2e", secondary: "#e0e0e0", accent: "#4a7c8f", muted: "#6c6c7e" },
+      "forest-spirit": { primary: "#2d4a3e", secondary: "#d4e8c2", accent: "#7a9a5d", muted: "#8a9a85" },
+      "obsidian-gold": { primary: "#1a1a1a", secondary: "#f0d060", accent: "#c9a227", muted: "#808080" },
+      "blood-moon": { primary: "#4a1020", secondary: "#f0c0a0", accent: "#c04040", muted: "#8a6060" },
+      "ocean-depths": { primary: "#0f2a3f", secondary: "#b8d8e8", accent: "#3a7ca5", muted: "#7090a0" },
+      "amethyst": { primary: "#2d1b4e", secondary: "#e0d0f0", accent: "#8a5cf6", muted: "#7a6a8a" },
+      "parchment": { primary: "#5a4a3a", secondary: "#f5ead0", accent: "#a0804a", muted: "#9a8a7a" },
+    };
+
+    // Helper to darken a hex color
+    const darkenHex = (hex, factor) => {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      return `#${Math.round(r*factor).toString(16).padStart(2,'0')}${Math.round(g*factor).toString(16).padStart(2,'0')}${Math.round(b*factor).toString(16).padStart(2,'0')}`;
+    };
+
+    // Resolve active theme colors
+    const activeTheme = settings.activeTheme || "age-of-concern";
+    const themeColors = activeTheme === "custom"
+      ? (settings.customTheme || THEME_PRESETS["age-of-concern"])
+      : (THEME_PRESETS[activeTheme] || THEME_PRESETS["age-of-concern"]);
+
     const colors = {
-      buccaneer: "#613134",
-      peachYellow: "#faddb3",
-      leather: "#967b4d",
-      naturalGrey: "#928d85",
-      gold: "#967b4d",
-      goldLight: "#967b4d",
-      goldMuted: "#967b4d",
-      goldBorder: "#613134",
-      green: "#967b4d",
-      greenBorder: "#613134",
-      bg: "#1a1410",
-      bgLight: "#221c16",
-      bgCard: "#1e1812",
-      text: "#faddb3",
-      textMuted: "#928d85",
-      greenMuted: "#928d85",
-      danger: "#613134",
-      dangerLight: "#613134",
-      dangerMuted: "#613134",
-      accent: "#967b4d"
+      buccaneer: themeColors.primary,
+      peachYellow: themeColors.secondary,
+      leather: themeColors.accent,
+      naturalGrey: themeColors.muted,
+      gold: themeColors.accent,
+      goldLight: themeColors.accent,
+      goldMuted: themeColors.accent,
+      goldBorder: themeColors.primary,
+      green: themeColors.accent,
+      greenBorder: themeColors.primary,
+      bg: darkenHex(themeColors.primary, 0.35),
+      bgLight: darkenHex(themeColors.primary, 0.45),
+      bgCard: darkenHex(themeColors.primary, 0.40),
+      text: themeColors.secondary,
+      textMuted: themeColors.muted,
+      greenMuted: themeColors.muted,
+      danger: themeColors.primary,
+      dangerLight: themeColors.primary,
+      dangerMuted: themeColors.primary,
+      accent: themeColors.accent
     };
 
     // Check and reset start-of-day HP tracking
@@ -4832,195 +4864,418 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     super(app, plugin);
     this.plugin = plugin;
   }
+  /**
+   * Create a collapsible section in settings
+   */
+  createCollapsibleSection(parent, title, icon, defaultOpen = false) {
+    const section = parent.createDiv({
+      attr: {
+        style: `
+          margin: 8px 0;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 8px;
+          overflow: hidden;
+        `
+      }
+    });
+    const header = section.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          background: var(--background-secondary);
+          cursor: pointer;
+          user-select: none;
+          min-height: 44px;
+        `
+      }
+    });
+    const arrow = header.createEl("span", {
+      text: defaultOpen ? "\u25BC" : "\u25B6",
+      attr: { style: "font-size: 10px; transition: transform 0.2s; width: 12px;" }
+    });
+    header.createEl("span", {
+      text: `${icon}  ${title}`,
+      attr: { style: "font-weight: 600; font-size: 0.95em;" }
+    });
+    const body = section.createDiv({
+      attr: { style: `padding: 0 16px; display: ${defaultOpen ? 'block' : 'none'};` }
+    });
+    header.addEventListener("click", () => {
+      const isOpen = body.style.display !== "none";
+      body.style.display = isOpen ? "none" : "block";
+      body.style.padding = isOpen ? "0 16px" : "12px 16px";
+      arrow.textContent = isOpen ? "\u25B6" : "\u25BC";
+    });
+    if (defaultOpen) body.style.padding = "12px 16px";
+    return body;
+  }
+
   display() {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("track-habit-rank-settings");
-    new import_obsidian.Setting(containerEl).setName("Mythological Habit Tracker").setDesc("Configure your activities and boss progression").setHeading();
-    new import_obsidian.Setting(containerEl).setName("System & Developer Tools").setHeading();
-    const pauseSection = containerEl.createDiv({
-      cls: "track-habit-rank-section",
+
+    // Main header
+    containerEl.createEl("div", {
+      text: "Mythological Habit Tracker",
+      attr: { style: "font-size: 1.3em; font-weight: 700; margin-bottom: 4px; padding: 8px 0;" }
+    });
+
+    // Quick stats bar (always visible, compact)
+    const effectiveNow = getEffectiveNow(this.plugin.settings);
+    const hpPercent = Math.round(this.plugin.settings.bossCurrentHP / this.plugin.settings.bossMaxHP * 100);
+    const statusBar = containerEl.createDiv({
       attr: {
         style: `
-          margin: 12px 0;
-          padding: 16px;
-          border: 1px solid var(--background-modifier-border);
-          border-radius: 8px;
-          background: var(--background-secondary);
-        `
-      }
-    });
-    pauseSection.createEl("div", {
-      text: "Pause System",
-      attr: { style: "font-weight: 600; margin-bottom: 12px; font-size: 1em;" }
-    });
-    const pauseStatus = pauseSection.createDiv({
-      attr: {
-        style: `
-          padding: 10px 12px;
-          border-radius: 6px;
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+          flex-wrap: wrap;
+          padding: 8px 12px;
           margin-bottom: 12px;
-          text-align: center;
-          font-weight: 600;
-          ${this.plugin.settings.systemState === "paused" ? "background: rgba(146, 141, 133, 0.15); color: #928d85; border: 1px solid rgba(146, 141, 133, 0.3);" : "background: rgba(150, 123, 77, 0.15); color: #967b4d; border: 1px solid rgba(150, 123, 77, 0.3);"}
+          background: var(--background-secondary);
+          border-radius: 6px;
+          font-size: 0.8em;
+          color: var(--text-muted);
         `
       }
     });
-    if (this.plugin.settings.systemState === "paused") {
-      pauseStatus.setText(`PAUSED - ${this.plugin.getPauseDurationDisplay()}`);
-    } else {
-      pauseStatus.setText("ACTIVE - System running normally");
-    }
-    const pauseBtn = pauseSection.createEl("button", {
-      text: this.plugin.settings.systemState === "paused" ? "Resume System" : "Pause System",
-      cls: "track-habit-rank-btn",
-      attr: {
-        style: `
-          width: 100%;
-          padding: 14px 20px;
-          min-height: 50px;
-          font-size: 1em;
-          font-weight: 600;
-          border-radius: 8px;
-          cursor: pointer;
-          border: none;
-          ${this.plugin.settings.systemState === "paused" ? "background: #967b4d; color: white;" : "background: #928d85; color: white;"}
-        `
-      }
+    statusBar.createEl("span", { text: `Tier ${this.plugin.settings.currentTier}/26` });
+    statusBar.createEl("span", { text: `HP ${this.plugin.settings.bossCurrentHP}/${this.plugin.settings.bossMaxHP} (${hpPercent}%)` });
+    statusBar.createEl("span", {
+      text: this.plugin.settings.systemState === "paused" ? "PAUSED" : this.plugin.settings.inTartarus ? "TARTARUS" : "ACTIVE",
+      attr: { style: `font-weight: 600; color: ${this.plugin.settings.inTartarus ? 'var(--text-error)' : 'var(--text-normal)'};` }
     });
-    pauseBtn.onclick = async () => {
-      await this.plugin.toggleSystemState();
-      this.display();
+
+    // ===== 1. THEME & APPEARANCE =====
+    const themeBody = this.createCollapsibleSection(containerEl, "Theme & Appearance", "\u{1F3A8}", false);
+    this.renderThemeSection(themeBody);
+
+    // ===== 2. ACTIVITIES & HABITS =====
+    const activitiesBody = this.createCollapsibleSection(containerEl, "Activities & Habits", "\u2694\uFE0F", false);
+    this.renderActivitiesSection(activitiesBody);
+
+    // ===== 3. BOSS PROGRESSION =====
+    const bossBody = this.createCollapsibleSection(containerEl, "Boss Progression", "\u{1F409}", false);
+    this.renderBossProgressionSection(bossBody);
+
+    // ===== 4. REWARDS =====
+    const rewardsBody = this.createCollapsibleSection(containerEl, "Rewards", "\u{1F3C6}", false);
+    this.renderRewardPoolsSection(rewardsBody);
+
+    // ===== 5. TARTARUS =====
+    const tartarusBody = this.createCollapsibleSection(containerEl, "Tartarus & Penance", "\u{1F525}", false);
+    this.renderTartarusSection(tartarusBody);
+
+    // ===== 6. SYSTEM =====
+    const systemBody = this.createCollapsibleSection(containerEl, "System & Tools", "\u2699\uFE0F", false);
+    this.renderSystemSection(systemBody);
+  }
+
+  /**
+   * Theme & Appearance section
+   */
+  renderThemeSection(body) {
+    const THEME_PRESETS = {
+      "age-of-concern": { label: "Age of Concern", primary: "#613134", secondary: "#faddb3", accent: "#967b4d", muted: "#928d85" },
+      "dark-knight": { label: "Dark Knight", primary: "#1a1a2e", secondary: "#e0e0e0", accent: "#4a7c8f", muted: "#6c6c7e" },
+      "forest-spirit": { label: "Forest Spirit", primary: "#2d4a3e", secondary: "#d4e8c2", accent: "#7a9a5d", muted: "#8a9a85" },
+      "obsidian-gold": { label: "Obsidian Gold", primary: "#1a1a1a", secondary: "#f0d060", accent: "#c9a227", muted: "#808080" },
+      "blood-moon": { label: "Blood Moon", primary: "#4a1020", secondary: "#f0c0a0", accent: "#c04040", muted: "#8a6060" },
+      "ocean-depths": { label: "Ocean Depths", primary: "#0f2a3f", secondary: "#b8d8e8", accent: "#3a7ca5", muted: "#7090a0" },
+      "amethyst": { label: "Amethyst", primary: "#2d1b4e", secondary: "#e0d0f0", accent: "#8a5cf6", muted: "#7a6a8a" },
+      "parchment": { label: "Parchment", primary: "#5a4a3a", secondary: "#f5ead0", accent: "#a0804a", muted: "#9a8a7a" },
     };
-    if (this.plugin.settings.totalPausedTime > 0 || this.plugin.settings.systemState === "paused") {
-      pauseSection.createEl("div", {
-        text: `Total pause time: ${this.plugin.getTotalPausedDisplay()}`,
+
+    // Preset selector
+    new import_obsidian.Setting(body).setName("Theme preset").setDesc("Choose a preset color theme").addDropdown(
+      (d) => {
+        Object.keys(THEME_PRESETS).forEach(k => d.addOption(k, THEME_PRESETS[k].label));
+        d.addOption("custom", "Custom");
+        d.setValue(this.plugin.settings.activeTheme || "age-of-concern");
+        d.onChange(async (v) => {
+          this.plugin.settings.activeTheme = v;
+          if (v !== "custom") {
+            const preset = THEME_PRESETS[v];
+            this.plugin.settings.customTheme = { primary: preset.primary, secondary: preset.secondary, accent: preset.accent, muted: preset.muted };
+          }
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+          this.display();
+        });
+      }
+    );
+
+    // Preview swatches
+    const theme = this.plugin.settings.customTheme || THEME_PRESETS["age-of-concern"];
+    const swatchRow = body.createDiv({
+      attr: { style: "display: flex; gap: 8px; margin: 8px 0 16px 0; align-items: center;" }
+    });
+    [
+      { color: theme.primary, label: "Primary" },
+      { color: theme.secondary, label: "Text" },
+      { color: theme.accent, label: "Accent" },
+      { color: theme.muted, label: "Muted" },
+    ].forEach(s => {
+      const sw = swatchRow.createDiv({ attr: { style: "text-align: center;" } });
+      sw.createDiv({
         attr: {
-          style: `
-            margin-top: 10px;
-            font-size: 0.85em;
-            opacity: 0.7;
-            text-align: center;
-          `
+          style: `width: 36px; height: 36px; border-radius: 4px; background: ${s.color}; border: 1px solid var(--background-modifier-border); margin-bottom: 2px;`
         }
       });
+      sw.createEl("div", { text: s.label, attr: { style: "font-size: 9px; color: var(--text-muted);" } });
+    });
+
+    // Custom hex inputs (only when custom theme selected)
+    if (this.plugin.settings.activeTheme === "custom") {
+      body.createEl("div", { text: "CUSTOM HEX COLORS", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin-bottom: 8px; color: var(--text-muted);" } });
+
+      const hexFields = [
+        { key: "primary", label: "Primary (borders, dark elements)", placeholder: "#613134" },
+        { key: "secondary", label: "Text (main text color)", placeholder: "#faddb3" },
+        { key: "accent", label: "Accent (HP bar, highlights)", placeholder: "#967b4d" },
+        { key: "muted", label: "Muted (subtle text, info)", placeholder: "#928d85" },
+      ];
+
+      hexFields.forEach(f => {
+        new import_obsidian.Setting(body).setName(f.label).addText(
+          (t) => {
+            t.setPlaceholder(f.placeholder)
+              .setValue(this.plugin.settings.customTheme?.[f.key] || "")
+              .onChange(async (v) => {
+                if (/^#[0-9a-fA-F]{6}$/.test(v) || v === "") {
+                  if (!this.plugin.settings.customTheme) this.plugin.settings.customTheme = { primary: "#613134", secondary: "#faddb3", accent: "#967b4d", muted: "#928d85" };
+                  this.plugin.settings.customTheme[f.key] = v || f.placeholder;
+                  await this.plugin.saveSettings();
+                  this.plugin.refreshRankView();
+                }
+              });
+            t.inputEl.style.fontFamily = "monospace";
+            t.inputEl.style.width = "90px";
+          }
+        );
+      });
     }
-    const devSection = containerEl.createDiv({
-      cls: "track-habit-rank-section",
-      attr: {
-        style: `
-          margin: 12px 0;
-          padding: 16px;
-          border: 1px solid var(--background-modifier-border);
-          border-radius: 8px;
-          background: var(--background-secondary);
-        `
-      }
-    });
-    devSection.createEl("div", {
-      text: "Developer Dashboard",
-      attr: { style: "font-weight: 600; margin-bottom: 12px; font-size: 1em;" }
-    });
-    const openDashboardBtn = devSection.createEl("button", {
-      text: "Open Developer Dashboard",
-      cls: "track-habit-rank-btn",
-      attr: {
-        style: `
-          width: 100%;
-          padding: 14px 20px;
-          min-height: 50px;
-          font-size: 1em;
-          font-weight: 600;
-          border-radius: 8px;
-          cursor: pointer;
-          background: var(--interactive-accent);
-          color: var(--text-on-accent);
-          border: none;
-          margin-bottom: 12px;
-        `
-      }
-    });
-    openDashboardBtn.onclick = () => {
-      this.plugin.activateDevDashboard();
-    };
-    new import_obsidian.Setting(devSection).setName("Debug logging").setDesc("Enable detailed logging in Developer Dashboard").addToggle(
-      (toggle) => toggle.setValue(true).onChange((enabled) => {
-        debugLog.setEnabled(enabled);
-        new import_obsidian.Notice(enabled ? "Debug logging enabled" : "Debug logging disabled");
+
+    // Background image
+    body.createEl("div", { text: "BACKGROUND", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
+    new import_obsidian.Setting(body).setName("Dashboard background image").setDesc("URL or vault path to a 9:16 image (vignette auto-applied)").addText(
+      (t) => t.setPlaceholder("vault/path/to/image.png").setValue(this.plugin.settings.dashboardBgImage || "").onChange(async (v) => {
+        this.plugin.settings.dashboardBgImage = v;
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
       })
     );
-    const statsSection = containerEl.createDiv({
-      cls: "track-habit-rank-section",
-      attr: {
-        style: `
-          margin: 12px 0;
-          padding: 16px;
-          border: 1px solid var(--background-modifier-border);
-          border-radius: 8px;
-          background: var(--background-secondary);
-        `
-      }
-    });
-    statsSection.createEl("div", {
-      text: "Quick Stats",
-      attr: { style: "font-weight: 600; margin-bottom: 12px; font-size: 1em;" }
-    });
-    const statsGrid = statsSection.createDiv({
-      attr: {
-        style: `
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-        `
-      }
-    });
-    const effectiveNow = getEffectiveNow(this.plugin.settings);
-    const effectiveDate = effectiveNow.toISOString().slice(0, 10);
-    const isSimulated = !!this.plugin.settings.simulatedDate;
-    this.createStatCard(statsGrid, "Effective Date", effectiveDate, isSimulated ? "#967b4d" : "#967b4d");
-    const hpPercent = Math.round(this.plugin.settings.bossCurrentHP / this.plugin.settings.bossMaxHP * 100);
-    const hpColor = hpPercent > 50 ? "#967b4d" : hpPercent > 20 ? "#967b4d" : "#613134";
-    this.createStatCard(statsGrid, "Boss HP", `${this.plugin.settings.bossCurrentHP}/${this.plugin.settings.bossMaxHP}`, hpColor);
-    const thresholdColor = this.plugin.settings.failedThresholdDays === 0 ? "#967b4d" : this.plugin.settings.failedThresholdDays === 1 ? "#967b4d" : "#613134";
-    this.createStatCard(statsGrid, "Threshold Days", `${this.plugin.settings.failedThresholdDays}/3`, thresholdColor);
-    const tierColor = this.plugin.settings.inTartarus ? "#613134" : "#928d85";
-    this.createStatCard(statsGrid, "Current Tier", `${this.plugin.settings.currentTier}/26`, tierColor);
-    if (isSimulated) {
-      statsSection.createEl("div", {
-        text: `Date simulated: ${this.plugin.settings.simulatedDate}`,
-        attr: {
-          style: `
-            margin-top: 10px;
-            padding: 8px;
-            background: rgba(150, 123, 77, 0.15);
-            border: 1px solid rgba(150, 123, 77, 0.3);
-            border-radius: 6px;
-            font-size: 0.85em;
-            color: #967b4d;
-            text-align: center;
-          `
+
+    // Tier figure
+    body.createEl("div", { text: "TIER FIGURE", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
+    new import_obsidian.Setting(body).setName("Show tier figure").setDesc("Display your avatar/champion next to the boss").addToggle(
+      (t) => t.setValue(this.plugin.settings.showTierFigure).onChange(async (v) => {
+        this.plugin.settings.showTierFigure = v;
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
+        this.display();
+      })
+    );
+
+    if (this.plugin.settings.showTierFigure) {
+      for (let tier = 1; tier <= this.plugin.settings.maxTier; tier++) {
+        if (tier % 2 === 1 || tier === this.plugin.settings.maxTier) {
+          const tierFigure = this.plugin.settings.tierFigures?.find(f => f.tier === tier);
+          const pairEnd = Math.min(tier + 1, this.plugin.settings.maxTier);
+          const figureContainer = body.createDiv({
+            attr: { style: "margin-top: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden;" }
+          });
+          const figHeader = figureContainer.createDiv({
+            attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--background-secondary); cursor: pointer; user-select: none;" }
+          });
+          figHeader.createEl("span", { text: `Tiers ${tier}-${pairEnd}`, attr: { style: "font-size: 0.85em; font-weight: 500;" } });
+          const figArrow = figHeader.createEl("span", { text: "\u25B6", attr: { style: "font-size: 9px;" } });
+          const figureContent = figureContainer.createDiv({ attr: { style: "display: none; padding: 8px 12px;" } });
+          figHeader.addEventListener("click", () => {
+            const isOpen = figureContent.style.display !== "none";
+            figureContent.style.display = isOpen ? "none" : "block";
+            figArrow.textContent = isOpen ? "\u25B6" : "\u25BC";
+          });
+
+          new import_obsidian.Setting(figureContent).setName("Figure image").addText(
+            (t) => t.setPlaceholder("vault/path/to/figure.png").setValue(tierFigure?.image || "").onChange(async (v) => {
+              this.updateTierFigure(tier, 'image', v);
+              await this.plugin.saveSettings();
+              this.plugin.refreshRankView();
+            })
+          );
+          new import_obsidian.Setting(figureContent).setName("Position").addDropdown(
+            (d) => d.addOption("left", "Left").addOption("right", "Right").setValue(tierFigure?.position || "left").onChange(async (v) => {
+              this.updateTierFigure(tier, 'position', v);
+              await this.plugin.saveSettings();
+              this.plugin.refreshRankView();
+            })
+          );
+          new import_obsidian.Setting(figureContent).setName("Hide tier title").addToggle(
+            (t) => t.setValue(tierFigure?.hideTierTitle || false).onChange(async (v) => {
+              this.updateTierFigure(tier, 'hideTierTitle', v);
+              await this.plugin.saveSettings();
+              this.plugin.refreshRankView();
+            })
+          );
         }
-      });
+      }
     }
-    if (this.plugin.settings.inTartarus) {
-      statsSection.createEl("div", {
-        text: "IN TARTARUS - Complete penance to escape",
-        attr: {
-          style: `
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(97, 49, 52, 0.15);
-            border: 2px solid #613134;
-            border-radius: 6px;
-            font-size: 0.9em;
-            color: #613134;
-            font-weight: 700;
-            text-align: center;
-          `
-        }
+  }
+
+  /**
+   * Activities & Habits section
+   */
+  renderActivitiesSection(body) {
+    // Default activities toggles
+    body.createEl("div", { text: "DEFAULT ACTIVITIES", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin-bottom: 8px; color: var(--text-muted);" } });
+    getEffectiveActivities(this.plugin.settings).forEach((activity) => {
+      const originalName = activity._originalName;
+      new import_obsidian.Setting(body).setName(activity.name).setDesc(`${activity.folder} \u2022 ${activity.weeklyTarget}/wk`).addToggle(
+        (toggle) => toggle.setValue(
+          this.plugin.settings.enabledActivities[originalName] ?? true
+        ).onChange(async (value) => {
+          const currentlyEnabled = this.plugin.settings.enabledActivities[originalName] ?? true;
+          const aboutToDisable = currentlyEnabled && !value;
+          if (aboutToDisable) {
+            const completions = getCompletionsFromFolder(this.app, activity.folder, activity.field);
+            let result;
+            if (activity.trackingMode === "weekly" && activity.damagePerWeek) {
+              result = calculateWeeklyStreak(completions, activity.damagePerWeek, void 0, this.plugin.settings);
+            } else {
+              result = calculateLiveStreakWithDecay(completions, activity.damagePerCompletion, void 0, this.plugin.settings);
+            }
+            const completedCount = completions.filter((c) => c.completed).length;
+            this.plugin.settings.activitySnapshots[originalName] = {
+              activityId: originalName,
+              disabledDate: getEffectiveTodayISO(this.plugin.settings),
+              frozenHP: completedCount,
+              frozenStreak: result.streak
+            };
+          }
+          if (!aboutToDisable && value) {
+            delete this.plugin.settings.activitySnapshots[originalName];
+          }
+          this.plugin.settings.enabledActivities[originalName] = value;
+          const stats = this.getWeeklyTargetStats();
+          const newMaxHP = calculateBossHP(stats.total, this.plugin.settings.currentTier, this.plugin.settings, stats.lowest);
+          this.plugin.settings.bossMaxHP = newMaxHP;
+          if (this.plugin.settings.bossCurrentHP > newMaxHP) {
+            this.plugin.settings.bossCurrentHP = newMaxHP;
+          }
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+        })
+      );
+    });
+
+    // Custom habits
+    body.createEl("div", { text: "CUSTOM HABITS", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
+    new import_obsidian.Setting(body).setName("Add custom habit").addButton(
+      (btn) => btn.setButtonText("+ Add").setCta().onClick(async () => {
+        this.plugin.settings.customHabits.push({
+          id: crypto.randomUUID(),
+          name: "New habit",
+          folder: "",
+          field: "",
+          damagePerCompletion: 1,
+          enabled: true,
+          weeklyTarget: 7
+        });
+        await this.plugin.saveSettings();
+        this.display();
+      })
+    );
+    this.plugin.settings.customHabits.forEach((habit, index) => {
+      const box = body.createDiv({
+        attr: { style: "margin-top: 8px; padding: 10px; border-radius: 6px; border: 1px solid var(--background-modifier-border);" }
       });
-    }
-    new import_obsidian.Setting(containerEl).setName("Boss Progression").setHeading();
+      new import_obsidian.Setting(box).setName("Enabled").addToggle(
+        (t) => t.setValue(habit.enabled).onChange(async (v) => {
+          const currentlyEnabled = habit.enabled;
+          const aboutToDisable = currentlyEnabled && !v;
+          if (aboutToDisable) {
+            const completions = getCompletionsFromFolder(this.app, habit.folder, habit.field);
+            let result;
+            if (habit.trackingMode === "weekly" && habit.damagePerWeek) {
+              result = calculateWeeklyStreak(completions, habit.damagePerWeek, void 0, this.plugin.settings);
+            } else {
+              result = calculateLiveStreakWithDecay(completions, habit.damagePerCompletion, void 0, this.plugin.settings);
+            }
+            const completedCount = completions.filter((c) => c.completed).length;
+            this.plugin.settings.activitySnapshots[habit.id] = {
+              activityId: habit.id,
+              disabledDate: getEffectiveTodayISO(this.plugin.settings),
+              frozenHP: completedCount,
+              frozenStreak: result.streak
+            };
+          }
+          if (!aboutToDisable && v) delete this.plugin.settings.activitySnapshots[habit.id];
+          habit.enabled = v;
+          await this.plugin.saveSettings();
+          this.plugin.refreshRankView();
+        })
+      );
+      new import_obsidian.Setting(box).setName("Name").addText((t) => t.setPlaceholder("Habit name").setValue(habit.name).onChange(async (v) => { habit.name = v; await this.plugin.saveSettings(); }));
+      new import_obsidian.Setting(box).setName("Folder").setDesc("Folder with YYYY-MM-DD notes").addText((t) => t.setPlaceholder("Personal Life/01 Workout").setValue(habit.folder).onChange(async (v) => { habit.folder = v; await this.plugin.saveSettings(); }));
+      new import_obsidian.Setting(box).setName("Property").addText((t) => t.setPlaceholder("Workout").setValue(habit.field).onChange(async (v) => { habit.field = v; await this.plugin.saveSettings(); }));
+      new import_obsidian.Setting(box).setName("Damage/completion").addText((t) => t.setValue(String(habit.damagePerCompletion)).onChange(async (v) => { habit.damagePerCompletion = Number(v) || 1; await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(box).setName("Weekly target").addText((t) => t.setValue(String(habit.weeklyTarget || 7)).onChange(async (v) => { habit.weeklyTarget = Number(v) || 7; await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(box).setName("Tracking mode").addDropdown(
+        (d) => d.addOption("daily", "Daily").addOption("weekly", "Weekly").setValue(habit.trackingMode || "daily").onChange(async (v) => { habit.trackingMode = v; await this.plugin.saveSettings(); this.plugin.refreshRankView(); })
+      );
+      if (habit.trackingMode === "weekly") {
+        new import_obsidian.Setting(box).setName("Damage per week").addText((t) => t.setValue(String(habit.damagePerWeek || 7)).onChange(async (v) => { habit.damagePerWeek = Number(v) || 7; await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      }
+      new import_obsidian.Setting(box).addButton((btn) => btn.setButtonText("Delete").setWarning().onClick(async () => {
+        this.plugin.settings.customHabits.splice(index, 1);
+        await this.plugin.saveSettings();
+        this.display();
+        this.plugin.refreshRankView();
+      }));
+    });
+
+    // Activity editor (collapsible sub-section)
+    body.createEl("div", { text: "ACTIVITY EDITOR", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
+    new import_obsidian.Setting(body).setName("Reset all customizations").addButton(
+      (btn) => btn.setButtonText("Reset All").setWarning().onClick(async () => {
+        this.plugin.settings.activityOverrides = [];
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
+        this.display();
+      })
+    );
+    ACTIVITIES.forEach((activity) => {
+      const override = this.plugin.settings.activityOverrides?.find((o) => o.originalName === activity.name);
+      const actContainer = body.createDiv({ attr: { style: "margin-top: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden;" } });
+      const actHeader = actContainer.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--background-secondary); cursor: pointer; min-height: 40px;" } });
+      const displayName = override?.name || activity.name;
+      actHeader.createEl("span", { text: `${displayName}${override ? " \u270F\uFE0F" : ""}`, attr: { style: "font-weight: 500; font-size: 0.9em;" } });
+      const actArrow = actHeader.createEl("span", { text: "\u25B6", attr: { style: "font-size: 9px;" } });
+      const actContent = actContainer.createDiv({ attr: { style: "display: none; padding: 8px 12px;" } });
+      actHeader.addEventListener("click", () => {
+        const isOpen = actContent.style.display !== "none";
+        actContent.style.display = isOpen ? "none" : "block";
+        actArrow.textContent = isOpen ? "\u25B6" : "\u25BC";
+      });
+      new import_obsidian.Setting(actContent).setName("Display Name").addText((t) => t.setPlaceholder(activity.name).setValue(override?.name || "").onChange(async (v) => { this.updateActivityOverride(activity.name, "name", v || void 0); await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(actContent).setName("Folder Path").addText((t) => t.setPlaceholder(activity.folder).setValue(override?.folder || "").onChange(async (v) => { this.updateActivityOverride(activity.name, "folder", v || void 0); await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(actContent).setName("Field Name").addText((t) => t.setPlaceholder(activity.field).setValue(override?.field || "").onChange(async (v) => { this.updateActivityOverride(activity.name, "field", v || void 0); await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(actContent).setName("Damage/Completion").addText((t) => t.setPlaceholder(String(activity.damagePerCompletion)).setValue(override?.damagePerCompletion !== void 0 ? String(override.damagePerCompletion) : "").onChange(async (v) => { const num = parseInt(v); this.updateActivityOverride(activity.name, "damagePerCompletion", isNaN(num) ? void 0 : num); await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(actContent).setName("Weekly Target").addText((t) => t.setPlaceholder(String(activity.weeklyTarget || 7)).setValue(override?.weeklyTarget !== void 0 ? String(override.weeklyTarget) : "").onChange(async (v) => { const num = parseInt(v); this.updateActivityOverride(activity.name, "weeklyTarget", isNaN(num) ? void 0 : num); const s = this.getWeeklyTargetStats(); const hp = calculateBossHP(s.total, this.plugin.settings.currentTier, this.plugin.settings, s.lowest); this.plugin.settings.bossMaxHP = hp; if (this.plugin.settings.bossCurrentHP > hp) this.plugin.settings.bossCurrentHP = hp; await this.plugin.saveSettings(); this.plugin.refreshRankView(); }));
+      new import_obsidian.Setting(actContent).addButton((btn) => btn.setButtonText("Reset").onClick(async () => { this.plugin.settings.activityOverrides = this.plugin.settings.activityOverrides.filter((o) => o.originalName !== activity.name); await this.plugin.saveSettings(); this.plugin.refreshRankView(); this.display(); }));
+    });
+  }
+
+  /**
+   * Boss Progression section
+   */
+  renderBossProgressionSection(body) {
+    const containerEl = body;
     const stats = this.getWeeklyTargetStats();
     const difficultyInfo = containerEl.createDiv({
       attr: {
@@ -5350,557 +5605,115 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     });
+  }
 
-    // Tier Figure Settings
-    new import_obsidian.Setting(containerEl).setName("Tier Figure").setDesc("Display a character figure next to the boss (your avatar/champion)").setHeading();
-
-    new import_obsidian.Setting(containerEl).setName("Show Tier Figure").setDesc("Enable to display your tier figure next to the boss").addToggle(
-      (t) => t.setValue(this.plugin.settings.showTierFigure || false).onChange(async (v) => {
-        this.plugin.settings.showTierFigure = v;
-        await this.plugin.saveSettings();
-        this.plugin.refreshRankView();
-      })
-    );
-
-    // Add tier figure for each tier
-    for (let tier = 1; tier <= 26; tier++) {
-      const existingFigure = this.plugin.settings.tierFigures?.find(f => f.tier === tier);
-      const boss = getBossForTier(tier);
-
-      if (tier % 2 === 1 || tier === 26) {
-        // Show one entry per boss pair
-        const tierRange = tier === 26 ? '25-26' : `${tier}-${tier + 1}`;
-        const bossName = boss?.name || 'Unknown Boss';
-
-        const figureContainer = containerEl.createDiv({
-          cls: "track-habit-rank-dev-section",
-          attr: {
-            style: `
-              margin-top: 8px;
-              border: 1px solid var(--background-modifier-border);
-              border-radius: 6px;
-              overflow: hidden;
-            `
-          }
-        });
-
-        const figureHeader = figureContainer.createDiv({
-          attr: {
-            style: `
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              padding: 8px 12px;
-              background: var(--background-secondary);
-              cursor: pointer;
-            `
-          }
-        });
-
-        const hasImage = existingFigure?.image;
-        figureHeader.createEl("span", {
-          text: `Tiers ${tierRange}: ${bossName}${hasImage ? ' ✓' : ''}`,
-          attr: { style: `font-size: 12px; ${hasImage ? 'color: var(--text-accent);' : ''}` }
-        });
-
-        const expandIcon = figureHeader.createEl("span", {
-          text: "▼",
-          attr: { style: "transition: transform 0.2s; font-size: 10px;" }
-        });
-
-        const figureContent = figureContainer.createDiv({
-          attr: { style: "padding: 8px 12px; display: none;" }
-        });
-
-        let isExpanded = false;
-        figureHeader.addEventListener("click", () => {
-          isExpanded = !isExpanded;
-          figureContent.style.display = isExpanded ? "block" : "none";
-          expandIcon.style.transform = isExpanded ? "rotate(180deg)" : "rotate(0deg)";
-        });
-
-        // Image URL
-        new import_obsidian.Setting(figureContent).setName("Figure Image").setDesc("Your avatar/champion image for this tier").addText(
-          (t) => t.setPlaceholder("vault/path/to/figure.png").setValue(existingFigure?.image || "").onChange(async (v) => {
-            this.updateTierFigure(tier, "image", v || "");
-            await this.plugin.saveSettings();
-            this.plugin.refreshRankView();
-          })
-        );
-
-        // Position toggle
-        new import_obsidian.Setting(figureContent).setName("Position").setDesc("Where to display the figure relative to the boss").addDropdown(
-          (d) => d.addOption("left", "Left of Boss").addOption("right", "Right of Boss").setValue(existingFigure?.position || "left").onChange(async (v) => {
-            this.updateTierFigure(tier, "position", v);
-            await this.plugin.saveSettings();
-            this.plugin.refreshRankView();
-          })
-        );
-
-        // Hide tier title toggle
-        new import_obsidian.Setting(figureContent).setName("Hide Tier Title").setDesc("Hide the tier title when this figure is displayed").addToggle(
-          (t) => t.setValue(existingFigure?.hideTierTitle || false).onChange(async (v) => {
-            this.updateTierFigure(tier, "hideTierTitle", v);
-            await this.plugin.saveSettings();
-            this.plugin.refreshRankView();
-          })
-        );
-      }
-    }
-
-    // Dashboard Background Image
-    new import_obsidian.Setting(containerEl).setName("Dashboard Background").setDesc("Set a 9:16 background image for the boss dashboard (vignette applied automatically)").setHeading();
-
-    new import_obsidian.Setting(containerEl).setName("Background Image URL").setDesc("URL or vault path to a 9:16 image").addText(
-      (t) => t.setPlaceholder("https://... or vault/path/to/bg.png").setValue(this.plugin.settings.dashboardBgImage || "").onChange(async (v) => {
-        this.plugin.settings.dashboardBgImage = v || "";
-        await this.plugin.saveSettings();
-        this.plugin.refreshRankView();
-      })
-    );
-
-    new import_obsidian.Setting(containerEl).setName("Tartarus Task Editor").setDesc("Customize penance tasks for each tier range").setHeading();
-    new import_obsidian.Setting(containerEl).setName("Tartarus Image").setDesc("Custom image URL shown when in Tartarus (leave empty for default skull)").addText(
+  /**
+   * Tartarus & Penance section
+   */
+  renderTartarusSection(body) {
+    const containerEl = body;
+    new import_obsidian.Setting(containerEl).setName("Tartarus image").setDesc("Custom image shown when in Tartarus (URL or vault path)").addText(
       (t) => t.setPlaceholder("https://... or vault/path/to/image.png").setValue(this.plugin.settings.tartarusImage || "").onChange(async (v) => {
         this.plugin.settings.tartarusImage = v || null;
         await this.plugin.saveSettings();
         this.plugin.refreshRankView();
       })
     );
-    new import_obsidian.Setting(containerEl).setName("Reset all Tartarus tasks").setDesc("Restore all penance tasks to their default values").addButton(
+    new import_obsidian.Setting(containerEl).setName("Reset all Tartarus tasks").addButton(
       (btn) => btn.setButtonText("Reset All").setWarning().onClick(async () => {
         this.plugin.settings.customTartarusTasks = [];
-        this.plugin.settings.tartarusImage = null;
         await this.plugin.saveSettings();
-        this.plugin.refreshRankView();
         this.display();
-        new import_obsidian.Notice("All Tartarus customizations reset");
       })
     );
-    const tartarusTierRanges = [
-      { range: "low", label: "Early Game", tiers: "Tiers 1-4" },
-      { range: "mid", label: "Mid Game", tiers: "Tiers 5-12" },
-      { range: "high", label: "End Game", tiers: "Tiers 13+" }
+
+    const tartarusRanges = [
+      { range: "early", label: "Early (Tiers 1-4)", tiers: [1, 4] },
+      { range: "mid", label: "Mid (Tiers 5-12)", tiers: [5, 12] },
+      { range: "late", label: "Late (Tiers 13+)", tiers: [13, 26] }
     ];
-    tartarusTierRanges.forEach(({ range, label, tiers }) => {
-      const customTasks = this.plugin.settings.customTartarusTasks?.find((t) => t.tierRange === range);
-      const currentTasks = customTasks?.tasks || DEFAULT_TARTARUS_TASKS[range];
-      const tartarusContainer = containerEl.createDiv({
-        cls: "track-habit-rank-dev-section",
-        attr: {
-          style: `
-            margin-top: 12px;
-            border: 1px solid var(--background-modifier-border);
-            border-radius: 8px;
-            overflow: hidden;
-          `
-        }
+    tartarusRanges.forEach(({ range, label }) => {
+      const rangeContainer = containerEl.createDiv({ attr: { style: "margin-top: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden;" } });
+      const rangeHeader = rangeContainer.createDiv({ attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--background-secondary); cursor: pointer;" } });
+      rangeHeader.createEl("span", { text: label, attr: { style: "font-weight: 500; font-size: 0.9em;" } });
+      const rangeArrow = rangeHeader.createEl("span", { text: "\u25B6", attr: { style: "font-size: 9px;" } });
+      const content = rangeContainer.createDiv({ attr: { style: "display: none; padding: 8px 12px;" } });
+      rangeHeader.addEventListener("click", () => {
+        const isOpen = content.style.display !== "none";
+        content.style.display = isOpen ? "none" : "block";
+        rangeArrow.textContent = isOpen ? "\u25B6" : "\u25BC";
       });
-      const header = tartarusContainer.createDiv({
-        cls: "track-habit-rank-dev-section-header",
-        attr: {
-          style: `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: var(--background-secondary);
-            cursor: pointer;
-            min-height: 44px;
-          `
-        }
-      });
-      const isCustomized = customTasks ? " \u270F\uFE0F" : "";
-      header.createEl("span", {
-        text: `${label} (${tiers})${isCustomized}`,
-        attr: {
-          style: "font-weight: 600;"
-        }
-      });
-      const expandIcon = header.createEl("span", {
-        text: "\u25BC",
-        attr: {
-          style: "transition: transform 0.2s;"
-        }
-      });
-      const content = tartarusContainer.createDiv({
-        cls: "track-habit-rank-dev-section-content",
-        attr: {
-          style: `
-            padding: 12px 16px;
-            display: none;
-          `
-        }
-      });
-      let isExpanded = false;
-      header.addEventListener("click", () => {
-        isExpanded = !isExpanded;
-        content.style.display = isExpanded ? "block" : "none";
-        expandIcon.style.transform = isExpanded ? "rotate(180deg)" : "rotate(0deg)";
-      });
-      content.createEl("div", {
-        text: `Default: ${DEFAULT_TARTARUS_TASKS[range].length} tasks`,
-        attr: {
-          style: `
-            font-size: 0.85em;
-            opacity: 0.7;
-            margin-bottom: 12px;
-          `
-        }
-      });
-      currentTasks.forEach((task, taskIndex) => {
-        const taskBox = content.createDiv({
-          attr: {
-            style: `
-              margin-bottom: 8px;
-              padding: 8px;
-              background: var(--background-primary);
-              border-radius: 6px;
-              border: 1px solid var(--background-modifier-border);
-            `
-          }
-        });
-        new import_obsidian.Setting(taskBox).setName(`Task ${taskIndex + 1}`).addText(
-          (t) => t.setPlaceholder(DEFAULT_TARTARUS_TASKS[range][taskIndex]?.description || "Task description").setValue(task.description).onChange(async (v) => {
-            this.updateTartarusTask(range, taskIndex, v);
+
+      const defaultTasks = getDefaultTartarusTasks(range);
+      const customTasks = this.plugin.settings.customTartarusTasks?.filter(t => t.tierRange === range) || [];
+      const tasks = customTasks.length > 0 ? customTasks.map(t => t.description) : defaultTasks;
+
+      tasks.forEach((task, taskIndex) => {
+        new import_obsidian.Setting(content).setName(`Task ${taskIndex + 1}`).addText(
+          (t) => t.setValue(task).onChange(async (v) => {
+            let customForRange = this.plugin.settings.customTartarusTasks?.filter(ct => ct.tierRange === range) || [];
+            if (customForRange.length === 0) {
+              customForRange = defaultTasks.map(dt => ({ tierRange: range, description: dt }));
+              this.plugin.settings.customTartarusTasks = [...(this.plugin.settings.customTartarusTasks || []).filter(ct => ct.tierRange !== range), ...customForRange];
+            }
+            const updated = this.plugin.settings.customTartarusTasks.filter(ct => ct.tierRange === range);
+            if (updated[taskIndex]) updated[taskIndex].description = v;
             await this.plugin.saveSettings();
-          })
-        ).addButton(
-          (btn) => btn.setButtonText("\xD7").setWarning().onClick(async () => {
-            this.removeTartarusTask(range, taskIndex);
-            await this.plugin.saveSettings();
-            this.display();
           })
         );
       });
-      new import_obsidian.Setting(content).addButton(
-        (btn) => btn.setButtonText("+ Add Task").setCta().onClick(async () => {
-          this.addTartarusTask(range);
-          await this.plugin.saveSettings();
-          this.display();
-        })
-      );
       new import_obsidian.Setting(content).addButton(
         (btn) => btn.setButtonText("Reset to Defaults").onClick(async () => {
-          this.plugin.settings.customTartarusTasks = this.plugin.settings.customTartarusTasks?.filter(
-            (t) => t.tierRange !== range
-          ) || [];
+          this.plugin.settings.customTartarusTasks = this.plugin.settings.customTartarusTasks?.filter((t) => t.tierRange !== range) || [];
           await this.plugin.saveSettings();
           this.display();
-          new import_obsidian.Notice(`${label} Tartarus tasks reset to defaults`);
         })
       );
     });
-    new import_obsidian.Setting(containerEl).setName("Default activities").setHeading();
-    getEffectiveActivities(this.plugin.settings).forEach((activity) => {
-      const originalName = activity._originalName;
-      new import_obsidian.Setting(containerEl).setName(activity.name).setDesc(`${activity.folder} - Target: ${activity.weeklyTarget}/week`).addToggle(
-        (toggle) => toggle.setValue(
-          this.plugin.settings.enabledActivities[originalName] ?? true
-        ).onChange(async (value) => {
-          const currentlyEnabled = this.plugin.settings.enabledActivities[originalName] ?? true;
-          const aboutToDisable = currentlyEnabled && !value;
-          if (aboutToDisable) {
-            const completions = getCompletionsFromFolder(
-              this.app,
-              activity.folder,
-              activity.field
-            );
-            let result;
-            if (activity.trackingMode === "weekly" && activity.damagePerWeek) {
-              result = calculateWeeklyStreak(
-                completions,
-                activity.damagePerWeek,
-                void 0,
-                this.plugin.settings
-              );
-            } else {
-              result = calculateLiveStreakWithDecay(
-                completions,
-                activity.damagePerCompletion,
-                void 0,
-                this.plugin.settings
-              );
-            }
-            const completedCount = completions.filter((c) => c.completed).length;
-            const totalHP = completedCount;
-            this.plugin.settings.activitySnapshots[originalName] = {
-              activityId: originalName,
-              disabledDate: getEffectiveTodayISO(this.plugin.settings),
-              frozenHP: totalHP,
-              frozenStreak: result.streak
-            };
-          }
-          if (!aboutToDisable && value) {
-            delete this.plugin.settings.activitySnapshots[originalName];
-          }
-          this.plugin.settings.enabledActivities[originalName] = value;
-          const stats2 = this.getWeeklyTargetStats();
-          const newMaxHP = calculateBossHP(stats2.total, this.plugin.settings.currentTier, this.plugin.settings, stats2.lowest);
-          this.plugin.settings.bossMaxHP = newMaxHP;
-          if (this.plugin.settings.bossCurrentHP > newMaxHP) {
-            this.plugin.settings.bossCurrentHP = newMaxHP;
-          }
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-    });
-    new import_obsidian.Setting(containerEl).setName("Activity Editor").setDesc("Edit default activity properties (name, folder, field, HP values, weekly target)").setHeading();
-    new import_obsidian.Setting(containerEl).setName("Reset all activity customizations").setDesc("Restore all activities to their default values").addButton(
-      (btn) => btn.setButtonText("Reset All").setWarning().onClick(async () => {
-        this.plugin.settings.activityOverrides = [];
-        await this.plugin.saveSettings();
-        this.plugin.refreshRankView();
-        this.display();
-        new import_obsidian.Notice("All activity customizations reset");
-      })
-    );
-    ACTIVITIES.forEach((activity) => {
-      const override = this.plugin.settings.activityOverrides?.find((o) => o.originalName === activity.name);
-      const activityContainer = containerEl.createDiv({
-        cls: "track-habit-rank-dev-section",
-        attr: {
-          style: `
-            margin-top: 12px;
-            border: 1px solid var(--background-modifier-border);
-            border-radius: 8px;
-            overflow: hidden;
-          `
-        }
-      });
-      const header = activityContainer.createDiv({
-        cls: "track-habit-rank-dev-section-header",
-        attr: {
-          style: `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: var(--background-secondary);
-            cursor: pointer;
-            min-height: 44px;
-          `
-        }
-      });
-      const displayName = override?.name || activity.name;
-      const isCustomized = override ? " \u270F\uFE0F" : "";
-      header.createEl("span", {
-        text: `${displayName}${isCustomized}`,
-        attr: {
-          style: "font-weight: 600;"
-        }
-      });
-      const expandIcon = header.createEl("span", {
-        text: "\u25BC",
-        attr: {
-          style: "transition: transform 0.2s;"
-        }
-      });
-      const content = activityContainer.createDiv({
-        cls: "track-habit-rank-dev-section-content",
-        attr: {
-          style: `
-            padding: 12px 16px;
-            display: none;
-          `
-        }
-      });
-      let isExpanded = false;
-      header.addEventListener("click", () => {
-        isExpanded = !isExpanded;
-        content.style.display = isExpanded ? "block" : "none";
-        expandIcon.style.transform = isExpanded ? "rotate(180deg)" : "rotate(0deg)";
-      });
-      new import_obsidian.Setting(content).setName("Display Name").setDesc("How this activity appears in the UI").addText(
-        (t) => t.setPlaceholder(activity.name).setValue(override?.name || "").onChange(async (v) => {
-          this.updateActivityOverride(activity.name, "name", v || void 0);
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(content).setName("Folder Path").setDesc("Vault folder to scan for completion files").addText(
-        (t) => t.setPlaceholder(activity.folder).setValue(override?.folder || "").onChange(async (v) => {
-          this.updateActivityOverride(activity.name, "folder", v || void 0);
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(content).setName("Field Name").setDesc("Frontmatter/checkbox field to track").addText(
-        (t) => t.setPlaceholder(activity.field).setValue(override?.field || "").onChange(async (v) => {
-          this.updateActivityOverride(activity.name, "field", v || void 0);
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(content).setName("Damage per Completion").setDesc("Boss damage dealt per activity completion").addText(
-        (t) => t.setPlaceholder(String(activity.damagePerCompletion)).setValue(override?.damagePerCompletion !== void 0 ? String(override.damagePerCompletion) : "").onChange(async (v) => {
-          const num = parseInt(v);
-          this.updateActivityOverride(activity.name, "damagePerCompletion", isNaN(num) ? void 0 : num);
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(content).setName("Weekly Target").setDesc("Target completions per week").addText(
-        (t) => t.setPlaceholder(String(activity.weeklyTarget || 7)).setValue(override?.weeklyTarget !== void 0 ? String(override.weeklyTarget) : "").onChange(async (v) => {
-          const num = parseInt(v);
-          this.updateActivityOverride(activity.name, "weeklyTarget", isNaN(num) ? void 0 : num);
-          const stats2 = this.getWeeklyTargetStats();
-          const newMaxHP = calculateBossHP(stats2.total, this.plugin.settings.currentTier, this.plugin.settings, stats2.lowest);
-          this.plugin.settings.bossMaxHP = newMaxHP;
-          if (this.plugin.settings.bossCurrentHP > newMaxHP) {
-            this.plugin.settings.bossCurrentHP = newMaxHP;
-          }
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(content).setName("Reset this activity").setDesc("Restore to default values").addButton(
-        (btn) => btn.setButtonText("Reset").onClick(async () => {
-          this.plugin.settings.activityOverrides = this.plugin.settings.activityOverrides.filter(
-            (o) => o.originalName !== activity.name
-          );
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-          this.display();
-          new import_obsidian.Notice(`${activity.name} reset to defaults`);
-        })
-      );
-    });
-    new import_obsidian.Setting(containerEl).setName("Custom habits").setHeading();
-    new import_obsidian.Setting(containerEl).setName("Add custom habit").setDesc("Track any checkbox-based habit").addButton(
-      (btn) => btn.setButtonText("Add habit").setCta().onClick(async () => {
-        this.plugin.settings.customHabits.push({
-          id: crypto.randomUUID(),
-          name: "New habit",
-          folder: "",
-          field: "",
-          damagePerCompletion: 1,
-          enabled: true,
-          weeklyTarget: 7
-        });
-        await this.plugin.saveSettings();
-        this.display();
-      })
-    );
-    this.plugin.settings.customHabits.forEach((habit, index) => {
-      const box = containerEl.createDiv({
-        attr: {
-          style: `
-            margin-top: 12px;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--background-modifier-border);
-          `
-        }
-      });
-      new import_obsidian.Setting(box).setName("Enabled").addToggle(
-        (t) => t.setValue(habit.enabled).onChange(async (v) => {
-          const currentlyEnabled = habit.enabled;
-          const aboutToDisable = currentlyEnabled && !v;
-          if (aboutToDisable) {
-            const completions = getCompletionsFromFolder(
-              this.app,
-              habit.folder,
-              habit.field
-            );
-            let result;
-            if (habit.trackingMode === "weekly" && habit.damagePerWeek) {
-              result = calculateWeeklyStreak(
-                completions,
-                habit.damagePerWeek,
-                void 0,
-                this.plugin.settings
-              );
-            } else {
-              result = calculateLiveStreakWithDecay(
-                completions,
-                habit.damagePerCompletion,
-                void 0,
-                this.plugin.settings
-              );
-            }
-            const completedCount = completions.filter((c) => c.completed).length;
-            const totalHP = completedCount;
-            this.plugin.settings.activitySnapshots[habit.id] = {
-              activityId: habit.id,
-              disabledDate: getEffectiveTodayISO(this.plugin.settings),
-              frozenHP: totalHP,
-              frozenStreak: result.streak
-            };
-          }
-          if (!aboutToDisable && v) {
-            delete this.plugin.settings.activitySnapshots[habit.id];
-          }
-          habit.enabled = v;
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(box).setName("Name").addText(
-        (t) => t.setPlaceholder("Habit name").setValue(habit.name).onChange(async (v) => {
-          habit.name = v;
-          await this.plugin.saveSettings();
-        })
-      );
-      new import_obsidian.Setting(box).setName("Folder").setDesc("Folder containing 'YYYY-MM-DD' notes").addText(
-        (t) => t.setPlaceholder("Personal Life/01 Workout").setValue(habit.folder).onChange(async (v) => {
-          habit.folder = v;
-          await this.plugin.saveSettings();
-        })
-      );
-      new import_obsidian.Setting(box).setName("Property").setDesc("Checkbox property name").addText(
-        (t) => t.setPlaceholder("Workout").setValue(habit.field).onChange(async (v) => {
-          habit.field = v;
-          await this.plugin.saveSettings();
-        })
-      );
-      new import_obsidian.Setting(box).setName("Damage per completion").setDesc("Boss damage dealt per completion").addText(
-        (t) => t.setValue(String(habit.damagePerCompletion)).onChange(async (v) => {
-          habit.damagePerCompletion = Number(v) || 1;
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(box).setName("Weekly target").setDesc("Completions needed per week to avoid Tartarus").addText(
-        (t) => t.setValue(String(habit.weeklyTarget || 7)).onChange(async (v) => {
-          habit.weeklyTarget = Number(v) || 7;
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(box).setName("Tracking mode").setDesc("Daily = consecutive days, weekly = 1+ per week").addDropdown(
-        (d) => d.addOption("daily", "Daily").addOption("weekly", "Weekly").setValue(habit.trackingMode || "daily").onChange(async (v) => {
-          habit.trackingMode = v;
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      if (habit.trackingMode === "weekly") {
-        new import_obsidian.Setting(box).setName("Damage per week").setDesc("Damage for weekly completion").addText(
-          (t) => t.setValue(String(habit.damagePerWeek || 7)).onChange(async (v) => {
-            habit.damagePerWeek = Number(v) || 7;
-            await this.plugin.saveSettings();
-            this.plugin.refreshRankView();
-          })
-        );
+  }
+
+  /**
+   * System & Tools section
+   */
+  renderSystemSection(body) {
+    // Pause
+    body.createEl("div", { text: "PAUSE SYSTEM", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin-bottom: 8px; color: var(--text-muted);" } });
+    const pauseBtn = body.createEl("button", {
+      text: this.plugin.settings.systemState === "paused" ? "Resume System" : "Pause System",
+      attr: {
+        style: `
+          width: 100%; padding: 12px; min-height: 44px; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; margin-bottom: 8px;
+          ${this.plugin.settings.systemState === "paused" ? "background: var(--interactive-accent); color: var(--text-on-accent);" : "background: var(--background-modifier-border); color: var(--text-normal);"}
+        `
       }
-      new import_obsidian.Setting(box).addButton(
-        (btn) => btn.setButtonText("Delete").setWarning().onClick(async () => {
-          this.plugin.settings.customHabits.splice(index, 1);
-          await this.plugin.saveSettings();
-          this.display();
-          this.plugin.refreshRankView();
-        })
-      );
     });
-    this.renderRewardPoolsSection(containerEl);
+    pauseBtn.onclick = async () => { await this.plugin.toggleSystemState(); this.display(); };
+    if (this.plugin.settings.totalPausedTime > 0 || this.plugin.settings.systemState === "paused") {
+      body.createEl("div", {
+        text: this.plugin.settings.systemState === "paused" ? `PAUSED \u2014 ${this.plugin.getPauseDurationDisplay()} (Total: ${this.plugin.getTotalPausedDisplay()})` : `Total paused: ${this.plugin.getTotalPausedDisplay()}`,
+        attr: { style: "font-size: 0.8em; opacity: 0.7; text-align: center; margin-bottom: 12px;" }
+      });
+    }
+
+    // Developer Dashboard
+    body.createEl("div", { text: "DEVELOPER TOOLS", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 12px 0 8px 0; color: var(--text-muted);" } });
+    const devBtn = body.createEl("button", {
+      text: "Open Developer Dashboard",
+      attr: { style: "width: 100%; padding: 12px; min-height: 44px; font-weight: 600; border-radius: 6px; cursor: pointer; background: var(--interactive-accent); color: var(--text-on-accent); border: none; margin-bottom: 8px;" }
+    });
+    devBtn.onclick = () => this.plugin.activateDevDashboard();
+    new import_obsidian.Setting(body).setName("Debug logging").addToggle(
+      (toggle) => toggle.setValue(true).onChange((enabled) => {
+        debugLog.setEnabled(enabled);
+        new import_obsidian.Notice(enabled ? "Debug logging enabled" : "Debug logging disabled");
+      })
+    );
   }
   /**
    * Render the reward pools configuration section.
    */
   renderRewardPoolsSection(containerEl) {
-    new import_obsidian.Setting(containerEl).setName("Reward Pools").setDesc("Configure rewards for each tier level (3-7 options per pool)").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Reward Pools").setDesc("Configure rewards for each tier level").setHeading();
     const tierDisplayNames = {
       micro: "Micro (Tiers 1-4)",
       mini: "Mini (Tiers 5-10)",
