@@ -399,7 +399,9 @@ var DEFAULT_SETTINGS = {
   lastRewardCheck: null,
   // Tier figure settings
   tierFigures: [],  // Array of { tier, image, position ('left' or 'right'), hideTierTitle }
-  showTierFigure: false
+  showTierFigure: false,
+  // Dashboard background image (9:16 aspect ratio, vignette auto-applied)
+  dashboardBgImage: ""
 };
 function todayISO() {
   const d = /* @__PURE__ */ new Date();
@@ -513,8 +515,8 @@ function calculateWeeklyStreak(completions, damagePerWeek, asOf, settings) {
   return { streak, hp: earned, earned, penalty: 0, penaltyDays: 0 };
 }
 function getProgressBarColor(tier, inTartarus) {
-  if (inTartarus) return "#DC2626";
-  return RANK_TIER_COLORS[tier] ?? "#6B7280";
+  if (inTartarus) return "#613134";
+  return RANK_TIER_COLORS[tier] ?? "#928d85";
 }
 
 /**
@@ -524,10 +526,10 @@ function getProgressBarColor(tier, inTartarus) {
 function getTierHPBarColors(tier, inTartarus) {
   if (inTartarus) {
     return {
-      fill: 'linear-gradient(180deg, #8a3030 0%, #6a2020 30%, #5a1818 70%, #4a1010 100%)',
-      border: '#4a2020',
-      glow: 'rgba(220, 38, 38, 0.3)',
-      accent: '#DC2626'
+      fill: 'linear-gradient(180deg, #613134 0%, #4a2528 30%, #3a1d20 70%, #2a1518 100%)',
+      border: '#613134',
+      glow: 'rgba(97, 49, 52, 0.3)',
+      accent: '#613134'
     };
   }
 
@@ -1128,25 +1130,29 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const rankName = getRankNameForTier(settings.currentTier, settings);
     const barColor = getProgressBarColor(settings.currentTier, settings.inTartarus);
 
-    // Color palette: Gothic moodboard aesthetic - lighter variant with gold/bronze, deep red
+    // Color palette: Moodboard aesthetic
+    // Buccaneer #613134, Peach Yellow #faddb3, Leather #967b4d, Natural Grey #928d85
     const colors = {
-      gold: "#c9a227",
-      goldLight: "#dab842",
-      goldMuted: "#8b6914",
-      goldBorder: "#6a5520",
-      bronze: "#b8860b",
-      bronzeLight: "#d4a84b",
-      bronzeMuted: "#8b6914",
-      bg: "#141414",        // Lighter background
-      bgLight: "#1a1a1a",   // Lighter secondary bg
-      bgCard: "#181818",    // Lighter card bg
-      text: "#f0ece0",      // Slightly brighter text
-      textMuted: "#8a8a7a", // Lighter muted text
-      greenMuted: "#7a8a7a", // Muted green for titles
-      danger: "#8b0000",
-      dangerLight: "#a03030",
-      dangerMuted: "#5a2020",
-      accent: "#c9a227"
+      buccaneer: "#613134",
+      peachYellow: "#faddb3",
+      leather: "#967b4d",
+      naturalGrey: "#928d85",
+      gold: "#967b4d",
+      goldLight: "#967b4d",
+      goldMuted: "#967b4d",
+      goldBorder: "#613134",
+      green: "#967b4d",
+      greenBorder: "#613134",
+      bg: "#1a1410",
+      bgLight: "#221c16",
+      bgCard: "#1e1812",
+      text: "#faddb3",
+      textMuted: "#928d85",
+      greenMuted: "#928d85",
+      danger: "#613134",
+      dangerLight: "#613134",
+      dangerMuted: "#613134",
+      accent: "#967b4d"
     };
 
     // Check and reset start-of-day HP tracking
@@ -1166,13 +1172,56 @@ var TrackRankView = class extends import_obsidian.ItemView {
           padding: 28px;
           text-align: center;
           background: ${colors.bg};
-          border: 1px solid ${colors.goldBorder};
+          border: 1px solid ${colors.buccaneer};
           position: relative;
           font-family: "Georgia", serif;
           overflow: hidden;
         `
       }
     });
+
+    // 9:16 Background image with vignette
+    if (settings.dashboardBgImage) {
+      let bgImageUrl = settings.dashboardBgImage;
+      if (!bgImageUrl.startsWith('http://') && !bgImageUrl.startsWith('https://') && !bgImageUrl.startsWith('data:')) {
+        try { bgImageUrl = this.app.vault.adapter.getResourcePath(bgImageUrl); } catch (e) {}
+      }
+      const bgLayer = wrapper.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background-image: url('${bgImageUrl}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+          `
+        }
+      });
+      // Vignette overlay
+      bgLayer.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 30%, rgba(26, 20, 16, 0.7) 70%, rgba(26, 20, 16, 0.95) 100%);
+            pointer-events: none;
+          `
+        }
+      });
+      // Top/bottom fade
+      bgLayer.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(26, 20, 16, 0.6) 0%, transparent 20%, transparent 70%, rgba(26, 20, 16, 0.8) 100%);
+            pointer-events: none;
+          `
+        }
+      });
+    }
 
     // Add ornate art deco gold corners (moodboard style)
     const cornerSVG = `
@@ -1194,7 +1243,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       { bottom: "0", left: "0", borderBottom: true, borderLeft: true },
       { bottom: "0", right: "0", borderBottom: true, borderRight: true }
     ];
-    const cornerColor = settings.inTartarus ? colors.danger : colors.gold;
+    const cornerColor = settings.inTartarus ? colors.buccaneer : colors.leather;
     cornerPositions.forEach((pos) => {
       const corner = wrapper.createDiv({
         attr: {
@@ -1221,15 +1270,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
         cls: "track-habit-rank-pause-banner",
         attr: {
           style: `
-            background: #0f0f0f;
+            background: ${colors.bg};
             padding: 20px 24px;
             margin-bottom: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            border: 1px solid #7C3AED;
+            border: 1px solid ${colors.naturalGrey};
             position: relative;
+            z-index: 1;
           `
         }
       });
@@ -1242,7 +1292,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-weight: 500;
             letter-spacing: 3px;
             text-transform: uppercase;
-            color: #7C3AED;
+            color: ${colors.naturalGrey};
           `
         }
       });
@@ -1253,7 +1303,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-family: "Georgia", serif;
             font-size: 13px;
             font-style: italic;
-            color: #5a6a5d;
+            color: ${colors.textMuted};
           `
         }
       });
@@ -1266,9 +1316,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
             padding: 12px 24px;
             min-height: 44px;
             min-width: 120px;
-            background: #0f0f0f;
-            color: #7C3AED;
-            border: 1px solid #7C3AED;
+            background: ${colors.bg};
+            color: ${colors.naturalGrey};
+            border: 1px solid ${colors.naturalGrey};
             cursor: pointer;
             font-family: "Times New Roman", serif;
             font-size: 12px;
@@ -1536,7 +1586,18 @@ var TrackRankView = class extends import_obsidian.ItemView {
             align-items: center;
           `;
           const figImg = document.createElement('img');
-          figImg.src = tierFigure.image;
+          // Resolve vault path or use URL directly
+          const imgPath = tierFigure.image;
+          if (imgPath.startsWith('http://') || imgPath.startsWith('https://') || imgPath.startsWith('data:')) {
+            figImg.src = imgPath;
+          } else {
+            // Vault path - resolve using Obsidian adapter
+            try {
+              figImg.src = this.app.vault.adapter.getResourcePath(imgPath);
+            } catch (e) {
+              figImg.src = imgPath;
+            }
+          }
           figImg.alt = "Tier Figure";
           figImg.style.cssText = `
             max-width: 80px;
@@ -1559,9 +1620,13 @@ var TrackRankView = class extends import_obsidian.ItemView {
 
         // Boss image
         if (bossImage) {
+          let resolvedBossImage = bossImage;
+          if (bossImage && !bossImage.startsWith('http://') && !bossImage.startsWith('https://') && !bossImage.startsWith('data:')) {
+            try { resolvedBossImage = this.app.vault.adapter.getResourcePath(bossImage); } catch (e) {}
+          }
           const img = imgContainer.createEl("img", {
             attr: {
-              src: bossImage,
+              src: resolvedBossImage,
               alt: boss?.name || "Boss",
               style: `
                 max-width: 280px;
@@ -1645,276 +1710,142 @@ var TrackRankView = class extends import_obsidian.ItemView {
     if (!settings.inTartarus) {
     const hpPercent = Math.round(settings.bossCurrentHP / settings.bossMaxHP * 100);
 
-    // Get tier-based HP bar colors
-    const hpBarColors = getTierHPBarColors(settings.currentTier, settings.inTartarus);
-
-    // Calculate dynamic segments
-    const segmentConfig = calculateHPSegments(settings.bossMaxHP);
-    const { segmentCount, hpPerSegment } = segmentConfig;
-
-    // Determine if HP is critically low (trigger pulse when HP ≤ 2 segments worth)
-    const criticalThreshold = hpPerSegment * 2;
-    const isCritical = settings.bossCurrentHP <= criticalThreshold && settings.bossCurrentHP > 0;
-
-    // Add mythical HP bar styles with gentle inner pulse
-    if (!document.getElementById('track-habit-rank-mythical-hp')) {
-      const style = document.createElement('style');
-      style.id = 'track-habit-rank-mythical-hp';
-      style.textContent = `
-        @keyframes gentleInnerPulse {
-          0%, 100% { opacity: 0.85; }
-          50% { opacity: 1; }
-        }
-        @keyframes subtleShimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        @keyframes breathe {
-          0%, 100% { filter: brightness(0.95); }
-          50% { filter: brightness(1.05); }
-        }
-        .mythical-hp-container {
-          position: relative;
-          padding: 6px 0;
-          margin: 0 auto 16px auto;
-          max-width: 320px;
-        }
-        .mythical-hp-frame {
-          position: relative;
-          height: 22px;
-          background: linear-gradient(180deg, #242018 0%, #181410 40%, #1e1a16 100%);
-          border-radius: 11px;
-          overflow: visible;
-          box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), inset 0 -1px 3px rgba(0,0,0,0.2);
-        }
-        .mythical-hp-fill {
-          position: absolute;
-          left: 2px;
-          top: 2px;
-          bottom: 2px;
-          border-radius: 9px;
-          overflow: hidden;
-          transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          animation: gentleInnerPulse 4s ease-in-out infinite, breathe 6s ease-in-out infinite;
-        }
-        .mythical-hp-fill.life {
-          background: linear-gradient(180deg, #c45040 0%, #a03530 40%, #802520 60%, #a03530 100%);
-        }
-        .mythical-hp-fill.arcane {
-          background: linear-gradient(180deg, #6080b0 0%, #405880 40%, #304060 60%, #405880 100%);
-        }
-        .mythical-hp-fill.divine {
-          background: linear-gradient(180deg, #c9a050 0%, #a08030 40%, #806020 60%, #a08030 100%);
-        }
-        .mythical-hp-fill::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 40%;
-          background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
-          border-radius: 9px 9px 0 0;
-        }
-        .mythical-hp-fill::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 40%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-          animation: subtleShimmer 8s ease-in-out infinite;
-        }
-        .mythical-hp-border {
-          position: absolute;
-          inset: -2px;
-          border-radius: 13px;
-          pointer-events: none;
-        }
-        .mythical-hp-text {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          font-family: "Georgia", serif;
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 1px;
-          color: #f0ece0;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.5);
-          z-index: 3;
-        }
-        .mythical-hp-endcap {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 28px;
-          height: 28px;
-          z-index: 2;
-        }
-        .mythical-hp-endcap.left { left: -14px; }
-        .mythical-hp-endcap.right { right: -14px; }
-        .mythical-hp-endcap svg {
-          width: 100%;
-          height: 100%;
-          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
-    // Tier-based exquisiteness (1-4 simple, 5-8 refined, 9-12 ornate, 13+ legendary)
-    const tierLevel = settings.currentTier <= 4 ? 'simple' : settings.currentTier <= 8 ? 'refined' : settings.currentTier <= 12 ? 'ornate' : 'legendary';
-    const frameColors = {
-      simple: { outer: '#8b7355', inner: '#5a4a3a', glow: 'rgba(139, 115, 85, 0.3)' },
-      refined: { outer: '#b8963f', inner: '#8b6914', glow: 'rgba(184, 150, 63, 0.4)' },
-      ornate: { outer: '#d4a84b', inner: '#c9a227', glow: 'rgba(212, 168, 75, 0.5)' },
-      legendary: { outer: '#ffd700', inner: '#daa520', glow: 'rgba(255, 215, 0, 0.6)' }
-    };
-    const frameStyle = frameColors[tierLevel];
-
-    // Boss name with tier-appropriate styling
-    wrapper.createEl("div", {
-      text: `⚔ ${boss?.name || "UNKNOWN"} ⚔`,
-      attr: {
-        style: `
-          font-family: "Times New Roman", serif;
-          font-size: ${tierLevel === 'legendary' ? '18px' : tierLevel === 'ornate' ? '17px' : '16px'};
-          font-weight: 700;
-          letter-spacing: ${tierLevel === 'legendary' ? '5px' : '4px'};
-          text-transform: uppercase;
-          color: ${frameStyle.outer};
-          text-align: center;
-          margin-bottom: 10px;
-          text-shadow: 0 0 ${tierLevel === 'legendary' ? '15px' : '10px'} ${frameStyle.glow}, 0 2px 4px rgba(0,0,0,0.8);
-        `
-      }
-    });
-
-    // Mythical HP bar container
-    const hpBarContainer = wrapper.createDiv({
-      cls: "mythical-hp-container"
-    });
-
     // Calculate HP percentages
     const hpFillPercent = (settings.bossCurrentHP / settings.bossMaxHP) * 100;
     const startOfDayHP = settings.bossStartOfDayHP ?? settings.bossCurrentHP;
     const startOfDayPercent = (startOfDayHP / settings.bossMaxHP) * 100;
 
-    // Determine fill color based on tier
-    const fillType = tierLevel === 'legendary' ? 'divine' : tierLevel === 'ornate' ? 'life' : 'arcane';
-
-    // SVG end cap design based on tier
-    const endCapSVG = tierLevel === 'legendary' ? `
-      <svg viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="12" fill="url(#legendaryGrad)" stroke="${frameStyle.outer}" stroke-width="1.5"/>
-        <path d="M14 4 L16 10 L22 10 L17 14 L19 20 L14 16 L9 20 L11 14 L6 10 L12 10 Z" fill="${frameStyle.inner}" opacity="0.8"/>
-        <circle cx="14" cy="14" r="4" fill="${frameStyle.outer}"/>
-        <defs>
-          <radialGradient id="legendaryGrad" cx="30%" cy="30%">
-            <stop offset="0%" stop-color="#ffd700"/>
-            <stop offset="100%" stop-color="#8b6914"/>
-          </radialGradient>
-        </defs>
-      </svg>
-    ` : tierLevel === 'ornate' ? `
-      <svg viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="11" fill="url(#ornateGrad)" stroke="${frameStyle.outer}" stroke-width="1.5"/>
-        <path d="M14 6 L17 11 L14 9 L11 11 Z M14 22 L11 17 L14 19 L17 17 Z" fill="${frameStyle.inner}"/>
-        <circle cx="14" cy="14" r="3" fill="${frameStyle.outer}"/>
-        <defs>
-          <radialGradient id="ornateGrad" cx="30%" cy="30%">
-            <stop offset="0%" stop-color="${frameStyle.outer}"/>
-            <stop offset="100%" stop-color="${frameStyle.inner}"/>
-          </radialGradient>
-        </defs>
-      </svg>
-    ` : `
-      <svg viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="10" fill="url(#simpleGrad)" stroke="${frameStyle.outer}" stroke-width="1"/>
-        <circle cx="14" cy="14" r="4" fill="${frameStyle.inner}"/>
-        <defs>
-          <radialGradient id="simpleGrad" cx="30%" cy="30%">
-            <stop offset="0%" stop-color="${frameStyle.outer}"/>
-            <stop offset="100%" stop-color="${frameStyle.inner}"/>
-          </radialGradient>
-        </defs>
-      </svg>
-    `;
-
-    // Left endcap
-    const leftCap = hpBarContainer.createDiv({ cls: "mythical-hp-endcap left" });
-    leftCap.innerHTML = endCapSVG;
-
-    // Right endcap
-    const rightCap = hpBarContainer.createDiv({ cls: "mythical-hp-endcap right" });
-    rightCap.innerHTML = endCapSVG;
-
-    // HP bar frame with border
-    const hpFrame = hpBarContainer.createDiv({
-      cls: "mythical-hp-frame",
-      attr: {
-        style: `border: 2px solid ${frameStyle.inner};`
-      }
-    });
-
-    // Border glow overlay
-    hpFrame.createDiv({
-      cls: "mythical-hp-border",
+    // === MINIMAL RED HP BAR ===
+    const hpBarContainer = wrapper.createDiv({
       attr: {
         style: `
-          border: 2px solid ${frameStyle.outer};
-          box-shadow: 0 0 8px ${frameStyle.glow};
+          position: relative;
+          margin: 0 auto 6px auto;
+          max-width: 320px;
+          z-index: 1;
         `
       }
     });
 
-    // Damage linger layer (darker showing today's damage)
+    // HP text above bar
+    hpBarContainer.createEl("div", {
+      text: `${settings.bossCurrentHP} / ${settings.bossMaxHP}`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          color: ${colors.peachYellow};
+          text-align: center;
+          margin-bottom: 4px;
+          opacity: 0.9;
+        `
+      }
+    });
+
+    // HP bar track
+    const hpTrack = hpBarContainer.createDiv({
+      attr: {
+        style: `
+          position: relative;
+          height: 10px;
+          background: rgba(97, 49, 52, 0.25);
+          overflow: hidden;
+        `
+      }
+    });
+
+    // Damage linger layer
     if (startOfDayPercent > hpFillPercent) {
-      hpFrame.createDiv({
+      hpTrack.createDiv({
         attr: {
           style: `
             position: absolute;
-            left: 2px;
-            top: 2px;
-            bottom: 2px;
-            width: calc(${startOfDayPercent}% - 4px);
-            border-radius: 9px;
-            background: linear-gradient(180deg, #4a2525 0%, #2a1515 50%, #3a2020 100%);
-            opacity: 0.7;
+            left: 0; top: 0; bottom: 0;
+            width: ${startOfDayPercent}%;
+            background: rgba(97, 49, 52, 0.5);
             transition: width 0.8s ease;
           `
         }
       });
     }
 
-    // Main HP fill with gentle pulse
-    hpFrame.createDiv({
-      cls: `mythical-hp-fill ${fillType}`,
+    // Main HP fill - Buccaneer red
+    hpTrack.createDiv({
       attr: {
-        style: `width: calc(${hpFillPercent}% - 4px);`
+        style: `
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: ${hpFillPercent}%;
+          background: ${colors.buccaneer};
+          transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        `
       }
     });
 
-    // HP text overlay
-    hpFrame.createEl("div", {
-      cls: "mythical-hp-text",
-      text: `${settings.bossCurrentHP} / ${settings.bossMaxHP}`
-    });
-
-    // Show damage dealt today below bar if any
+    // Damage dealt today indicator
     if (startOfDayPercent > hpFillPercent) {
       const damageDealt = startOfDayHP - settings.bossCurrentHP;
-      wrapper.createEl("div", {
+      hpBarContainer.createEl("div", {
+        text: `\u2212${damageDealt} today`,
         attr: {
           style: `
-            text-align: center;
-            margin-bottom: 8px;
+            font-family: "Georgia", serif;
+            font-size: 9px;
+            color: ${colors.buccaneer};
+            text-align: right;
+            margin-top: 2px;
+            font-style: italic;
+            opacity: 0.8;
           `
         }
-      }).innerHTML = `<span style="font-family: Georgia, serif; font-size: 10px; color: #e06050; font-style: italic;">−${damageDealt} today</span>`;
+      });
     }
+
+    // === ACTIVITY PULSE SUB-BAR ===
+    const weekProgress = getCurrentWeekProgress(this.app, settings);
+    const pulsePercent = weekProgress.target > 0 ? Math.min(100, Math.round(weekProgress.completed / weekProgress.target * 100)) : 0;
+
+    const pulseTrack = hpBarContainer.createDiv({
+      attr: {
+        style: `
+          position: relative;
+          height: 4px;
+          background: rgba(150, 123, 77, 0.15);
+          margin-top: 3px;
+        `
+      }
+    });
+
+    pulseTrack.createDiv({
+      attr: {
+        style: `
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: ${pulsePercent}%;
+          background: ${colors.leather};
+          transition: width 0.6s ease;
+          opacity: 0.7;
+        `
+      }
+    });
+
+    // Pulse label
+    hpBarContainer.createEl("div", {
+      text: `${weekProgress.completed}/${weekProgress.target} this week`,
+      attr: {
+        style: `
+          font-family: "Georgia", serif;
+          font-size: 8px;
+          color: ${colors.naturalGrey};
+          text-align: center;
+          margin-top: 2px;
+          letter-spacing: 0.5px;
+          opacity: 0.7;
+        `
+      }
+    });
 
     if (boss?.lore) {
       wrapper.createEl("div", {
@@ -1933,49 +1864,27 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
     }
 
-    // Week progress - more subdued
-    const weekProgress = getCurrentWeekProgress(this.app, settings);
-    const weekPercentComplete = weekProgress.target > 0 ? Math.round(weekProgress.completed / weekProgress.target * 100) : 0;
-
-    const weekStatsContainer = wrapper.createDiv({
-      attr: {
-        style: `
-          display: flex;
-          justify-content: center;
-          gap: 20px;
-          margin-bottom: 16px;
-          opacity: 0.8;
-        `
-      }
-    });
-
-    weekStatsContainer.createEl("div", {
-      text: `Week: ${weekProgress.completed}/${weekProgress.target}`,
-      attr: {
-        style: `
-          font-family: "Times New Roman", serif;
-          font-size: 12px;
-          letter-spacing: 0.5px;
-          color: ${colors.greenMuted};
-        `
-      }
-    });
-
+    // Streak indicator (compact, only if streak exists)
     if (settings.consecutivePerfectWeeks > 0) {
-      weekStatsContainer.createEl("div", {
-        text: `Streak: ${settings.consecutivePerfectWeeks}wk`,
+      wrapper.createEl("div", {
+        text: `${settings.consecutivePerfectWeeks}wk streak`,
         attr: {
           style: `
-            font-family: "Times New Roman", serif;
-            font-size: 12px;
+            font-family: "Georgia", serif;
+            font-size: 9px;
             letter-spacing: 0.5px;
-            color: ${colors.goldMuted};
+            color: ${colors.naturalGrey};
+            text-align: center;
+            margin-bottom: 12px;
+            opacity: 0.6;
+            z-index: 1;
+            position: relative;
           `
         }
       });
     }
 
-    // Subdued reward boxes instead of "View Rewards" button
+    // Reward boxes
     this.renderRewardBoxes(wrapper, colors);
     } // End of !inTartarus block for HP bar and rewards
 
@@ -2014,13 +1923,13 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             margin: 16px 0;
             padding: 16px 20px;
-            background: #0f0f0f;
-            border: 1px solid rgba(220, 38, 38, 0.5);
+            background: ${colors.bg};
+            border: 1px solid ${colors.buccaneer};
           `
         }
       });
       warningBox.createEl("div", {
-        text: "\u{1F480} YOU ARE IN TARTARUS",
+        text: "YOU ARE IN TARTARUS",
         cls: "track-habit-rank-warning-title",
         attr: {
           style: `
@@ -2029,7 +1938,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-weight: 500;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: #DC2626;
+            color: ${colors.buccaneer};
             margin-bottom: 10px;
           `
         }
@@ -2046,7 +1955,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-family: "Georgia", serif;
             font-size: 13px;
             font-style: italic;
-            color: #5a6a5d;
+            color: ${colors.naturalGrey};
           `
         }
       });
@@ -2058,9 +1967,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
             margin-top: 12px;
             padding: 12px 20px;
             min-height: 44px;
-            background: #0f0f0f;
-            color: #DC2626;
-            border: 1px solid #DC2626;
+            background: ${colors.bg};
+            color: ${colors.buccaneer};
+            border: 1px solid ${colors.buccaneer};
             cursor: pointer;
             font-family: "Times New Roman", serif;
             font-size: 12px;
@@ -2080,15 +1989,15 @@ var TrackRankView = class extends import_obsidian.ItemView {
       this.renderDeathThresholdMonitor(wrapper, colors);
     }
 
-    // Activity radar - subtle and atmospheric
-    this.renderActivityRadar(wrapper, colors);
     if (settings.systemState === "active") {
       const pauseSection = wrapper.createDiv({
         attr: {
           style: `
             margin-top: 24px;
             padding-top: 16px;
-            border-top: 1px solid #2a3a2d;
+            border-top: 1px solid ${colors.buccaneer};
+            z-index: 1;
+            position: relative;
           `
         }
       });
@@ -2100,9 +2009,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
             padding: 12px 24px;
             min-height: 44px;
             min-width: 120px;
-            background: #0f0f0f;
-            color: #7C3AED;
-            border: 1px solid #7C3AED;
+            background: ${colors.bg};
+            color: ${colors.naturalGrey};
+            border: 1px solid ${colors.naturalGrey};
             cursor: pointer;
             font-family: "Times New Roman", serif;
             font-size: 12px;
@@ -2125,7 +2034,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
               font-family: "Georgia", serif;
               font-size: 12px;
               font-style: italic;
-              color: #5a6a5d;
+              color: ${colors.naturalGrey};
             `
           }
         });
@@ -2151,8 +2060,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
         style: `
           margin: 16px 0;
           padding: 16px;
-          background: #0f0f0f;
-          border: 1px solid #2a3a2d;
+          background: #1a1410;
+          border: 1px solid #613134;
         `
       }
     });
@@ -2165,7 +2074,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           font-weight: 500;
           letter-spacing: 1px;
           text-transform: uppercase;
-          color: #7a9a7d;
+          color: #967b4d;
           margin-bottom: 12px;
         `
       }
@@ -2177,7 +2086,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         style: `
           font-family: "Georgia", serif;
           font-size: 12px;
-          color: #5a6a5d;
+          color: #928d85;
           margin-bottom: 4px;
         `
       }
@@ -2189,7 +2098,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         style: `
           font-family: "Georgia", serif;
           font-size: 12px;
-          color: #5a6a5d;
+          color: #928d85;
           margin-bottom: 8px;
         `
       }
@@ -2200,8 +2109,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             margin-top: 8px;
             padding: 10px 12px;
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid #F59E0B;
+            background: rgba(150, 123, 77, 0.1);
+            border: 1px solid #967b4d;
           `
         }
       });
@@ -2211,7 +2120,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             font-family: "Times New Roman", serif;
             font-size: 12px;
-            color: #F59E0B;
+            color: #967b4d;
           `
         }
       });
@@ -2224,7 +2133,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             margin-top: 8px;
             font-family: "Georgia", serif;
             font-size: 12px;
-            color: #8B5CF6;
+            color: #928d85;
           `
         }
       });
@@ -2237,9 +2146,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
           margin-top: 12px;
           padding: 10px 16px;
           min-height: 44px;
-          background: #0f0f0f;
-          color: #7a9a7d;
-          border: 1px solid #7a9a7d;
+          background: #1a1410;
+          color: #967b4d;
+          border: 1px solid #967b4d;
           cursor: pointer;
           font-family: "Times New Roman", serif;
           font-size: 11px;
@@ -2312,300 +2221,150 @@ var TrackRankView = class extends import_obsidian.ItemView {
   }
 
   /**
-   * Render simple side-by-side reward cards (Activity + Streak) - no glow, click to claim
+   * Render minimal rough-edge reward rectangles (Activity + Streak)
    */
   renderRewardBoxes(wrapper, colors) {
     const settings = this.plugin.settings;
     const rewardProgress = this.plugin.getRewardProgress();
 
-    // Get current reward pool - separate by type
-    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier) || { options: [] };
-    const allRewards = currentPool.options || [];
-    const activityRewards = allRewards.filter(r => r.type === 'activity' || !r.type);
-    const streakRewards = allRewards.filter(r => r.type === 'streak' || !r.type);
-
-    // Add simple reward card styles (no glow)
-    if (!document.getElementById('track-habit-rank-simple-rewards')) {
-      const style = document.createElement('style');
-      style.id = 'track-habit-rank-simple-rewards';
-      style.textContent = `
-        .simple-rewards-container {
-          display: flex;
-          gap: 12px;
-          justify-content: center;
-          padding: 12px 0;
-        }
-        .simple-reward-card {
-          flex: 1;
-          max-width: 170px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 8px;
-          padding: 14px 10px;
-          cursor: pointer;
-          transition: border-color 0.2s ease, transform 0.2s ease;
-        }
-        .simple-reward-card:hover {
-          border-color: var(--card-accent);
-          transform: translateY(-1px);
-        }
-        .simple-reward-card.claimable {
-          border-color: var(--card-accent);
-        }
-        .simple-card-header {
-          font-family: "Times New Roman", serif;
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          text-align: center;
-          color: var(--card-text);
-          margin-bottom: 10px;
-          padding-bottom: 6px;
-          border-bottom: 1px solid var(--card-border);
-        }
-        .simple-card-progress {
-          display: flex;
-          justify-content: center;
-          gap: 3px;
-          margin-bottom: 10px;
-        }
-        .simple-pip {
-          width: 14px;
-          height: 16px;
-          border-radius: 2px;
-        }
-        .simple-pip.filled {
-          background: var(--card-filled);
-        }
-        .simple-pip.empty {
-          background: #1a1815;
-          border: 1px solid rgba(255,255,255,0.05);
-        }
-        .simple-card-reward {
-          text-align: center;
-          min-height: 50px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        .simple-card-status {
-          font-family: "Georgia", serif;
-          font-size: 11px;
-          text-align: center;
-          color: var(--card-text);
-          margin-top: 8px;
-        }
-        .simple-nav-dots {
-          display: flex;
-          justify-content: center;
-          gap: 5px;
-          margin-top: 6px;
-        }
-        .simple-nav-dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.2);
-          cursor: pointer;
-        }
-        .simple-nav-dot.active {
-          background: var(--card-accent);
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
-    // Simple color schemes - lighter variant
-    const activityStyle = {
-      bg: '#1c2420',       // Lighter green-tinted bg
-      border: '#4a6a4d',   // Lighter border
-      text: '#a0d0a5',     // Brighter text
-      accent: '#70b075',   // Brighter accent
-      filled: '#60b065',   // Brighter filled
-    };
-
-    const streakStyle = {
-      bg: '#22201a',       // Lighter gold-tinted bg
-      border: '#6a5a40',   // Lighter border
-      text: '#e0c070',     // Brighter text
-      accent: '#d0b050',   // Brighter accent
-      filled: '#c0a040',   // Brighter filled
-    };
-
-    // Progress data
     const activityRemaining = rewardProgress.activityThreshold - rewardProgress.activityProgress;
     const streakRemaining = rewardProgress.streakThreshold - rewardProgress.streakProgress;
     const activityClaimable = activityRemaining <= 0;
     const streakClaimable = streakRemaining <= 0;
 
-    // Create container
-    const container = wrapper.createDiv({ cls: 'simple-rewards-container' });
+    const container = wrapper.createDiv({
+      attr: {
+        style: `
+          display: flex;
+          gap: 8px;
+          justify-content: center;
+          margin: 12px auto;
+          max-width: 320px;
+          z-index: 1;
+          position: relative;
+        `
+      }
+    });
 
-    // Create Activity Card
-    this.createSimpleRewardCard(container, {
+    // Create rough-edge reward box helper
+    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type }) => {
+      const box = parent.createDiv({
+        attr: {
+          style: `
+            flex: 1;
+            padding: 8px 10px;
+            background: rgba(26, 20, 16, 0.7);
+            border: 1px solid ${isClaimable ? colors.leather : colors.buccaneer};
+            box-shadow: 1px 0 0 ${colors.buccaneer}, -1px 0 0 ${colors.buccaneer}, 0 1px 0 ${colors.buccaneer}, 0 -1px 0 ${colors.buccaneer}, 2px 2px 0 rgba(97, 49, 52, 0.3), -1px -1px 0 rgba(97, 49, 52, 0.2);
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+          `
+        }
+      });
+
+      // Title row
+      box.createEl("div", {
+        text: title.toUpperCase(),
+        attr: {
+          style: `
+            font-family: "Times New Roman", serif;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: ${colors.naturalGrey};
+            margin-bottom: 4px;
+          `
+        }
+      });
+
+      // Progress text
+      box.createEl("div", {
+        text: isClaimable ? "CLAIM" : `${current}/${total}`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: ${isClaimable ? colors.leather : colors.peachYellow};
+            margin-bottom: 2px;
+          `
+        }
+      });
+
+      // Remaining text
+      if (!isClaimable) {
+        box.createEl("div", {
+          text: `${remaining} to go`,
+          attr: {
+            style: `
+              font-family: "Georgia", serif;
+              font-size: 8px;
+              color: ${colors.naturalGrey};
+              opacity: 0.7;
+            `
+          }
+        });
+      }
+
+      // Click handler
+      box.onclick = async () => {
+        if (isClaimable) {
+          const pendingReward = settings.pendingRewards?.find(r => r.type === type);
+          if (pendingReward) {
+            settings.pendingRewards = settings.pendingRewards.filter(r => r !== pendingReward);
+            settings.claimedRewards = settings.claimedRewards || [];
+            settings.claimedRewards.push({
+              ...pendingReward,
+              claimedAt: new Date().toISOString(),
+              used: false
+            });
+            await this.plugin.saveSettings();
+            this.plugin.refreshRankView();
+            new import_obsidian.Notice(`${title} reward claimed!`);
+          }
+        } else {
+          new import_obsidian.Notice(`${remaining} more ${type === 'activity' ? 'activities' : 'weeks'} needed`);
+        }
+      };
+    };
+
+    createRewardBox(container, {
       title: 'Activity',
       current: rewardProgress.activityProgress,
       total: rewardProgress.activityThreshold,
       remaining: activityRemaining,
       isClaimable: activityClaimable,
-      style: activityStyle,
-      rewards: activityRewards,
       type: 'activity'
     });
 
-    // Create Streak Card
-    this.createSimpleRewardCard(container, {
+    createRewardBox(container, {
       title: 'Streak',
       current: rewardProgress.streakProgress,
       total: rewardProgress.streakThreshold,
       remaining: streakRemaining,
       isClaimable: streakClaimable,
-      style: streakStyle,
-      rewards: streakRewards,
       type: 'streak'
     });
-  }
 
-  /**
-   * Create a simple reward card - click to claim if available, otherwise show remaining
-   */
-  createSimpleRewardCard(container, { title, current, total, remaining, isClaimable, style, rewards, type }) {
-    const settings = this.plugin.settings;
-    const card = container.createDiv({
-      cls: `simple-reward-card${isClaimable ? ' claimable' : ''}`,
-      attr: {
-        style: `
-          --card-bg: ${style.bg};
-          --card-border: ${style.border};
-          --card-text: ${style.text};
-          --card-accent: ${style.accent};
-          --card-filled: ${style.filled};
-          background: ${style.bg};
-        `
-      }
-    });
-
-    // Header
-    card.createEl('div', {
-      cls: 'simple-card-header',
-      text: title
-    });
-
-    // Progress pips
-    const progressContainer = card.createDiv({ cls: 'simple-card-progress' });
-    const maxPips = Math.min(total, 5);
-    const ratio = total / maxPips;
-    const filledPips = Math.min(Math.ceil(current / ratio), maxPips);
-
-    for (let i = 0; i < maxPips; i++) {
-      progressContainer.createDiv({
-        cls: `simple-pip ${i < filledPips ? 'filled' : 'empty'}`
-      });
-    }
-
-    // Reward display area
-    const rewardDisplay = card.createDiv({ cls: 'simple-card-reward' });
-    let currentRewardIndex = 0;
-
-    const updateRewardDisplay = () => {
-      rewardDisplay.empty();
-      if (rewards.length === 0) {
-        rewardDisplay.innerHTML = `<div style="font-size: 24px; opacity: 0.4;">🎁</div>`;
-        return;
-      }
-      const reward = rewards[currentRewardIndex % rewards.length];
-      // Use image if available, otherwise emoji
-      if (reward.image) {
-        const img = rewardDisplay.createEl("img", {
-          attr: {
-            src: reward.image,
-            style: "max-width: 36px; max-height: 36px; border-radius: 4px;"
-          }
-        });
-        img.onerror = () => {
-          img.remove();
-          rewardDisplay.createEl("div", { text: reward.emoji || '🎁', attr: { style: "font-size: 24px;" } });
-        };
-      } else {
-        rewardDisplay.createEl("div", {
-          text: reward.emoji || '🎁',
-          attr: { style: "font-size: 24px;" }
-        });
-      }
-      rewardDisplay.createEl("div", {
-        text: (reward.description || 'Reward').substring(0, 25),
-        attr: { style: `font-family: Georgia, serif; font-size: 9px; color: ${style.text}; opacity: 0.8; margin-top: 4px;` }
-      });
-    };
-
-    updateRewardDisplay();
-
-    // Navigation dots (only if multiple rewards)
-    if (rewards.length > 1) {
-      const navContainer = card.createDiv({ cls: 'simple-nav-dots' });
-      const dots = [];
-
-      for (let i = 0; i < Math.min(rewards.length, 5); i++) {
-        const dot = navContainer.createDiv({
-          cls: `simple-nav-dot${i === 0 ? ' active' : ''}`
-        });
-        dot.onclick = (e) => {
-          e.stopPropagation();
-          currentRewardIndex = i;
-          updateRewardDisplay();
-          dots.forEach((d, idx) => {
-            d.className = `simple-nav-dot${idx === i ? ' active' : ''}`;
-          });
-        };
-        dots.push(dot);
-      }
-
-      // Click on reward area to cycle
-      rewardDisplay.onclick = (e) => {
-        e.stopPropagation();
-        currentRewardIndex = (currentRewardIndex + 1) % rewards.length;
-        updateRewardDisplay();
-        dots.forEach((d, idx) => {
-          d.className = `simple-nav-dot${idx === (currentRewardIndex % dots.length) ? ' active' : ''}`;
-        });
-      };
-    }
-
-    // Status text - shows claim or remaining
-    card.createEl('div', {
-      cls: 'simple-card-status',
-      text: isClaimable ? 'Claim!' : `${remaining} to go`
-    });
-
-    // Click handler - claim if available, otherwise show remaining needed
-    card.onclick = async (e) => {
-      if (e.target.closest('.simple-nav-dots') || e.target.closest('.simple-card-reward')) {
-        return; // Don't trigger on nav dots or reward cycling
-      }
-
-      if (isClaimable) {
-        // Find pending reward of this type and claim it
-        const pendingReward = settings.pendingRewards?.find(r => r.type === type);
-        if (pendingReward) {
-          settings.pendingRewards = settings.pendingRewards.filter(r => r !== pendingReward);
-          settings.claimedRewards = settings.claimedRewards || [];
-          settings.claimedRewards.push({
-            ...pendingReward,
-            claimedAt: new Date().toISOString(),
-            used: false
-          });
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-          new import_obsidian.Notice(`${title} reward claimed!`);
+    // Pending rewards indicator
+    const pendingCount = (settings.pendingRewards || []).length;
+    if (pendingCount > 0) {
+      container.parentElement?.createEl("div", {
+        text: `${pendingCount} unclaimed`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 8px;
+            color: ${colors.leather};
+            text-align: center;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+            z-index: 1;
+            position: relative;
+          `
         }
-      } else {
-        new import_obsidian.Notice(`${remaining} more ${type === 'activity' ? 'activities' : 'weeks'} needed`);
-      }
-    };
-
-    return card;
+      });
+    }
   }
 
   /**
@@ -3124,7 +2883,7 @@ var PenanceModal = class extends import_obsidian.Modal {
           font-family: "Georgia", serif;
           font-size: 13px;
           font-style: italic;
-          color: #5a6a5d;
+          color: #928d85;
         `
       }
     });
@@ -3134,12 +2893,12 @@ var PenanceModal = class extends import_obsidian.Modal {
         style: `
           margin-bottom: 16px;
           padding: 12px 16px;
-          background: #0f0f0f;
-          border: 1px solid #2a3a2d;
+          background: #1a1410;
+          border: 1px solid #613134;
           font-family: "Times New Roman", serif;
           font-size: 14px;
           letter-spacing: 0.5px;
-          color: #7a9a7d;
+          color: #967b4d;
         `
       }
     });
@@ -3153,9 +2912,9 @@ var PenanceModal = class extends import_obsidian.Modal {
             padding: 14px 20px;
             min-height: 44px;
             margin-bottom: 16px;
-            background: #7a9a7d;
-            color: #0a0a0a;
-            border: 1px solid #7a9a7d;
+            background: #967b4d;
+            color: #1a1410;
+            border: 1px solid #967b4d;
             cursor: pointer;
             font-family: "Times New Roman", serif;
             font-size: 12px;
@@ -3189,7 +2948,7 @@ var PenanceModal = class extends import_obsidian.Modal {
           font-family: "Times New Roman", serif;
           font-size: 13px;
           letter-spacing: 1px;
-          color: #7a9a7d;
+          color: #967b4d;
         `
       }
     });
@@ -3199,8 +2958,8 @@ var PenanceModal = class extends import_obsidian.Modal {
           style: `
             margin-bottom: 12px;
             padding: 16px;
-            border: 1px solid ${task.completed ? "#7a9a7d" : "#2a3a2d"};
-            background: ${task.completed ? "rgba(122, 154, 125, 0.1)" : "#0f0f0f"};
+            border: 1px solid ${task.completed ? "#967b4d" : "#613134"};
+            background: ${task.completed ? "rgba(150, 123, 77, 0.1)" : "#1a1410"};
           `
         }
       });
@@ -3220,9 +2979,9 @@ var PenanceModal = class extends import_obsidian.Modal {
               margin-top: 12px;
               padding: 10px 16px;
               min-height: 44px;
-              background: #0f0f0f;
-              border: 1px solid #8B5CF6;
-              color: #8B5CF6;
+              background: #1a1410;
+              border: 1px solid #928d85;
+              color: #928d85;
               cursor: pointer;
               font-family: "Times New Roman", serif;
               font-size: 11px;
@@ -3252,9 +3011,9 @@ var PenanceModal = class extends import_obsidian.Modal {
           style: `
             margin: 16px 0;
             padding: 16px 20px;
-            background: #0f0f0f;
-            border: 1px solid #7C3AED;
-            color: #7C3AED;
+            background: #1a1410;
+            border: 1px solid #928d85;
+            color: #928d85;
             font-family: "Times New Roman", serif;
             font-size: 12px;
             letter-spacing: 1px;
@@ -3272,9 +3031,9 @@ var PenanceModal = class extends import_obsidian.Modal {
           style: `
             margin: 16px 0;
             padding: 16px 20px;
-            background: #0f0f0f;
-            border: 1px solid #F59E0B;
-            color: #F59E0B;
+            background: #1a1410;
+            border: 1px solid #967b4d;
+            color: #967b4d;
             font-family: "Times New Roman", serif;
             font-size: 12px;
             letter-spacing: 1px;
@@ -3292,9 +3051,9 @@ var PenanceModal = class extends import_obsidian.Modal {
           style: `
             margin: 16px 0;
             padding: 16px 20px;
-            background: #0f0f0f;
-            border: 1px solid #DC2626;
-            color: #DC2626;
+            background: #1a1410;
+            border: 1px solid #613134;
+            color: #613134;
             font-family: "Times New Roman", serif;
             font-size: 12px;
             letter-spacing: 1px;
@@ -3314,9 +3073,9 @@ var PenanceModal = class extends import_obsidian.Modal {
             padding: 14px 20px;
             min-height: 44px;
             margin-top: 20px;
-            background: #7a9a7d;
-            color: #0a0a0a;
-            border: 1px solid #7a9a7d;
+            background: #967b4d;
+            color: #1a1410;
+            border: 1px solid #967b4d;
             cursor: pointer;
             font-family: "Times New Roman", serif;
             font-size: 13px;
@@ -3343,13 +3102,13 @@ var PenanceModal = class extends import_obsidian.Modal {
           style: `
             margin-top: 20px;
             padding: 12px 16px;
-            background: #0f0f0f;
-            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: #1a1410;
+            border: 1px solid rgba(97, 49, 52, 0.4);
             text-align: center;
             font-family: "Times New Roman", serif;
             font-size: 13px;
             letter-spacing: 0.5px;
-            color: #EF4444;
+            color: #613134;
           `
         }
       });
@@ -3378,8 +3137,8 @@ var MorpheusModal = class extends import_obsidian.Modal {
       margin: 0 auto;
       padding: 40px 30px;
       text-align: center;
-      background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
-      border: 2px solid #2a3a2d;
+      background: linear-gradient(180deg, #1a1410 0%, #1a1410 100%);
+      border: 2px solid #613134;
       position: relative;
     `;
     const greeting = getGreeting(this.plugin.settings, "Valantis");
@@ -3388,7 +3147,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
       attr: {
         style: `
           font-size: 1.1em;
-          color: #7a9a7d;
+          color: #967b4d;
           margin-bottom: 30px;
           font-family: "Georgia", serif;
           letter-spacing: 0.5px;
@@ -3400,7 +3159,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
         style: `
           width: 80%;
           height: 1px;
-          background: linear-gradient(90deg, transparent, #2a3a2d, transparent);
+          background: linear-gradient(90deg, transparent, #613134, transparent);
           margin: 0 auto 30px auto;
         `
       }
@@ -3411,7 +3170,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
         style: `
           font-size: 0.75em;
           letter-spacing: 0.3em;
-          color: #5a6a5d;
+          color: #928d85;
           margin-bottom: 20px;
           text-transform: uppercase;
           font-family: "Times New Roman", serif;
@@ -3424,7 +3183,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
         style: `
           font-size: 2em;
           font-weight: 700;
-          color: #7a9a7d;
+          color: #967b4d;
           margin-bottom: 16px;
           font-family: "Times New Roman", serif;
           text-transform: uppercase;
@@ -3437,7 +3196,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
       attr: {
         style: `
           font-size: 1.1em;
-          color: #8aaa8d;
+          color: #928d85;
           margin-bottom: 12px;
           font-family: "Georgia", serif;
           font-style: italic;
@@ -3449,7 +3208,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
       attr: {
         style: `
           font-size: 0.95em;
-          color: #5a6a5d;
+          color: #928d85;
           margin-bottom: 30px;
           line-height: 1.6;
           font-family: "Georgia", serif;
@@ -3462,7 +3221,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
         style: `
           width: 80%;
           height: 1px;
-          background: linear-gradient(90deg, transparent, #2a3a2d, transparent);
+          background: linear-gradient(90deg, transparent, #613134, transparent);
           margin: 0 auto 30px auto;
         `
       }
@@ -3475,7 +3234,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
         attr: {
           style: `
             font-size: 0.85em;
-            color: #5a6a5d;
+            color: #928d85;
             margin-bottom: 20px;
             font-family: "Times New Roman", serif;
             letter-spacing: 1px;
@@ -3488,7 +3247,7 @@ var MorpheusModal = class extends import_obsidian.Modal {
         style: `
           width: 80%;
           height: 1px;
-          background: linear-gradient(90deg, transparent, #2a3a2d, transparent);
+          background: linear-gradient(90deg, transparent, #613134, transparent);
           margin: 0 auto 30px auto;
         `
       }
@@ -3498,11 +3257,11 @@ var MorpheusModal = class extends import_obsidian.Modal {
       attr: {
         style: `
           font-size: 0.9em;
-          color: #7a9a7d;
+          color: #967b4d;
           font-style: italic;
           font-family: "Georgia", serif;
           line-height: 1.6;
-          border-left: 2px solid #2a3a2d;
+          border-left: 2px solid #613134;
           padding-left: 16px;
           margin: 0 auto;
           max-width: 90%;
@@ -3573,9 +3332,9 @@ var TempleModal = class extends import_obsidian.Modal {
   }
   getTaskStatusColor(task) {
     const status = this.getTaskStatus(task);
-    if (status.includes("Overdue")) return "rgba(239, 68, 68, 0.1)";
-    if (status.includes("Due")) return "rgba(245, 158, 11, 0.1)";
-    if (status.includes("Fresh") || status.includes("today")) return "rgba(34, 197, 94, 0.1)";
+    if (status.includes("Overdue")) return "rgba(97, 49, 52, 0.1)";
+    if (status.includes("Due")) return "rgba(150, 123, 77, 0.1)";
+    if (status.includes("Fresh") || status.includes("today")) return "rgba(150, 123, 77, 0.1)";
     return "transparent";
   }
   onClose() {
@@ -3618,12 +3377,12 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
         style: `
           margin-bottom: 16px;
           padding: 12px 16px;
-          background: #0f0f0f;
-          border: 1px solid ${daysLeft <= 2 ? "#F59E0B" : "#2a3a2d"};
+          background: #1a1410;
+          border: 1px solid ${daysLeft <= 2 ? "#967b4d" : "#613134"};
           font-family: "Georgia", serif;
           font-size: 13px;
           font-style: italic;
-          color: ${daysLeft <= 2 ? "#F59E0B" : "#5a6a5d"};
+          color: ${daysLeft <= 2 ? "#967b4d" : "#928d85"};
         `
       }
     });
@@ -3635,7 +3394,7 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
           font-family: "Times New Roman", serif;
           font-size: 14px;
           letter-spacing: 0.5px;
-          color: #7a9a7d;
+          color: #967b4d;
         `
       }
     });
@@ -3646,11 +3405,11 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
           style: `
             margin-bottom: 16px;
             padding: 16px;
-            background: #0f0f0f;
-            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: #1a1410;
+            border: 1px solid rgba(97, 49, 52, 0.4);
             font-family: "Georgia", serif;
             font-size: 13px;
-            color: #EF4444;
+            color: #613134;
           `
         }
       });
@@ -3661,8 +3420,8 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
             style: `
               margin-bottom: 12px;
               padding: 16px;
-              border: 1px solid #2a3a2d;
-              background: #0f0f0f;
+              border: 1px solid #613134;
+              background: #1a1410;
               cursor: pointer;
               transition: all 0.2s ease;
             `
@@ -3674,17 +3433,17 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
             style: `
               font-family: "Times New Roman", serif;
               font-size: 14px;
-              color: #e5e7eb;
+              color: #faddb3;
             `
           }
         });
         optionBox.onmouseenter = () => {
-          optionBox.style.borderColor = "#7a9a7d";
-          optionBox.style.background = "rgba(122, 154, 125, 0.1)";
+          optionBox.style.borderColor = "#967b4d";
+          optionBox.style.background = "rgba(150, 123, 77, 0.1)";
         };
         optionBox.onmouseleave = () => {
-          optionBox.style.borderColor = "#2a3a2d";
-          optionBox.style.background = "#0f0f0f";
+          optionBox.style.borderColor = "#613134";
+          optionBox.style.background = "#1a1410";
         };
         optionBox.onclick = async () => {
           await this.claimReward(option);
@@ -3700,7 +3459,7 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
             style: `
               margin-top: 20px;
               padding-top: 16px;
-              border-top: 1px solid #2a3a2d;
+              border-top: 1px solid #613134;
             `
           }
         });
@@ -3711,7 +3470,7 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
               margin-bottom: 12px;
               font-family: "Times New Roman", serif;
               font-size: 13px;
-              color: #5a6a5d;
+              color: #928d85;
             `
           }
         });
@@ -3722,9 +3481,9 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
             style: `
               padding: 12px 24px;
               min-height: 44px;
-              background: #0f0f0f;
-              color: #8B5CF6;
-              border: 1px solid #8B5CF6;
+              background: #1a1410;
+              color: #928d85;
+              border: 1px solid #928d85;
               cursor: pointer;
               font-family: "Times New Roman", serif;
               font-size: 12px;
@@ -3745,11 +3504,11 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
             style: `
               margin-top: 20px;
               padding: 12px 16px;
-              background: #0f0f0f;
-              border: 1px solid rgba(139, 92, 246, 0.3);
+              background: #1a1410;
+              border: 1px solid rgba(146, 141, 133, 0.3);
               font-family: "Times New Roman", serif;
               font-size: 12px;
-              color: #8B5CF6;
+              color: #928d85;
               text-align: center;
             `
           }
@@ -3772,8 +3531,8 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
           padding: 10px 20px;
           min-height: 44px;
           background: transparent;
-          color: #5a6a5d;
-          border: 1px solid #2a3a2d;
+          color: #928d85;
+          border: 1px solid #613134;
           cursor: pointer;
           font-family: "Times New Roman", serif;
           font-size: 11px;
@@ -3837,7 +3596,7 @@ var BossRewardModal = class extends import_obsidian.Modal {
     contentEl.empty();
 
     contentEl.style.maxWidth = "360px";
-    contentEl.style.background = "#181a1c";
+    contentEl.style.background = "#1a1410";
     contentEl.style.padding = "24px";
     contentEl.style.borderRadius = "12px";
 
@@ -3920,7 +3679,7 @@ var BossRewardModal = class extends import_obsidian.Modal {
         attr: {
           style: `
             background: linear-gradient(180deg, #c9a227 0%, #8b6914 100%);
-            color: #0a0a0a;
+            color: #1a1410;
             border: none;
             padding: 12px 24px;
             border-radius: 6px;
@@ -4014,20 +3773,27 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
 
     // Add modal styles
     contentEl.style.maxWidth = "500px";
-    contentEl.style.background = "#0a0a0a";
+    contentEl.style.background = "#1a1410";
     contentEl.style.padding = "20px";
 
     const colors = {
-      gold: "#9a8c7a",
-      goldLight: "#b8a890",
-      goldMuted: "#6a5d4a",
-      green: "#7a9a7d",
-      greenMuted: "#5a6a5d",
-      greenBorder: "#2a3a2d",
-      bg: "#0a0a0a",
-      bgLight: "#0f0f0f",
-      text: "#e5e7eb",
-      textMuted: "#5a6a5d"
+      buccaneer: "#613134",
+      peachYellow: "#faddb3",
+      leather: "#967b4d",
+      naturalGrey: "#928d85",
+      gold: "#967b4d",
+      goldLight: "#967b4d",
+      goldMuted: "#967b4d",
+      goldBorder: "#613134",
+      green: "#967b4d",
+      greenMuted: "#928d85",
+      greenBorder: "#613134",
+      bg: "#1a1410",
+      bgLight: "#221c16",
+      text: "#faddb3",
+      textMuted: "#928d85",
+      danger: "#613134",
+      accent: "#967b4d"
     };
 
     const tierDisplayNames = {
@@ -4104,8 +3870,8 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
         const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
 
         const statusColors = {
-          pending: "#F59E0B",
-          banked: "#8B5CF6",
+          pending: "#967b4d",
+          banked: "#928d85",
           active: colors.green
         };
 
@@ -4491,11 +4257,11 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
           style: `
             margin-top: 12px;
             padding: 8px;
-            background: rgba(124, 58, 237, 0.15);
+            background: rgba(146, 141, 133, 0.15);
             border-radius: 6px;
             text-align: center;
             font-weight: 600;
-            color: #7C3AED;
+            color: #928d85;
           `
         }
       });
@@ -4635,7 +4401,7 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
       ["Failed Days Counter", `${settings.failedThresholdDays}/3`]
     ];
     this.renderDataTable(content, rows);
-    const statusColor = status === "SAFE" ? "#10B981" : status === "WARNING" ? "#F59E0B" : "#EF4444";
+    const statusColor = status === "SAFE" ? "#967b4d" : status === "WARNING" ? "#967b4d" : "#613134";
     content.createEl("div", {
       text: status,
       attr: {
@@ -4694,11 +4460,11 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
         style: `
           margin-bottom: 12px;
           padding: 8px;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.3);
+          background: rgba(97, 49, 52, 0.1);
+          border: 1px solid rgba(97, 49, 52, 0.3);
           border-radius: 6px;
           font-size: 0.85em;
-          color: #EF4444;
+          color: #613134;
         `
       }
     });
@@ -4822,7 +4588,7 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
     const forceTartarusBtn = actionsRow.createEl("button", {
       text: "Force Tartarus",
       cls: "track-habit-rank-btn",
-      attr: { style: "padding: 8px 12px; min-height: 44px; background: rgba(220, 38, 38, 0.15); color: #DC2626;" }
+      attr: { style: "padding: 8px 12px; min-height: 44px; background: rgba(97, 49, 52, 0.15); color: #613134;" }
     });
     forceTartarusBtn.onclick = async () => {
       debugLog.log("DEV", "Force Tartarus triggered");
@@ -4864,7 +4630,7 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
       const escapeBtn = actionsRow.createEl("button", {
         text: "Escape Tartarus",
         cls: "track-habit-rank-btn",
-        attr: { style: "padding: 8px 12px; min-height: 44px; background: rgba(34, 197, 94, 0.15); color: #10B981;" }
+        attr: { style: "padding: 8px 12px; min-height: 44px; background: rgba(150, 123, 77, 0.15); color: #967b4d;" }
       });
       escapeBtn.onclick = async () => {
         debugLog.log("DEV", "Escape Tartarus triggered (developer override)");
@@ -5038,7 +4804,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           margin-bottom: 12px;
           text-align: center;
           font-weight: 600;
-          ${this.plugin.settings.systemState === "paused" ? "background: rgba(124, 58, 237, 0.15); color: #7C3AED; border: 1px solid rgba(124, 58, 237, 0.3);" : "background: rgba(34, 197, 94, 0.15); color: #10B981; border: 1px solid rgba(34, 197, 94, 0.3);"}
+          ${this.plugin.settings.systemState === "paused" ? "background: rgba(146, 141, 133, 0.15); color: #928d85; border: 1px solid rgba(146, 141, 133, 0.3);" : "background: rgba(150, 123, 77, 0.15); color: #967b4d; border: 1px solid rgba(150, 123, 77, 0.3);"}
         `
       }
     });
@@ -5060,7 +4826,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           border-radius: 8px;
           cursor: pointer;
           border: none;
-          ${this.plugin.settings.systemState === "paused" ? "background: #10B981; color: white;" : "background: #7C3AED; color: white;"}
+          ${this.plugin.settings.systemState === "paused" ? "background: #967b4d; color: white;" : "background: #928d85; color: white;"}
         `
       }
     });
@@ -5153,13 +4919,13 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     const effectiveNow = getEffectiveNow(this.plugin.settings);
     const effectiveDate = effectiveNow.toISOString().slice(0, 10);
     const isSimulated = !!this.plugin.settings.simulatedDate;
-    this.createStatCard(statsGrid, "Effective Date", effectiveDate, isSimulated ? "#F59E0B" : "#10B981");
+    this.createStatCard(statsGrid, "Effective Date", effectiveDate, isSimulated ? "#967b4d" : "#967b4d");
     const hpPercent = Math.round(this.plugin.settings.bossCurrentHP / this.plugin.settings.bossMaxHP * 100);
-    const hpColor = hpPercent > 50 ? "#10B981" : hpPercent > 20 ? "#F59E0B" : "#EF4444";
+    const hpColor = hpPercent > 50 ? "#967b4d" : hpPercent > 20 ? "#967b4d" : "#613134";
     this.createStatCard(statsGrid, "Boss HP", `${this.plugin.settings.bossCurrentHP}/${this.plugin.settings.bossMaxHP}`, hpColor);
-    const thresholdColor = this.plugin.settings.failedThresholdDays === 0 ? "#10B981" : this.plugin.settings.failedThresholdDays === 1 ? "#F59E0B" : "#EF4444";
+    const thresholdColor = this.plugin.settings.failedThresholdDays === 0 ? "#967b4d" : this.plugin.settings.failedThresholdDays === 1 ? "#967b4d" : "#613134";
     this.createStatCard(statsGrid, "Threshold Days", `${this.plugin.settings.failedThresholdDays}/3`, thresholdColor);
-    const tierColor = this.plugin.settings.inTartarus ? "#DC2626" : "#7C3AED";
+    const tierColor = this.plugin.settings.inTartarus ? "#613134" : "#928d85";
     this.createStatCard(statsGrid, "Current Tier", `${this.plugin.settings.currentTier}/26`, tierColor);
     if (isSimulated) {
       statsSection.createEl("div", {
@@ -5168,11 +4934,11 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           style: `
             margin-top: 10px;
             padding: 8px;
-            background: rgba(245, 158, 11, 0.15);
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            background: rgba(150, 123, 77, 0.15);
+            border: 1px solid rgba(150, 123, 77, 0.3);
             border-radius: 6px;
             font-size: 0.85em;
-            color: #F59E0B;
+            color: #967b4d;
             text-align: center;
           `
         }
@@ -5185,11 +4951,11 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           style: `
             margin-top: 10px;
             padding: 10px;
-            background: rgba(220, 38, 38, 0.15);
-            border: 2px solid #DC2626;
+            background: rgba(97, 49, 52, 0.15);
+            border: 2px solid #613134;
             border-radius: 6px;
             font-size: 0.9em;
-            color: #DC2626;
+            color: #613134;
             font-weight: 700;
             text-align: center;
           `
@@ -5215,7 +4981,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       const currentHP = calculateBossHP(stats.total, this.plugin.settings.currentTier, this.plugin.settings, stats.lowest);
       difficultyInfo.createEl("div", {
         text: `AUTO MODE: Current Tier ${this.plugin.settings.currentTier} HP = ${currentHP}`,
-        attr: { style: "font-weight: 600; margin-bottom: 4px; color: #22C55E;" }
+        attr: { style: "font-weight: 600; margin-bottom: 4px; color: #967b4d;" }
       });
       difficultyInfo.createEl("div", {
         text: `Tier 1: ${tier1HP} HP (${stats.lowest} lowest \xD7 4 weeks)`,
@@ -5623,6 +5389,17 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         );
       }
     }
+
+    // Dashboard Background Image
+    new import_obsidian.Setting(containerEl).setName("Dashboard Background").setDesc("Set a 9:16 background image for the boss dashboard (vignette applied automatically)").setHeading();
+
+    new import_obsidian.Setting(containerEl).setName("Background Image URL").setDesc("URL or vault path to a 9:16 image").addText(
+      (t) => t.setPlaceholder("https://... or vault/path/to/bg.png").setValue(this.plugin.settings.dashboardBgImage || "").onChange(async (v) => {
+        this.plugin.settings.dashboardBgImage = v || "";
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
+      })
+    );
 
     new import_obsidian.Setting(containerEl).setName("Tartarus Task Editor").setDesc("Customize penance tasks for each tier range").setHeading();
     new import_obsidian.Setting(containerEl).setName("Tartarus Image").setDesc("Custom image URL shown when in Tartarus (leave empty for default skull)").addText(
@@ -6146,8 +5923,8 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
             style: `
               width: 60px;
               height: 70px;
-              background: #0f0f0f;
-              border: 1px solid #2a3a2d;
+              background: #1a1410;
+              border: 1px solid #613134;
               display: flex;
               flex-direction: column;
               align-items: center;
@@ -6930,7 +6707,10 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
     }
     if (currentHP <= 0 && currentTier < 26) {
       const oldTier = this.settings.currentTier;
-      this.settings.currentTier = oldTier + 1;
+      const isOddTier = oldTier % 2 === 1;
+      // If on first tier of boss and 50% advance didn't fire, skip to next boss (advance 2)
+      const advance = (isOddTier && !this.settings.tierAdvancedAt50Percent) ? 2 : 1;
+      this.settings.currentTier = Math.min(26, oldTier + advance);
       this.settings.tierAdvancedAt50Percent = false;
       const stats = this.getWeeklyTargetStats();
       this.settings.bossMaxHP = calculateBossHP(stats.total, this.settings.currentTier, this.settings, stats.lowest);
