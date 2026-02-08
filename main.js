@@ -1172,7 +1172,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           padding: 28px;
           text-align: center;
           background: ${colors.bg};
-          border: 1px solid ${colors.buccaneer};
+          border: 1px solid rgba(150, 123, 77, 0.3);
           position: relative;
           font-family: "Georgia", serif;
           overflow: hidden;
@@ -1351,11 +1351,11 @@ var TrackRankView = class extends import_obsidian.ItemView {
             position: absolute;
             inset: 0;
             background: linear-gradient(180deg,
-              #080404 0%,
-              #0c0606 30%,
-              #100808 50%,
-              #0c0606 70%,
-              #080404 100%
+              #120e0a 0%,
+              #1a1410 30%,
+              #1e1812 50%,
+              #1a1410 70%,
+              #120e0a 100%
             );
             z-index: 0;
           }
@@ -1363,13 +1363,13 @@ var TrackRankView = class extends import_obsidian.ItemView {
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse at 50% 90%, rgba(139, 0, 0, 0.15) 0%, transparent 50%);
+            background: radial-gradient(ellipse at 50% 90%, rgba(97, 49, 52, 0.12) 0%, transparent 50%);
             animation: darkBreath 8s ease-in-out infinite;
           }
           .tartarus-gothic-frame {
             position: absolute;
             inset: 8px;
-            border: 1px solid rgba(139, 0, 0, 0.4);
+            border: 1px solid rgba(150, 123, 77, 0.25);
             pointer-events: none;
             z-index: 1;
           }
@@ -1377,7 +1377,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             content: '';
             position: absolute;
             inset: 4px;
-            border: 1px solid rgba(100, 70, 40, 0.3);
+            border: 1px solid rgba(150, 123, 77, 0.15);
           }
           .tartarus-corner-ornament {
             position: absolute;
@@ -1396,15 +1396,56 @@ var TrackRankView = class extends import_obsidian.ItemView {
       // Add gothic background
       wrapper.createDiv({ cls: 'tartarus-gothic-bg' });
 
+      // 9:16 Background image with vignette (same as boss dashboard)
+      if (settings.dashboardBgImage) {
+        let tartBgUrl = settings.dashboardBgImage;
+        if (!tartBgUrl.startsWith('http://') && !tartBgUrl.startsWith('https://') && !tartBgUrl.startsWith('data:')) {
+          try { tartBgUrl = this.app.vault.adapter.getResourcePath(tartBgUrl); } catch (e) {}
+        }
+        const tartBgLayer = wrapper.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              inset: 0;
+              z-index: 0;
+              background-image: url('${tartBgUrl}');
+              background-size: cover;
+              background-position: center;
+              background-repeat: no-repeat;
+            `
+          }
+        });
+        tartBgLayer.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              inset: 0;
+              background: radial-gradient(ellipse at center, transparent 30%, rgba(26, 20, 16, 0.7) 70%, rgba(26, 20, 16, 0.95) 100%);
+              pointer-events: none;
+            `
+          }
+        });
+        tartBgLayer.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              inset: 0;
+              background: linear-gradient(180deg, rgba(26, 20, 16, 0.6) 0%, transparent 20%, transparent 70%, rgba(26, 20, 16, 0.8) 100%);
+              pointer-events: none;
+            `
+          }
+        });
+      }
+
       // Add inner frame with gold/burgundy corners
       const gothicFrame = wrapper.createDiv({ cls: 'tartarus-gothic-frame' });
 
       // Corner ornaments (art deco style with burgundy)
       const tartarusCornerSVG = `
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0 0 L24 0 L24 3 L3 3 L3 24 L0 24 Z" fill="rgba(139, 0, 0, 0.6)"/>
-          <path d="M0 0 L18 0 L18 1.5 L1.5 1.5 L1.5 18 L0 18 Z" fill="rgba(201, 162, 39, 0.5)"/>
-          <circle cx="4" cy="4" r="1.5" fill="rgba(201, 162, 39, 0.6)"/>
+          <path d="M0 0 L24 0 L24 3 L3 3 L3 24 L0 24 Z" fill="rgba(97, 49, 52, 0.4)"/>
+          <path d="M0 0 L18 0 L18 1.5 L1.5 1.5 L1.5 18 L0 18 Z" fill="rgba(150, 123, 77, 0.4)"/>
+          <circle cx="4" cy="4" r="1.5" fill="rgba(150, 123, 77, 0.5)"/>
         </svg>
       `;
 
@@ -1434,6 +1475,10 @@ var TrackRankView = class extends import_obsidian.ItemView {
 
       const tartarusImage = settings.tartarusImage;
       if (tartarusImage) {
+        let resolvedTartImg = tartarusImage;
+        if (!tartarusImage.startsWith('http://') && !tartarusImage.startsWith('https://') && !tartarusImage.startsWith('data:')) {
+          try { resolvedTartImg = this.app.vault.adapter.getResourcePath(tartarusImage); } catch (e) {}
+        }
         const imgContainer = tartarusContent.createDiv({
           attr: {
             style: `
@@ -1445,53 +1490,31 @@ var TrackRankView = class extends import_obsidian.ItemView {
         });
         const img = imgContainer.createEl("img", {
           attr: {
-            src: tartarusImage,
+            src: resolvedTartImg,
             alt: "Tartarus",
             style: `
               max-width: 200px;
               max-height: 200px;
-              border: 2px solid rgba(139, 0, 0, 0.5);
+              border: 2px solid rgba(150, 123, 77, 0.3);
               border-radius: 4px;
               object-fit: cover;
               filter: contrast(1.1) brightness(0.9) sepia(0.1);
-              box-shadow: 0 0 20px rgba(139, 0, 0, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.3);
+              box-shadow: 0 0 20px rgba(26, 20, 16, 0.4), inset 0 0 30px rgba(0, 0, 0, 0.3);
               transition: all 0.4s ease;
             `
           }
         });
         img.onmouseenter = () => {
           img.style.filter = 'contrast(1.15) brightness(0.95) sepia(0.05)';
-          img.style.boxShadow = '0 0 30px rgba(139, 0, 0, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.2)';
+          img.style.boxShadow = '0 0 30px rgba(150, 123, 77, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.2)';
         };
         img.onmouseleave = () => {
           img.style.filter = 'contrast(1.1) brightness(0.9) sepia(0.1)';
-          img.style.boxShadow = '0 0 20px rgba(139, 0, 0, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.3)';
+          img.style.boxShadow = '0 0 20px rgba(26, 20, 16, 0.4), inset 0 0 30px rgba(0, 0, 0, 0.3)';
         };
         img.onerror = () => {
-          imgContainer.empty();
-          imgContainer.createEl("div", {
-            text: "\u{1F480}",
-            attr: {
-              style: `
-                font-size: 72px;
-                line-height: 1;
-                filter: drop-shadow(0 4px 12px rgba(139, 0, 0, 0.4));
-              `
-            }
-          });
+          imgContainer.remove();
         };
-      } else {
-        tartarusContent.createEl("div", {
-          text: "\u{1F480}",
-          attr: {
-            style: `
-              font-size: 72px;
-              line-height: 1;
-              margin-bottom: 16px;
-              filter: drop-shadow(0 4px 12px rgba(139, 0, 0, 0.4));
-            `
-          }
-        });
       }
 
       // TARTARUS title - Gothic elegance
@@ -1505,8 +1528,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
             letter-spacing: 8px;
             margin-bottom: 8px;
             text-transform: uppercase;
-            color: ${colors.danger};
-            text-shadow: 0 2px 8px rgba(139, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 1);
+            color: ${colors.peachYellow};
+            text-shadow: 0 2px 8px rgba(26, 20, 16, 0.6), 0 0 2px rgba(0, 0, 0, 1);
           `
         }
       });
@@ -1534,7 +1557,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-style: italic;
             letter-spacing: 2px;
             margin-bottom: 24px;
-            color: rgba(201, 162, 39, 0.5);
+            color: ${colors.naturalGrey};
           `
         }
       });
@@ -1572,6 +1595,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
               align-items: flex-end;
               gap: 16px;
               position: relative;
+              z-index: 1;
             `
           }
         });
@@ -1682,6 +1706,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
             text-transform: uppercase;
             color: ${colors.gold};
             text-shadow: 0 2px 12px rgba(154, 140, 122, 0.3);
+            position: relative;
+            z-index: 1;
           `
         }
       });
@@ -1700,6 +1726,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
               text-transform: uppercase;
               color: ${colors.greenMuted};
               opacity: 0.8;
+              position: relative;
+              z-index: 1;
             `
           }
         });
@@ -1750,7 +1778,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         style: `
           position: relative;
           height: 10px;
-          background: rgba(97, 49, 52, 0.25);
+          background: rgba(146, 141, 133, 0.15);
           overflow: hidden;
         `
       }
@@ -1764,21 +1792,21 @@ var TrackRankView = class extends import_obsidian.ItemView {
             position: absolute;
             left: 0; top: 0; bottom: 0;
             width: ${startOfDayPercent}%;
-            background: rgba(97, 49, 52, 0.5);
+            background: rgba(150, 123, 77, 0.35);
             transition: width 0.8s ease;
           `
         }
       });
     }
 
-    // Main HP fill - Buccaneer red
+    // Main HP fill - Leather tone
     hpTrack.createDiv({
       attr: {
         style: `
           position: absolute;
           left: 0; top: 0; bottom: 0;
           width: ${hpFillPercent}%;
-          background: ${colors.buccaneer};
+          background: ${colors.leather};
           transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         `
       }
@@ -1793,7 +1821,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             font-family: "Georgia", serif;
             font-size: 9px;
-            color: ${colors.buccaneer};
+            color: ${colors.naturalGrey};
             text-align: right;
             margin-top: 2px;
             font-style: italic;
@@ -1859,6 +1887,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
             margin-bottom: 20px;
             line-height: 1.5;
             opacity: 0.8;
+            position: relative;
+            z-index: 1;
           `
         }
       });
@@ -1923,11 +1953,38 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             margin: 16px 0;
             padding: 16px 20px;
-            background: ${colors.bg};
-            border: 1px solid ${colors.buccaneer};
+            background: rgba(26, 20, 16, 0.85);
+            border: 1px solid ${colors.naturalGrey};
+            position: relative;
+            z-index: 1;
           `
         }
       });
+
+      // Tartarus image (if set)
+      if (settings.tartarusImage) {
+        let tartWarningImg = settings.tartarusImage;
+        if (!tartWarningImg.startsWith('http://') && !tartWarningImg.startsWith('https://') && !tartWarningImg.startsWith('data:')) {
+          try { tartWarningImg = this.app.vault.adapter.getResourcePath(tartWarningImg); } catch (e) {}
+        }
+        const tartImgEl = warningBox.createEl("img", {
+          attr: {
+            src: tartWarningImg,
+            alt: "Tartarus",
+            style: `
+              max-width: 48px;
+              max-height: 48px;
+              border-radius: 2px;
+              object-fit: cover;
+              margin-bottom: 8px;
+              opacity: 0.85;
+              filter: contrast(1.05) brightness(0.9);
+            `
+          }
+        });
+        tartImgEl.onerror = () => tartImgEl.remove();
+      }
+
       warningBox.createEl("div", {
         text: "YOU ARE IN TARTARUS",
         cls: "track-habit-rank-warning-title",
@@ -1938,7 +1995,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-weight: 500;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: ${colors.buccaneer};
+            color: ${colors.peachYellow};
             margin-bottom: 10px;
           `
         }
@@ -1947,8 +2004,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
       const daysIn = settings.tartarusStartDate ? Math.floor((effectiveNow.getTime() - new Date(settings.tartarusStartDate).getTime()) / (24 * 60 * 60 * 1e3)) : 0;
       const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 12 ? 4 : 5;
       const completedTasks = settings.tartarusPenanceTasks.filter((t) => t.completed).length;
+      const remainingTasks = requiredTasks - completedTasks;
       warningBox.createEl("div", {
-        text: `Days: ${daysIn} | Tasks: ${completedTasks}/${requiredTasks}`,
+        text: `Day ${daysIn} | ${remainingTasks > 0 ? `${remainingTasks} task${remainingTasks !== 1 ? 's' : ''} remaining` : 'All tasks complete'}`,
         cls: "track-habit-rank-warning-text",
         attr: {
           style: `
@@ -1968,8 +2026,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
             padding: 12px 20px;
             min-height: 44px;
             background: ${colors.bg};
-            color: ${colors.buccaneer};
-            border: 1px solid ${colors.buccaneer};
+            color: ${colors.leather};
+            border: 1px solid ${colors.leather};
             cursor: pointer;
             font-family: "Times New Roman", serif;
             font-size: 12px;
@@ -1995,7 +2053,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             margin-top: 24px;
             padding-top: 16px;
-            border-top: 1px solid ${colors.buccaneer};
+            border-top: 1px solid rgba(150, 123, 77, 0.3);
             z-index: 1;
             position: relative;
           `
