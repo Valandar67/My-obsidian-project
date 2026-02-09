@@ -384,7 +384,7 @@ var DEFAULT_SETTINGS = {
   bankedRewards: [],
   lastRewardCheck: null,
   // Tier figure settings
-  tierFigures: [],  // Array of { tier, image, position ('left' or 'right'), hideTierTitle }
+  tierFigures: [],  // Array of { tier, image, position ('left'|'right'), hideTierTitle, scale, offsetX, offsetY }
   showTierFigure: false,
   // Dashboard background image (9:16 aspect ratio, vignette auto-applied)
   dashboardBgImage: "",
@@ -1642,113 +1642,112 @@ var TrackRankView = class extends import_obsidian.ItemView {
       const tierFigure = settings.tierFigures?.find(f => f.tier === settings.currentTier);
       const showFigure = settings.showTierFigure && tierFigure?.image;
       const figurePosition = tierFigure?.position || 'left';
+      const figureScale = tierFigure?.scale || 1.0;
+      const figureOffsetX = tierFigure?.offsetX || 0;
+      const figureOffsetY = tierFigure?.offsetY || 0;
 
-      if (bossImage || showFigure) {
-        const imgContainer = wrapper.createDiv({
+      // Boss image — full width, positioned at top with heavy fade from below
+      if (bossImage) {
+        let resolvedBossImage = bossImage;
+        if (!bossImage.startsWith('http://') && !bossImage.startsWith('https://') && !bossImage.startsWith('data:')) {
+          try { resolvedBossImage = this.app.vault.adapter.getResourcePath(bossImage); } catch (e) {}
+        }
+        const bossImgWrap = wrapper.createDiv({
           attr: {
             style: `
-              margin-bottom: 20px;
-              display: flex;
-              justify-content: center;
-              align-items: flex-end;
-              gap: 16px;
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              z-index: 0;
+              overflow: hidden;
+              pointer-events: none;
+            `
+          }
+        });
+        bossImgWrap.createEl("img", {
+          attr: {
+            src: resolvedBossImage,
+            alt: boss?.name || "Boss",
+            style: `
+              width: 100%;
+              display: block;
+              object-fit: cover;
+              filter: contrast(1.05) brightness(0.9);
+              animation: fadeSlideIn 0.8s ease-out;
+            `
+          }
+        }).onerror = function() { bossImgWrap.remove(); };
+        // Heavy gradient fade from below
+        bossImgWrap.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 70%;
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}ee 20%, ${colors.bg}aa 45%, transparent 100%);
+              pointer-events: none;
+            `
+          }
+        });
+        // Click the boss image area to show boss reward
+        bossImgWrap.style.pointerEvents = "auto";
+        bossImgWrap.style.cursor = "pointer";
+        bossImgWrap.onclick = () => { new BossRewardModal(this.app, this.plugin).open(); };
+      }
+
+      // Tier figure — overlaid absolutely, doesn't affect boss image centering
+      if (showFigure) {
+        let figImgPath = tierFigure.image;
+        if (!figImgPath.startsWith('http://') && !figImgPath.startsWith('https://') && !figImgPath.startsWith('data:')) {
+          try { figImgPath = this.app.vault.adapter.getResourcePath(figImgPath); } catch (e) {}
+        }
+        const figureSize = Math.round(160 * figureScale);
+        const figureMaxH = Math.round(240 * figureScale);
+        const posStyle = figurePosition === 'right'
+          ? `right: ${8 + figureOffsetX}px;`
+          : `left: ${8 + figureOffsetX}px;`;
+        const figureDiv = wrapper.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              bottom: ${60 + figureOffsetY}px;
+              ${posStyle}
+              z-index: 2;
+              pointer-events: none;
+              animation: fadeSlideIn 1s 0.3s ease-out both;
+            `
+          }
+        });
+        const figImg = figureDiv.createEl("img", {
+          attr: {
+            src: figImgPath,
+            alt: "Tier Figure",
+            style: `
+              max-width: ${figureSize}px;
+              max-height: ${figureMaxH}px;
+              object-fit: contain;
+              filter: contrast(1.05) drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+            `
+          }
+        });
+        figImg.onerror = () => figureDiv.remove();
+      }
+
+      // Spacer to push content below the full-width boss image
+      if (bossImage) {
+        wrapper.createDiv({
+          attr: {
+            style: `
+              width: 100%;
+              padding-top: 55%;
               position: relative;
               z-index: 1;
             `
           }
         });
-
-        // Helper to create tier figure
-        const createFigure = () => {
-          if (!showFigure) return null;
-          const figureDiv = document.createElement('div');
-          figureDiv.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-          `;
-          const figImg = document.createElement('img');
-          // Resolve vault path or use URL directly
-          const imgPath = tierFigure.image;
-          if (imgPath.startsWith('http://') || imgPath.startsWith('https://') || imgPath.startsWith('data:')) {
-            figImg.src = imgPath;
-          } else {
-            // Vault path - resolve using Obsidian adapter
-            try {
-              figImg.src = this.app.vault.adapter.getResourcePath(imgPath);
-            } catch (e) {
-              figImg.src = imgPath;
-            }
-          }
-          figImg.alt = "Tier Figure";
-          figImg.style.cssText = `
-            max-width: 80px;
-            max-height: 120px;
-            border-radius: 4px;
-            object-fit: contain;
-            filter: contrast(1.05);
-            transition: filter 0.3s ease;
-          `;
-          figImg.onerror = () => figureDiv.remove();
-          figureDiv.appendChild(figImg);
-          return figureDiv;
-        };
-
-        // Add left figure
-        if (showFigure && figurePosition === 'left') {
-          const leftFigure = createFigure();
-          if (leftFigure) imgContainer.appendChild(leftFigure);
-        }
-
-        // Boss image
-        if (bossImage) {
-          let resolvedBossImage = bossImage;
-          if (bossImage && !bossImage.startsWith('http://') && !bossImage.startsWith('https://') && !bossImage.startsWith('data:')) {
-            try { resolvedBossImage = this.app.vault.adapter.getResourcePath(bossImage); } catch (e) {}
-          }
-          const img = imgContainer.createEl("img", {
-            attr: {
-              src: resolvedBossImage,
-              alt: boss?.name || "Boss",
-              style: `
-                max-width: 280px;
-                max-height: 280px;
-                border: 2px solid ${colors.goldBorder};
-                border-radius: 8px;
-                object-fit: cover;
-                filter: contrast(1.05) brightness(0.98);
-                transition: filter 0.4s ease, transform 0.4s ease;
-                cursor: pointer;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-              `
-            }
-          });
-
-          // Click boss to show boss reward simply
-          img.onclick = () => {
-            new BossRewardModal(this.app, this.plugin).open();
-          };
-
-          // Subtle hover effect
-          img.onmouseenter = () => {
-            img.style.transform = 'scale(1.01)';
-            img.style.filter = 'contrast(1.1) brightness(1)';
-          };
-          img.onmouseleave = () => {
-            img.style.transform = 'scale(1)';
-            img.style.filter = 'contrast(1.05) brightness(0.98)';
-          };
-
-          img.onerror = () => {
-            img.remove();
-          };
-        }
-
-        // Add right figure
-        if (showFigure && figurePosition === 'right') {
-          const rightFigure = createFigure();
-          if (rightFigure) imgContainer.appendChild(rightFigure);
-        }
       }
 
       // Boss name is PRIMARY (large, commanding) with fade-in
@@ -2409,6 +2408,17 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const streakClaimable = streakRemaining <= 0;
     const bossPending = (settings.pendingRewards || []).filter(r => r.rewardType === 'boss').length;
 
+    // Look up the first reward option from each pool to show its image
+    const getPoolPreview = (poolType) => {
+      const pools = getRewardPoolsForType(settings, poolType);
+      const pool = pools.find(p => p.tier === rewardProgress.rewardTier);
+      const firstOpt = pool?.options?.[0];
+      return { image: firstOpt?.image || "", emoji: firstOpt?.emoji || "" };
+    };
+    const actPreview = getPoolPreview("activity");
+    const strPreview = getPoolPreview("streak");
+    const bossPreview = getPoolPreview("boss");
+
     const container = wrapper.createDiv({
       attr: {
         style: `
@@ -2425,7 +2435,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
     });
 
     // Create rough-edge reward box helper
-    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type, subtitle }) => {
+    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type, subtitle, previewImage, previewEmoji }) => {
       const box = parent.createDiv({
         attr: {
           style: `
@@ -2439,6 +2449,39 @@ var TrackRankView = class extends import_obsidian.ItemView {
           `
         }
       });
+
+      // Reward preview image/emoji
+      if (previewImage) {
+        let resolvedImg = previewImage;
+        if (!previewImage.startsWith('http://') && !previewImage.startsWith('https://') && !previewImage.startsWith('data:')) {
+          try { resolvedImg = this.plugin.app.vault.adapter.getResourcePath(previewImage); } catch (e) {}
+        }
+        const rwdImg = box.createEl("img", {
+          attr: {
+            src: resolvedImg,
+            style: `
+              width: 100%;
+              max-height: 48px;
+              object-fit: contain;
+              margin-bottom: 4px;
+              opacity: ${isClaimable ? '1' : '0.5'};
+              filter: ${isClaimable ? 'none' : 'grayscale(0.5)'};
+            `
+          }
+        });
+        rwdImg.onerror = () => {
+          rwdImg.remove();
+          if (previewEmoji) box.insertBefore(
+            Object.assign(document.createElement('div'), { textContent: previewEmoji, style: `font-size: 20px; text-align: center; margin-bottom: 4px; opacity: ${isClaimable ? '1' : '0.5'};` }),
+            box.firstChild
+          );
+        };
+      } else if (previewEmoji) {
+        box.createEl("div", {
+          text: previewEmoji,
+          attr: { style: `font-size: 20px; text-align: center; margin-bottom: 4px; opacity: ${isClaimable ? '1' : '0.5'};` }
+        });
+      }
 
       // Title row
       box.createEl("div", {
@@ -2510,7 +2553,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
       total: rewardProgress.activityThreshold,
       remaining: activityRemaining,
       isClaimable: activityClaimable,
-      type: 'activity'
+      type: 'activity',
+      previewImage: actPreview.image,
+      previewEmoji: actPreview.emoji
     });
 
     createRewardBox(container, {
@@ -2519,7 +2564,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
       total: rewardProgress.streakThreshold,
       remaining: streakRemaining,
       isClaimable: streakClaimable,
-      type: 'streak'
+      type: 'streak',
+      previewImage: strPreview.image,
+      previewEmoji: strPreview.emoji
     });
 
     createRewardBox(container, {
@@ -2529,7 +2576,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
       remaining: undefined,
       isClaimable: bossPending > 0,
       type: 'boss',
-      subtitle: bossPending > 0 ? `${bossPending} LOOT` : 'Defeat boss'
+      subtitle: bossPending > 0 ? `${bossPending} LOOT` : 'Defeat boss',
+      previewImage: bossPreview.image,
+      previewEmoji: bossPreview.emoji
     });
 
     // Unclaimed rewards chest
@@ -5321,7 +5370,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
 
     // Tier figure
     body.createEl("div", { text: "TIER FIGURE", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
-    new import_obsidian.Setting(body).setName("Show tier figure").setDesc("Display your avatar/champion next to the boss").addToggle(
+    new import_obsidian.Setting(body).setName("Show tier figure").setDesc("Display your avatar/champion on the boss dashboard").addToggle(
       (t) => t.setValue(this.plugin.settings.showTierFigure).onChange(async (v) => {
         this.plugin.settings.showTierFigure = v;
         await this.plugin.saveSettings();
@@ -5341,7 +5390,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           const figHeader = figureContainer.createDiv({
             attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--background-secondary); cursor: pointer; user-select: none;" }
           });
-          figHeader.createEl("span", { text: `Tiers ${tier}-${pairEnd}`, attr: { style: "font-size: 0.85em; font-weight: 500;" } });
+          figHeader.createEl("span", { text: `Tiers ${tier}-${pairEnd}${tierFigure?.image ? ' \u2713' : ''}`, attr: { style: "font-size: 0.85em; font-weight: 500;" } });
           const figArrow = figHeader.createEl("span", { text: "\u25B6", attr: { style: "font-size: 9px;" } });
           const figureContent = figureContainer.createDiv({ attr: { style: "display: none; padding: 8px 12px;" } });
           figHeader.addEventListener("click", () => {
@@ -5350,27 +5399,155 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
             figArrow.textContent = isOpen ? "\u25B6" : "\u25BC";
           });
 
+          // Image path
           new import_obsidian.Setting(figureContent).setName("Figure image").addText(
             (t) => t.setPlaceholder("vault/path/to/figure.png").setValue(tierFigure?.image || "").onChange(async (v) => {
               this.updateTierFigure(tier, 'image', v);
               await this.plugin.saveSettings();
               this.plugin.refreshRankView();
+              this.display();
             })
           );
-          new import_obsidian.Setting(figureContent).setName("Position").addDropdown(
-            (d) => d.addOption("left", "Left").addOption("right", "Right").setValue(tierFigure?.position || "left").onChange(async (v) => {
-              this.updateTierFigure(tier, 'position', v);
+
+          // Preview + controls (only if image is set)
+          if (tierFigure?.image) {
+            // Live preview box
+            const previewBox = figureContent.createDiv({
+              attr: {
+                style: `
+                  position: relative;
+                  width: 100%;
+                  height: 200px;
+                  background: #1a1410;
+                  border: 1px solid var(--background-modifier-border);
+                  border-radius: 6px;
+                  overflow: hidden;
+                  margin-bottom: 12px;
+                `
+              }
+            });
+            // Preview figure
+            let figSrc = tierFigure.image;
+            if (!figSrc.startsWith('http://') && !figSrc.startsWith('https://') && !figSrc.startsWith('data:')) {
+              try { figSrc = this.plugin.app.vault.adapter.getResourcePath(figSrc); } catch (e) {}
+            }
+            const curScale = tierFigure.scale || 1.0;
+            const curOffX = tierFigure.offsetX || 0;
+            const curOffY = tierFigure.offsetY || 0;
+            const curPos = tierFigure.position || 'left';
+            const previewSize = Math.round(100 * curScale);
+            const previewMaxH = Math.round(160 * curScale);
+
+            const previewFig = previewBox.createEl("img", {
+              attr: {
+                src: figSrc,
+                style: `
+                  position: absolute;
+                  bottom: ${10 + curOffY * 0.5}px;
+                  ${curPos === 'right' ? `right: ${10 + curOffX * 0.5}px;` : `left: ${10 + curOffX * 0.5}px;`}
+                  max-width: ${previewSize}px;
+                  max-height: ${previewMaxH}px;
+                  object-fit: contain;
+                  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+                `
+              }
+            });
+            previewFig.onerror = () => previewFig.remove();
+
+            // Position label
+            previewBox.createEl("div", {
+              text: `${curPos.toUpperCase()} \u2022 ${Math.round(curScale * 100)}% \u2022 X:${curOffX} Y:${curOffY}`,
+              attr: {
+                style: `
+                  position: absolute;
+                  bottom: 4px;
+                  right: 8px;
+                  font-size: 9px;
+                  font-family: monospace;
+                  color: rgba(255,255,255,0.4);
+                `
+              }
+            });
+
+            // Position (left/right)
+            new import_obsidian.Setting(figureContent).setName("Side").setDesc("Left or right side of the dashboard").addDropdown(
+              (d) => d.addOption("left", "Left").addOption("right", "Right").setValue(curPos).onChange(async (v) => {
+                this.updateTierFigure(tier, 'position', v);
+                await this.plugin.saveSettings();
+                this.plugin.refreshRankView();
+                this.display();
+              })
+            );
+
+            // Scale slider
+            const scaleRow = figureContent.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+            scaleRow.createEl("div", { text: `Size: ${Math.round(curScale * 100)}%`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
+            const scaleSlider = scaleRow.createEl("input", {
+              attr: {
+                type: "range",
+                min: "0.3",
+                max: "3.0",
+                step: "0.1",
+                value: String(curScale),
+                style: "width: 100%; accent-color: var(--interactive-accent);"
+              }
+            });
+            scaleSlider.addEventListener("change", async (e) => {
+              this.updateTierFigure(tier, 'scale', parseFloat(e.target.value));
               await this.plugin.saveSettings();
               this.plugin.refreshRankView();
-            })
-          );
-          new import_obsidian.Setting(figureContent).setName("Hide tier title").addToggle(
-            (t) => t.setValue(tierFigure?.hideTierTitle || false).onChange(async (v) => {
-              this.updateTierFigure(tier, 'hideTierTitle', v);
+              this.display();
+            });
+
+            // Horizontal offset slider
+            const xRow = figureContent.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+            xRow.createEl("div", { text: `Horizontal offset: ${curOffX}px`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
+            const xSlider = xRow.createEl("input", {
+              attr: {
+                type: "range",
+                min: "-50",
+                max: "100",
+                step: "2",
+                value: String(curOffX),
+                style: "width: 100%; accent-color: var(--interactive-accent);"
+              }
+            });
+            xSlider.addEventListener("change", async (e) => {
+              this.updateTierFigure(tier, 'offsetX', parseInt(e.target.value));
               await this.plugin.saveSettings();
               this.plugin.refreshRankView();
-            })
-          );
+              this.display();
+            });
+
+            // Vertical offset slider
+            const yRow = figureContent.createDiv({ attr: { style: "margin-bottom: 12px;" } });
+            yRow.createEl("div", { text: `Vertical offset: ${curOffY}px`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
+            const ySlider = yRow.createEl("input", {
+              attr: {
+                type: "range",
+                min: "-50",
+                max: "150",
+                step: "2",
+                value: String(curOffY),
+                style: "width: 100%; accent-color: var(--interactive-accent);"
+              }
+            });
+            ySlider.addEventListener("change", async (e) => {
+              this.updateTierFigure(tier, 'offsetY', parseInt(e.target.value));
+              await this.plugin.saveSettings();
+              this.plugin.refreshRankView();
+              this.display();
+            });
+
+            // Hide tier title toggle
+            new import_obsidian.Setting(figureContent).setName("Hide tier title").addToggle(
+              (t) => t.setValue(tierFigure?.hideTierTitle || false).onChange(async (v) => {
+                this.updateTierFigure(tier, 'hideTierTitle', v);
+                await this.plugin.saveSettings();
+                this.plugin.refreshRankView();
+              })
+            );
+          }
         }
       }
     }
@@ -6434,25 +6611,21 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     }
     let figure = this.plugin.settings.tierFigures.find((f) => f.tier === tier);
     if (!figure) {
-      figure = { tier, position: 'left', hideTierTitle: false, image: '' };
+      figure = { tier, position: 'left', hideTierTitle: false, image: '', scale: 1.0, offsetX: 0, offsetY: 0 };
       this.plugin.settings.tierFigures.push(figure);
     }
     if (field === "tier") return;
-    if (field === "image") figure.image = value;
-    else if (field === "position") figure.position = value;
-    else if (field === "hideTierTitle") figure.hideTierTitle = value;
+    figure[field] = value;
 
     // Also apply to the paired tier
     const pairedTier = tier % 2 === 1 ? tier + 1 : tier - 1;
     if (pairedTier >= 1 && pairedTier <= 26) {
       let pairedFigure = this.plugin.settings.tierFigures.find((f) => f.tier === pairedTier);
       if (!pairedFigure) {
-        pairedFigure = { tier: pairedTier, position: 'left', hideTierTitle: false, image: '' };
+        pairedFigure = { tier: pairedTier, position: 'left', hideTierTitle: false, image: '', scale: 1.0, offsetX: 0, offsetY: 0 };
         this.plugin.settings.tierFigures.push(pairedFigure);
       }
-      if (field === "image") pairedFigure.image = value;
-      else if (field === "position") pairedFigure.position = value;
-      else if (field === "hideTierTitle") pairedFigure.hideTierTitle = value;
+      pairedFigure[field] = value;
     }
 
     // Remove entries with no image
