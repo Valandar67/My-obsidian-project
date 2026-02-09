@@ -1909,50 +1909,6 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
     }
 
-    // === ACTIVITY PULSE SUB-BAR ===
-    const weekProgress = getCurrentWeekProgress(this.app, settings);
-    const pulsePercent = weekProgress.target > 0 ? Math.min(100, Math.round(weekProgress.completed / weekProgress.target * 100)) : 0;
-
-    const pulseTrack = hpBarContainer.createDiv({
-      attr: {
-        style: `
-          position: relative;
-          height: 4px;
-          background: rgba(150, 123, 77, 0.15);
-          margin-top: 3px;
-        `
-      }
-    });
-
-    pulseTrack.createDiv({
-      attr: {
-        style: `
-          position: absolute;
-          left: 0; top: 0; bottom: 0;
-          width: ${pulsePercent}%;
-          background: ${colors.leather};
-          transition: width 0.6s ease;
-          opacity: 0.7;
-        `
-      }
-    });
-
-    // Pulse label
-    hpBarContainer.createEl("div", {
-      text: `${weekProgress.completed}/${weekProgress.target} this week`,
-      attr: {
-        style: `
-          font-family: "Georgia", serif;
-          font-size: 8px;
-          color: ${colors.naturalGrey};
-          text-align: center;
-          margin-top: 2px;
-          letter-spacing: 0.5px;
-          opacity: 0.7;
-        `
-      }
-    });
-
     if (boss?.lore) {
       wrapper.createEl("div", {
         text: boss.lore,
