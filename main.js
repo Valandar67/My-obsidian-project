@@ -1699,6 +1699,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
       }
 
       // Tier figure — overlaid absolutely, doesn't affect boss image centering
+      // Rendered later, alongside the boss title, so it sits at the right height
+      let tierFigureDiv = null;
       if (showFigure) {
         let figImgPath = tierFigure.image;
         if (!figImgPath.startsWith('http://') && !figImgPath.startsWith('https://') && !figImgPath.startsWith('data:')) {
@@ -1706,34 +1708,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
         const figureSize = Math.round(160 * figureScale);
         const figureMaxH = Math.round(240 * figureScale);
-        const posStyle = figurePosition === 'right'
-          ? `right: ${8 + figureOffsetX}px;`
-          : `left: ${8 + figureOffsetX}px;`;
-        const figureDiv = wrapper.createDiv({
-          attr: {
-            style: `
-              position: absolute;
-              bottom: ${60 + figureOffsetY}px;
-              ${posStyle}
-              z-index: 2;
-              pointer-events: none;
-              animation: fadeSlideIn 1s 0.3s ease-out both;
-            `
-          }
-        });
-        const figImg = figureDiv.createEl("img", {
-          attr: {
-            src: figImgPath,
-            alt: "Tier Figure",
-            style: `
-              max-width: ${figureSize}px;
-              max-height: ${figureMaxH}px;
-              object-fit: contain;
-              filter: contrast(1.05) drop-shadow(0 2px 8px rgba(0,0,0,0.5));
-            `
-          }
-        });
-        figImg.onerror = () => figureDiv.remove();
+        // Store for insertion alongside boss title
+        tierFigureDiv = { src: figImgPath, size: figureSize, maxH: figureMaxH };
       }
 
       // Spacer to push content below the full-width boss image
@@ -1750,8 +1726,51 @@ var TrackRankView = class extends import_obsidian.ItemView {
         });
       }
 
+      // Title area — contains boss name, rank, and tier figure behind them
+      const titleArea = wrapper.createDiv({
+        attr: {
+          style: `
+            position: relative;
+            z-index: 1;
+            overflow: visible;
+          `
+        }
+      });
+
+      // Tier figure — sits behind the boss title at its height
+      if (tierFigureDiv) {
+        const posStyle = figurePosition === 'right'
+          ? `right: ${figureOffsetX}px; left: auto;`
+          : `left: ${figureOffsetX}px; right: auto;`;
+        const figDiv = titleArea.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              ${posStyle}
+              bottom: ${-20 + figureOffsetY}px;
+              z-index: 0;
+              pointer-events: none;
+              animation: fadeSlideIn 1s 0.3s ease-out both;
+            `
+          }
+        });
+        const figImg = figDiv.createEl("img", {
+          attr: {
+            src: tierFigureDiv.src,
+            alt: "Tier Figure",
+            style: `
+              max-width: ${tierFigureDiv.size}px;
+              max-height: ${tierFigureDiv.maxH}px;
+              object-fit: contain;
+              filter: contrast(1.05) drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+            `
+          }
+        });
+        figImg.onerror = () => figDiv.remove();
+      }
+
       // Boss name is PRIMARY (large, commanding) with fade-in
-      wrapper.createEl("div", {
+      titleArea.createEl("div", {
         text: boss?.name || "No Boss",
         attr: {
           style: `
@@ -1772,7 +1791,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
 
       // User title is SECONDARY (smaller, subdued) - hide if tier figure has hideTierTitle
       if (!(tierFigure?.hideTierTitle && tierFigure?.image)) {
-        wrapper.createEl("div", {
+        titleArea.createEl("div", {
           text: rankName,
           attr: {
             style: `
