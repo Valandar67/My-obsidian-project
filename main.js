@@ -286,6 +286,13 @@ function getRewardTierForPlayerTier(playerTier) {
   if (playerTier <= 22) return "quality";
   return "premium";
 }
+function getRewardPoolsForType(settings, rewardType) {
+  if (rewardType === "activity") return settings.activityRewardPools || [];
+  if (rewardType === "streak") return settings.streakRewardPools || [];
+  if (rewardType === "boss") return settings.bossRewardPools || [];
+  // Fallback: try legacy shared pool
+  return settings.rewardPools || [];
+}
 function canBankRewards(playerTier) {
   return playerTier >= 11;
 }
@@ -348,48 +355,27 @@ var DEFAULT_SETTINGS = {
   rankBelowSince: null,
   activitySnapshots: {},
   snapshots: [],
-  // Reward System defaults
-  rewardPools: [
-    {
-      tier: "micro",
-      options: [
-        { id: "micro-1", description: "[Add your micro reward 1]", image: "", emoji: "🎁" },
-        { id: "micro-2", description: "[Add your micro reward 2]", image: "", emoji: "✨" },
-        { id: "micro-3", description: "[Add your micro reward 3]", image: "", emoji: "🌟" }
-      ]
-    },
-    {
-      tier: "mini",
-      options: [
-        { id: "mini-1", description: "[Add your mini reward 1]", image: "", emoji: "🎯" },
-        { id: "mini-2", description: "[Add your mini reward 2]", image: "", emoji: "🏆" },
-        { id: "mini-3", description: "[Add your mini reward 3]", image: "", emoji: "💎" }
-      ]
-    },
-    {
-      tier: "standard",
-      options: [
-        { id: "standard-1", description: "[Add your standard reward 1]", image: "", emoji: "⚔️" },
-        { id: "standard-2", description: "[Add your standard reward 2]", image: "", emoji: "🛡️" },
-        { id: "standard-3", description: "[Add your standard reward 3]", image: "", emoji: "👑" }
-      ]
-    },
-    {
-      tier: "quality",
-      options: [
-        { id: "quality-1", description: "[Add your quality reward 1]", image: "", emoji: "🔮" },
-        { id: "quality-2", description: "[Add your quality reward 2]", image: "", emoji: "⚡" },
-        { id: "quality-3", description: "[Add your quality reward 3]", image: "", emoji: "🌙" }
-      ]
-    },
-    {
-      tier: "premium",
-      options: [
-        { id: "premium-1", description: "[Add your premium reward 1]", image: "", emoji: "🏛️" },
-        { id: "premium-2", description: "[Add your premium reward 2]", image: "", emoji: "⭐" },
-        { id: "premium-3", description: "[Add your premium reward 3]", image: "", emoji: "🔱" }
-      ]
-    }
+  // Reward System defaults — separate pools for each reward source
+  activityRewardPools: [
+    { tier: "micro", options: [{ id: "act-micro-1", description: "[Activity micro reward 1]", image: "", emoji: "🎁" }] },
+    { tier: "mini", options: [{ id: "act-mini-1", description: "[Activity mini reward 1]", image: "", emoji: "🎯" }] },
+    { tier: "standard", options: [{ id: "act-std-1", description: "[Activity standard reward 1]", image: "", emoji: "⚔️" }] },
+    { tier: "quality", options: [{ id: "act-qual-1", description: "[Activity quality reward 1]", image: "", emoji: "🔮" }] },
+    { tier: "premium", options: [{ id: "act-prem-1", description: "[Activity premium reward 1]", image: "", emoji: "🏛️" }] }
+  ],
+  streakRewardPools: [
+    { tier: "micro", options: [{ id: "str-micro-1", description: "[Streak micro reward 1]", image: "", emoji: "✨" }] },
+    { tier: "mini", options: [{ id: "str-mini-1", description: "[Streak mini reward 1]", image: "", emoji: "🏆" }] },
+    { tier: "standard", options: [{ id: "str-std-1", description: "[Streak standard reward 1]", image: "", emoji: "🛡️" }] },
+    { tier: "quality", options: [{ id: "str-qual-1", description: "[Streak quality reward 1]", image: "", emoji: "⚡" }] },
+    { tier: "premium", options: [{ id: "str-prem-1", description: "[Streak premium reward 1]", image: "", emoji: "⭐" }] }
+  ],
+  bossRewardPools: [
+    { tier: "micro", options: [{ id: "boss-micro-1", description: "[Boss micro reward 1]", image: "", emoji: "🌟" }] },
+    { tier: "mini", options: [{ id: "boss-mini-1", description: "[Boss mini reward 1]", image: "", emoji: "💎" }] },
+    { tier: "standard", options: [{ id: "boss-std-1", description: "[Boss standard reward 1]", image: "", emoji: "👑" }] },
+    { tier: "quality", options: [{ id: "boss-qual-1", description: "[Boss quality reward 1]", image: "", emoji: "🌙" }] },
+    { tier: "premium", options: [{ id: "boss-prem-1", description: "[Boss premium reward 1]", image: "", emoji: "🔱" }] }
   ],
   activityRewardCounter: 0,
   streakRewardCounter: 0,
@@ -3647,10 +3633,9 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
     const { contentEl } = this;
     const settings = this.plugin.settings;
     contentEl.empty();
-    const pool = settings.rewardPools.find((p) => p.tier === this.pendingReward.rewardTier);
-    const allOptions = pool?.options || [];
-    // Filter by reward type: only show rewards matching the earned type
-    const options = allOptions.filter(o => !o.type || o.type === this.pendingReward.rewardType);
+    const pools = getRewardPoolsForType(settings, this.pendingReward.rewardType);
+    const pool = pools.find((p) => p.tier === this.pendingReward.rewardTier);
+    const options = pool?.options || [];
     const tierDisplayNames = {
       micro: "Micro",
       mini: "Mini",
@@ -3897,8 +3882,9 @@ var BossRewardModal = class extends import_obsidian.Modal {
     contentEl.style.borderRadius = "12px";
 
     const rewardProgress = this.plugin.getRewardProgress();
-    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
-    const bossRewards = currentPool?.options?.filter(r => r.type === 'boss') || currentPool?.options || [];
+    const bossPools = getRewardPoolsForType(settings, "boss");
+    const currentPool = bossPools.find(p => p.tier === rewardProgress.rewardTier);
+    const bossRewards = currentPool?.options || [];
 
     // Header
     contentEl.createEl("div", {
@@ -4162,7 +4148,8 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
       carousel.style.scrollbarWidth = "none";
 
       earnedRewards.forEach((reward) => {
-        const pool = settings.rewardPools?.find(p => p.tier === reward.rewardTier);
+        const rwdPools = getRewardPoolsForType(settings, reward.rewardType || "activity");
+        const pool = rwdPools.find(p => p.tier === reward.rewardTier);
         const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
 
         const statusColors = {
@@ -4280,9 +4267,15 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
       });
     }
 
-    // Available Rewards Grid
+    // Available Rewards Grid — show from all 3 pools for current tier
     const rewardProgress = this.plugin.getRewardProgress();
-    const currentPool = settings.rewardPools?.find(p => p.tier === rewardProgress.rewardTier);
+    const allPoolTypes = ["activity", "streak", "boss"];
+    const allCurrentOptions = [];
+    allPoolTypes.forEach(pType => {
+      const pools = getRewardPoolsForType(settings, pType);
+      const p = pools.find(p2 => p2.tier === rewardProgress.rewardTier);
+      if (p?.options) p.options.forEach(o => allCurrentOptions.push({ ...o, _poolType: pType }));
+    });
 
     contentEl.createEl("div", {
       text: `Available ${tierDisplayNames[rewardProgress.rewardTier]} Rewards`,
@@ -4325,8 +4318,8 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
       }
     });
 
-    if (currentPool?.options) {
-      currentPool.options.forEach((option) => {
+    if (allCurrentOptions.length > 0) {
+      allCurrentOptions.forEach((option) => {
         const card = grid.createDiv({
           attr: {
             style: `
