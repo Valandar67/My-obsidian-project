@@ -2159,29 +2159,6 @@ var TrackRankView = class extends import_obsidian.ItemView {
       }
     }
 
-    // Developer Dashboard quick-access link at bottom of dashboard
-    const devLink = wrapper.createEl("div", {
-      text: "DEV DASHBOARD",
-      attr: {
-        style: `
-          text-align: center;
-          margin-top: 20px;
-          padding: 8px;
-          font-family: "Times New Roman", serif;
-          font-size: 9px;
-          letter-spacing: 2px;
-          color: ${colors.naturalGrey};
-          opacity: 0.5;
-          cursor: pointer;
-          transition: opacity 0.2s;
-          z-index: 1;
-          position: relative;
-        `
-      }
-    });
-    devLink.onmouseenter = () => devLink.style.opacity = "1";
-    devLink.onmouseleave = () => devLink.style.opacity = "0.5";
-    devLink.onclick = () => this.plugin.activateDevDashboard();
   }
   /**
    * Render the reward progress section on the dashboard.
@@ -6109,10 +6086,17 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     );
   }
   /**
-   * Render the reward pools configuration section.
+   * Render the reward pools configuration section — 3 separate pools.
    */
   renderRewardPoolsSection(containerEl) {
-    new import_obsidian.Setting(containerEl).setName("Reward Pools").setDesc("Configure rewards for each tier level").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Reward Pools").setDesc("Configure separate rewards for activities, streaks, and boss defeats").setHeading();
+
+    const poolTypes = [
+      { key: "activityRewardPools", label: "Activity Rewards", icon: "\u{1F3AF}", desc: "Earned from activity milestones" },
+      { key: "streakRewardPools", label: "Streak Rewards", icon: "\u{1F525}", desc: "Earned from consecutive weeks" },
+      { key: "bossRewardPools", label: "Boss Rewards", icon: "\u2694\uFE0F", desc: "Earned from defeating bosses" }
+    ];
+
     const tierDisplayNames = {
       micro: "Micro (Tiers 1-4)",
       mini: "Mini (Tiers 5-10)",
@@ -6121,202 +6105,228 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       premium: "Premium (Tiers 23-26)"
     };
     const tiers = ["micro", "mini", "standard", "quality", "premium"];
-    tiers.forEach((tier) => {
-      const pool = this.plugin.settings.rewardPools?.find((p) => p.tier === tier) || { tier, options: [] };
-      const poolContainer = containerEl.createDiv({
-        cls: "track-habit-rank-dev-section",
+
+    poolTypes.forEach(({ key, label, icon, desc }) => {
+      const poolTypeSection = containerEl.createDiv({
         attr: {
           style: `
-            margin-top: 12px;
+            margin-top: 16px;
             border: 1px solid var(--background-modifier-border);
             border-radius: 8px;
             overflow: hidden;
           `
         }
       });
-      let isExpanded = false;
-      const header = poolContainer.createDiv({
+      let poolTypeExpanded = false;
+      const poolTypeHeader = poolTypeSection.createDiv({
         attr: {
           style: `
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 8px;
             padding: 12px 16px;
             background: var(--background-secondary);
             cursor: pointer;
             user-select: none;
+            min-height: 44px;
           `
         }
       });
-      header.createEl("span", {
-        text: `${tierDisplayNames[tier]} (${pool.options.length} rewards)`,
-        attr: { style: "font-weight: 600;" }
+      const poolTypeArrow = poolTypeHeader.createEl("span", {
+        text: "\u25B6",
+        attr: { style: "font-size: 10px; transition: transform 0.2s; width: 12px;" }
       });
-      const expandIcon = header.createEl("span", {
-        text: "\u25BC",
-        attr: { style: "transition: transform 0.2s ease;" }
+      poolTypeHeader.createEl("span", {
+        text: `${icon}  ${label}`,
+        attr: { style: "font-weight: 600; font-size: 0.95em;" }
       });
-      const content = poolContainer.createDiv({
-        attr: { style: "display: none; padding: 16px;" }
+      poolTypeHeader.createEl("span", {
+        text: desc,
+        attr: { style: "font-size: 0.75em; color: var(--text-muted); margin-left: auto;" }
       });
-      header.addEventListener("click", () => {
-        isExpanded = !isExpanded;
-        content.style.display = isExpanded ? "block" : "none";
-        expandIcon.style.transform = isExpanded ? "rotate(180deg)" : "rotate(0deg)";
+      const poolTypeBody = poolTypeSection.createDiv({
+        attr: { style: "display: none; padding: 8px 16px;" }
       });
-      pool.options.forEach((option, optionIndex) => {
-        const optionBox = content.createDiv({
+      poolTypeHeader.addEventListener("click", () => {
+        poolTypeExpanded = !poolTypeExpanded;
+        poolTypeBody.style.display = poolTypeExpanded ? "block" : "none";
+        poolTypeArrow.textContent = poolTypeExpanded ? "\u25BC" : "\u25B6";
+      });
+
+      tiers.forEach((tier) => {
+        const pools = this.plugin.settings[key] || [];
+        const pool = pools.find((p) => p.tier === tier) || { tier, options: [] };
+        const poolContainer = poolTypeBody.createDiv({
           attr: {
             style: `
-              margin-bottom: 12px;
-              padding: 12px;
-              background: var(--background-primary);
-              border-radius: 6px;
+              margin-top: 8px;
               border: 1px solid var(--background-modifier-border);
+              border-radius: 6px;
+              overflow: hidden;
             `
           }
+        });
+        let isExpanded = false;
+        const header = poolContainer.createDiv({
+          attr: {
+            style: `
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 10px 14px;
+              background: var(--background-primary-alt);
+              cursor: pointer;
+              user-select: none;
+            `
+          }
+        });
+        header.createEl("span", {
+          text: `${tierDisplayNames[tier]} (${pool.options.length} rewards)`,
+          attr: { style: "font-weight: 500; font-size: 0.9em;" }
+        });
+        const expandIcon = header.createEl("span", {
+          text: "\u25BC",
+          attr: { style: "transition: transform 0.2s ease; font-size: 10px;" }
+        });
+        const content = poolContainer.createDiv({
+          attr: { style: "display: none; padding: 12px;" }
+        });
+        header.addEventListener("click", () => {
+          isExpanded = !isExpanded;
+          content.style.display = isExpanded ? "block" : "none";
+          expandIcon.style.transform = isExpanded ? "rotate(180deg)" : "rotate(0deg)";
         });
 
-        // Preview card
-        const previewRow = optionBox.createDiv({
-          attr: {
-            style: `
-              display: flex;
-              align-items: center;
-              gap: 12px;
-              margin-bottom: 12px;
-            `
-          }
-        });
-        const previewCard = previewRow.createDiv({
-          attr: {
-            style: `
-              width: 60px;
-              height: 70px;
-              background: #1a1410;
-              border: 1px solid #613134;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-            `
-          }
-        });
-        if (option.image) {
-          const img = previewCard.createEl("img", {
+        pool.options.forEach((option, optionIndex) => {
+          const optionBox = content.createDiv({
             attr: {
-              src: option.image,
-              style: "max-width: 40px; max-height: 40px; object-fit: contain;"
+              style: `
+                margin-bottom: 12px;
+                padding: 12px;
+                background: var(--background-primary);
+                border-radius: 6px;
+                border: 1px solid var(--background-modifier-border);
+              `
             }
           });
-          img.onerror = () => {
-            img.remove();
-            previewCard.createEl("div", { text: option.emoji || "🎁", attr: { style: "font-size: 24px;" } });
-          };
-        } else {
-          previewCard.createEl("div", { text: option.emoji || "🎁", attr: { style: "font-size: 24px;" } });
-        }
-        previewRow.createEl("div", {
-          text: option.description || "[Reward name]",
-          attr: { style: "font-size: 12px; color: var(--text-muted);" }
+
+          const previewRow = optionBox.createDiv({
+            attr: { style: "display: flex; align-items: center; gap: 12px; margin-bottom: 12px;" }
+          });
+          const previewCard = previewRow.createDiv({
+            attr: {
+              style: "width: 50px; height: 56px; background: #1a1410; border: 1px solid #613134; display: flex; align-items: center; justify-content: center;"
+            }
+          });
+          if (option.image) {
+            const img = previewCard.createEl("img", {
+              attr: { src: option.image, style: "max-width: 36px; max-height: 36px; object-fit: contain;" }
+            });
+            img.onerror = () => {
+              img.remove();
+              previewCard.createEl("div", { text: option.emoji || "\u{1F381}", attr: { style: "font-size: 22px;" } });
+            };
+          } else {
+            previewCard.createEl("div", { text: option.emoji || "\u{1F381}", attr: { style: "font-size: 22px;" } });
+          }
+          previewRow.createEl("div", {
+            text: option.description || "[Reward name]",
+            attr: { style: "font-size: 12px; color: var(--text-muted);" }
+          });
+
+          new import_obsidian.Setting(optionBox).setName(`Reward ${optionIndex + 1} Name`).addText(
+            (t) => t.setPlaceholder("Reward description").setValue(option.description).onChange(async (v) => {
+              this.updateRewardOption(key, tier, optionIndex, "description", v);
+              await this.plugin.saveSettings();
+            })
+          );
+          new import_obsidian.Setting(optionBox).setName("Emoji").addText(
+            (t) => t.setPlaceholder("\u{1F381}").setValue(option.emoji || "").onChange(async (v) => {
+              this.updateRewardOption(key, tier, optionIndex, "emoji", v);
+              await this.plugin.saveSettings();
+            })
+          );
+          new import_obsidian.Setting(optionBox).setName("Image URL").setDesc("Vault path or external URL").addText(
+            (t) => t.setPlaceholder("path/to/image.png").setValue(option.image || "").onChange(async (v) => {
+              this.updateRewardOption(key, tier, optionIndex, "image", v);
+              await this.plugin.saveSettings();
+            })
+          );
+          new import_obsidian.Setting(optionBox).addButton(
+            (btn) => btn.setButtonText("Delete Reward").setWarning().onClick(async () => {
+              this.removeRewardOption(key, tier, optionIndex);
+              await this.plugin.saveSettings();
+              this.display();
+            })
+          );
         });
 
-        // Description field
-        new import_obsidian.Setting(optionBox).setName(`Reward ${optionIndex + 1} Name`).addText(
-          (t) => t.setPlaceholder("Reward description").setValue(option.description).onChange(async (v) => {
-            this.updateRewardOption(tier, optionIndex, "description", v);
-            await this.plugin.saveSettings();
-          })
-        );
-
-        // Emoji field
-        new import_obsidian.Setting(optionBox).setName("Emoji").setDesc("Display emoji for this reward").addText(
-          (t) => t.setPlaceholder("🎁").setValue(option.emoji || "").onChange(async (v) => {
-            this.updateRewardOption(tier, optionIndex, "emoji", v);
-            await this.plugin.saveSettings();
-          })
-        );
-
-        // Image field
-        new import_obsidian.Setting(optionBox).setName("Image URL").setDesc("Vault path or external URL (optional)").addText(
-          (t) => t.setPlaceholder("path/to/image.png").setValue(option.image || "").onChange(async (v) => {
-            this.updateRewardOption(tier, optionIndex, "image", v);
-            await this.plugin.saveSettings();
-          })
-        );
-
-        // Reward Type selector
-        new import_obsidian.Setting(optionBox).setName("Reward Type").setDesc("When is this reward earned?").addDropdown(
-          (d) => d.addOption("activity", "Activity (completion milestones)")
-                  .addOption("streak", "Streak (consecutive weeks)")
-                  .addOption("boss", "Boss (defeating boss)")
-                  .setValue(option.type || "activity")
-                  .onChange(async (v) => {
-                    this.updateRewardOption(tier, optionIndex, "type", v);
-                    await this.plugin.saveSettings();
-                  })
-        );
-
-        // Delete button
-        new import_obsidian.Setting(optionBox).addButton(
-          (btn) => btn.setButtonText("Delete Reward").setWarning().onClick(async () => {
-            this.removeRewardOption(tier, optionIndex);
-            await this.plugin.saveSettings();
-            this.display();
-          })
-        );
+        if (pool.options.length < 7) {
+          new import_obsidian.Setting(content).addButton(
+            (btn) => btn.setButtonText("+ Add Reward").setCta().onClick(async () => {
+              this.addRewardOption(key, tier);
+              await this.plugin.saveSettings();
+              this.display();
+            })
+          );
+        }
       });
-      if (pool.options.length < 7) {
-        new import_obsidian.Setting(content).addButton(
-          (btn) => btn.setButtonText("+ Add Reward").setCta().onClick(async () => {
-            this.addRewardOption(tier);
-            await this.plugin.saveSettings();
-            this.display();
-          })
-        );
-      }
     });
-    new import_obsidian.Setting(containerEl).setName("Reset all reward pools").setDesc("Restore reward pools to default placeholders").addButton(
+
+    new import_obsidian.Setting(containerEl).setName("Reset all reward pools").setDesc("Restore all pools to default placeholders").addButton(
       (btn) => btn.setButtonText("Reset All Pools").setWarning().onClick(async () => {
-        this.plugin.settings.rewardPools = DEFAULT_SETTINGS.rewardPools;
+        this.plugin.settings.activityRewardPools = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.activityRewardPools));
+        this.plugin.settings.streakRewardPools = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.streakRewardPools));
+        this.plugin.settings.bossRewardPools = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.bossRewardPools));
         await this.plugin.saveSettings();
         this.display();
-        new import_obsidian.Notice("Reward pools reset to defaults");
+        new import_obsidian.Notice("All reward pools reset to defaults");
       })
     );
   }
   /**
-   * Update a reward option field.
+   * Update a reward option field in a specific pool type.
    */
-  updateRewardOption(tier, index, field, value) {
-    let pool = this.plugin.settings.rewardPools?.find((p) => p.tier === tier);
+  updateRewardOption(poolKey, tier, index, field, value) {
+    let pools = this.plugin.settings[poolKey];
+    if (!pools) {
+      pools = [];
+      this.plugin.settings[poolKey] = pools;
+    }
+    let pool = pools.find((p) => p.tier === tier);
     if (!pool) {
       pool = { tier, options: [] };
-      this.plugin.settings.rewardPools = this.plugin.settings.rewardPools || [];
-      this.plugin.settings.rewardPools.push(pool);
+      pools.push(pool);
     }
     if (pool.options[index]) {
       pool.options[index][field] = value;
     }
   }
   /**
-   * Add a new reward option to a pool.
+   * Add a new reward option to a specific pool type.
    */
-  addRewardOption(tier) {
-    let pool = this.plugin.settings.rewardPools?.find((p) => p.tier === tier);
+  addRewardOption(poolKey, tier) {
+    let pools = this.plugin.settings[poolKey];
+    if (!pools) {
+      pools = [];
+      this.plugin.settings[poolKey] = pools;
+    }
+    let pool = pools.find((p) => p.tier === tier);
     if (!pool) {
       pool = { tier, options: [] };
-      this.plugin.settings.rewardPools = this.plugin.settings.rewardPools || [];
-      this.plugin.settings.rewardPools.push(pool);
+      pools.push(pool);
     }
-    const newId = `${tier}-${Date.now()}`;
-    pool.options.push({ id: newId, description: "[New reward]", emoji: "🎁", image: "" });
+    const prefix = poolKey.replace("RewardPools", "").slice(0, 3);
+    const newId = `${prefix}-${tier}-${Date.now()}`;
+    pool.options.push({ id: newId, description: "[New reward]", emoji: "\u{1F381}", image: "" });
   }
   /**
-   * Remove a reward option from a pool.
+   * Remove a reward option from a specific pool type.
    */
-  removeRewardOption(tier, index) {
-    const pool = this.plugin.settings.rewardPools?.find((p) => p.tier === tier);
+  removeRewardOption(poolKey, tier, index) {
+    const pools = this.plugin.settings[poolKey];
+    if (!pools) return;
+    const pool = pools.find((p) => p.tier === tier);
     if (pool && pool.options[index]) {
       pool.options.splice(index, 1);
     }
@@ -6760,6 +6770,45 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
         counts: this.settings.lastCompletionCounts,
         bossHP: `${this.settings.bossCurrentHP}/${this.settings.bossMaxHP}`
       });
+    }
+    // Migrate old shared rewardPools to 3 separate pools
+    if (this.settings.rewardPools && Array.isArray(this.settings.rewardPools) && !this.settings._rewardPoolsMigrated) {
+      const oldPools = this.settings.rewardPools;
+      const actPools = [];
+      const strPools = [];
+      const bossPools = [];
+      const tiers = ["micro", "mini", "standard", "quality", "premium"];
+      tiers.forEach(tier => {
+        const oldPool = oldPools.find(p => p.tier === tier);
+        if (!oldPool) return;
+        const actOpts = [];
+        const strOpts = [];
+        const bossOpts = [];
+        (oldPool.options || []).forEach(opt => {
+          const target = opt.type === "streak" ? strOpts : opt.type === "boss" ? bossOpts : actOpts;
+          target.push({ id: opt.id, description: opt.description, image: opt.image || "", emoji: opt.emoji || "" });
+        });
+        if (actOpts.length === 0 && strOpts.length === 0 && bossOpts.length === 0) {
+          (oldPool.options || []).forEach(opt => {
+            actOpts.push({ id: opt.id, description: opt.description, image: opt.image || "", emoji: opt.emoji || "" });
+          });
+        }
+        actPools.push({ tier, options: actOpts });
+        strPools.push({ tier, options: strOpts });
+        bossPools.push({ tier, options: bossOpts });
+      });
+      if (!this.settings.activityRewardPools || this.settings.activityRewardPools.length === 0) {
+        this.settings.activityRewardPools = actPools.length > 0 ? actPools : DEFAULT_SETTINGS.activityRewardPools;
+      }
+      if (!this.settings.streakRewardPools || this.settings.streakRewardPools.length === 0) {
+        this.settings.streakRewardPools = strPools.length > 0 ? strPools : DEFAULT_SETTINGS.streakRewardPools;
+      }
+      if (!this.settings.bossRewardPools || this.settings.bossRewardPools.length === 0) {
+        this.settings.bossRewardPools = bossPools.length > 0 ? bossPools : DEFAULT_SETTINGS.bossRewardPools;
+      }
+      this.settings._rewardPoolsMigrated = true;
+      delete this.settings.rewardPools;
+      debugLog.log("META", "Migrated shared rewardPools to 3 separate pools");
     }
     await this.saveSettings();
   }
