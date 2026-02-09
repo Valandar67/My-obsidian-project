@@ -403,7 +403,8 @@ var DEFAULT_SETTINGS = {
   // Dashboard background image (9:16 aspect ratio, vignette auto-applied)
   dashboardBgImage: "",
   // Theme settings
-  activeTheme: "age-of-concern",
+  activeTheme: "auto",
+  userPrimaryColor: "#613134",
   customTheme: {
     primary: "#613134",
     secondary: "#faddb3",
@@ -1158,11 +1159,49 @@ var TrackRankView = class extends import_obsidian.ItemView {
       return `#${Math.round(r*factor).toString(16).padStart(2,'0')}${Math.round(g*factor).toString(16).padStart(2,'0')}${Math.round(b*factor).toString(16).padStart(2,'0')}`;
     };
 
+    // Helper to lighten a hex color
+    const lightenHex = (hex, factor) => {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      const lr = Math.min(255, Math.round(r + (255 - r) * factor));
+      const lg = Math.min(255, Math.round(g + (255 - g) * factor));
+      const lb = Math.min(255, Math.round(b + (255 - b) * factor));
+      return `#${lr.toString(16).padStart(2,'0')}${lg.toString(16).padStart(2,'0')}${lb.toString(16).padStart(2,'0')}`;
+    };
+
+    // Helper to desaturate a hex color toward grey
+    const desaturateHex = (hex, factor) => {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      const grey = Math.round(r * 0.299 + g * 0.587 + b * 0.114);
+      const dr = Math.round(r + (grey - r) * factor);
+      const dg = Math.round(g + (grey - g) * factor);
+      const db = Math.round(b + (grey - b) * factor);
+      return `#${dr.toString(16).padStart(2,'0')}${dg.toString(16).padStart(2,'0')}${db.toString(16).padStart(2,'0')}`;
+    };
+
+    // Auto-theme: derive all 4 colors from a single primary color
+    const deriveThemeFromPrimary = (primary) => {
+      return {
+        primary: primary,
+        secondary: lightenHex(primary, 0.82),
+        accent: lightenHex(desaturateHex(primary, 0.3), 0.45),
+        muted: desaturateHex(lightenHex(primary, 0.4), 0.6)
+      };
+    };
+
     // Resolve active theme colors
-    const activeTheme = settings.activeTheme || "age-of-concern";
-    const themeColors = activeTheme === "custom"
-      ? (settings.customTheme || THEME_PRESETS["age-of-concern"])
-      : (THEME_PRESETS[activeTheme] || THEME_PRESETS["age-of-concern"]);
+    const activeTheme = settings.activeTheme || "auto";
+    let themeColors;
+    if (activeTheme === "auto") {
+      themeColors = deriveThemeFromPrimary(settings.userPrimaryColor || "#613134");
+    } else if (activeTheme === "custom") {
+      themeColors = settings.customTheme || THEME_PRESETS["age-of-concern"];
+    } else {
+      themeColors = THEME_PRESETS[activeTheme] || deriveThemeFromPrimary(settings.userPrimaryColor || "#613134");
+    }
 
     const colors = {
       buccaneer: themeColors.primary,
@@ -1208,6 +1247,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           position: relative;
           font-family: "Georgia", serif;
           overflow: hidden;
+          animation: borderGlow 8s ease-in-out infinite;
         `
       }
     });
@@ -1725,7 +1765,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       }
 
-      // Boss name is PRIMARY (large, commanding)
+      // Boss name is PRIMARY (large, commanding) with fade-in
       wrapper.createEl("div", {
         text: boss?.name || "No Boss",
         attr: {
@@ -1740,6 +1780,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             text-shadow: 0 2px 12px rgba(154, 140, 122, 0.3);
             position: relative;
             z-index: 1;
+            animation: fadeSlideIn 0.6s ease-out;
           `
         }
       });
@@ -1760,6 +1801,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
               opacity: 0.8;
               position: relative;
               z-index: 1;
+              animation: fadeSlideIn 0.8s 0.15s ease-out both;
             `
           }
         });
@@ -2130,6 +2172,30 @@ var TrackRankView = class extends import_obsidian.ItemView {
         });
       }
     }
+
+    // Developer Dashboard quick-access link at bottom of dashboard
+    const devLink = wrapper.createEl("div", {
+      text: "DEV DASHBOARD",
+      attr: {
+        style: `
+          text-align: center;
+          margin-top: 20px;
+          padding: 8px;
+          font-family: "Times New Roman", serif;
+          font-size: 9px;
+          letter-spacing: 2px;
+          color: ${colors.naturalGrey};
+          opacity: 0.5;
+          cursor: pointer;
+          transition: opacity 0.2s;
+          z-index: 1;
+          position: relative;
+        `
+      }
+    });
+    devLink.onmouseenter = () => devLink.style.opacity = "1";
+    devLink.onmouseleave = () => devLink.style.opacity = "0.5";
+    devLink.onclick = () => this.plugin.activateDevDashboard();
   }
   /**
    * Render the reward progress section on the dashboard.
@@ -2273,7 +2339,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
     });
 
     for (let i = 0; i < count; i++) {
-      const particle = particleContainer.createDiv({
+      particleContainer.createDiv({
         attr: {
           style: `
             position: absolute;
@@ -2285,6 +2351,41 @@ var TrackRankView = class extends import_obsidian.ItemView {
             border-radius: 50%;
             opacity: 0;
             animation: floatUp ${8 + Math.random() * 6}s ${Math.random() * 10}s ease-out infinite;
+          `
+        }
+      });
+    }
+
+    // Shimmer sweep — a subtle diagonal light pass across the container
+    particleContainer.createDiv({
+      attr: {
+        style: `
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 60%;
+          height: 100%;
+          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
+          animation: shimmerSweep 12s 3s ease-in-out infinite;
+          pointer-events: none;
+        `
+      }
+    });
+
+    // Ember drift — tiny warm dots drifting sideways (3 extra, very subtle)
+    for (let i = 0; i < 3; i++) {
+      particleContainer.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            bottom: ${5 + Math.random() * 40}%;
+            left: ${Math.random() * 100}%;
+            width: 1px;
+            height: 1px;
+            background: ${color};
+            border-radius: 50%;
+            opacity: 0;
+            animation: emberDrift ${10 + Math.random() * 8}s ${Math.random() * 12}s ease-in-out infinite;
           `
         }
       });
@@ -2305,13 +2406,35 @@ var TrackRankView = class extends import_obsidian.ItemView {
           0%, 100% { box-shadow: inset 0 0 20px rgba(154, 140, 122, 0.03); }
           50% { box-shadow: inset 0 0 40px rgba(154, 140, 122, 0.08); }
         }
+        @keyframes shimmerSweep {
+          0% { left: -100%; opacity: 0; }
+          10% { opacity: 1; }
+          50% { left: 200%; opacity: 1; }
+          51% { opacity: 0; }
+          100% { left: 200%; opacity: 0; }
+        }
+        @keyframes emberDrift {
+          0% { transform: translate(0, 0) scale(1); opacity: 0; }
+          15% { opacity: 0.3; }
+          50% { transform: translate(30px, -40px) scale(1.5); opacity: 0.25; }
+          85% { opacity: 0.15; }
+          100% { transform: translate(50px, -80px) scale(0.5); opacity: 0; }
+        }
+        @keyframes fadeSlideIn {
+          0% { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes borderGlow {
+          0%, 100% { border-color: rgba(150, 123, 77, 0.2); }
+          50% { border-color: rgba(150, 123, 77, 0.5); }
+        }
       `;
       document.head.appendChild(style);
     }
   }
 
   /**
-   * Render minimal rough-edge reward rectangles (Activity + Streak)
+   * Render minimal rough-edge reward rectangles (Activity, Streak, Boss)
    */
   renderRewardBoxes(wrapper, colors) {
     const settings = this.plugin.settings;
@@ -2321,23 +2444,25 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const streakRemaining = rewardProgress.streakThreshold - rewardProgress.streakProgress;
     const activityClaimable = activityRemaining <= 0;
     const streakClaimable = streakRemaining <= 0;
+    const bossPending = (settings.pendingRewards || []).filter(r => r.rewardType === 'boss').length;
 
     const container = wrapper.createDiv({
       attr: {
         style: `
           display: flex;
-          gap: 8px;
+          gap: 6px;
           justify-content: center;
           margin: 12px auto;
-          max-width: 320px;
+          max-width: 360px;
           z-index: 1;
           position: relative;
+          animation: fadeSlideIn 0.5s 0.3s ease-out both;
         `
       }
     });
 
     // Create rough-edge reward box helper
-    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type }) => {
+    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type, subtitle }) => {
       const box = parent.createDiv({
         attr: {
           style: `
@@ -2347,7 +2472,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             border: 1px solid ${isClaimable ? colors.leather : colors.buccaneer};
             box-shadow: 1px 0 0 ${colors.buccaneer}, -1px 0 0 ${colors.buccaneer}, 0 1px 0 ${colors.buccaneer}, 0 -1px 0 ${colors.buccaneer}, 2px 2px 0 rgba(97, 49, 52, 0.3), -1px -1px 0 rgba(97, 49, 52, 0.2);
             cursor: pointer;
-            transition: border-color 0.2s ease;
+            transition: border-color 0.2s ease, transform 0.15s ease;
           `
         }
       });
@@ -2369,7 +2494,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
 
       // Progress text
       box.createEl("div", {
-        text: isClaimable ? "CLAIM" : `${current}/${total}`,
+        text: isClaimable ? "CLAIM" : subtitle || `${current}/${total}`,
         attr: {
           style: `
             font-family: "Georgia", serif;
@@ -2382,7 +2507,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
 
       // Remaining text
-      if (!isClaimable) {
+      if (!isClaimable && remaining !== undefined) {
         box.createEl("div", {
           text: `${remaining} to go`,
           attr: {
@@ -2399,21 +2524,19 @@ var TrackRankView = class extends import_obsidian.ItemView {
       // Click handler
       box.onclick = async () => {
         if (isClaimable) {
-          const pendingReward = settings.pendingRewards?.find(r => r.type === type);
+          const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
           if (pendingReward) {
-            settings.pendingRewards = settings.pendingRewards.filter(r => r !== pendingReward);
-            settings.claimedRewards = settings.claimedRewards || [];
-            settings.claimedRewards.push({
-              ...pendingReward,
-              claimedAt: new Date().toISOString(),
-              used: false
-            });
-            await this.plugin.saveSettings();
-            this.plugin.refreshRankView();
-            new import_obsidian.Notice(`${title} reward claimed!`);
+            new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
+              this.plugin.refreshRankView();
+            }).open();
           }
         } else {
-          new import_obsidian.Notice(`${remaining} more ${type === 'activity' ? 'activities' : 'weeks'} needed`);
+          const hints = { activity: 'activities', streak: 'weeks', boss: '' };
+          if (type === 'boss') {
+            new import_obsidian.Notice('Defeat the boss to earn loot!');
+          } else {
+            new import_obsidian.Notice(`${remaining} more ${hints[type]} needed`);
+          }
         }
       };
     };
@@ -2436,25 +2559,106 @@ var TrackRankView = class extends import_obsidian.ItemView {
       type: 'streak'
     });
 
-    // Pending rewards indicator
-    const pendingCount = (settings.pendingRewards || []).length;
-    if (pendingCount > 0) {
-      container.parentElement?.createEl("div", {
-        text: `${pendingCount} unclaimed`,
+    createRewardBox(container, {
+      title: 'Boss',
+      current: 0,
+      total: 1,
+      remaining: undefined,
+      isClaimable: bossPending > 0,
+      type: 'boss',
+      subtitle: bossPending > 0 ? `${bossPending} LOOT` : 'Defeat boss'
+    });
+
+    // Unclaimed rewards chest
+    this.renderUnclaimedRewardsBox(wrapper, colors);
+  }
+
+  /**
+   * Render a separate unclaimed rewards box showing all pending rewards
+   */
+  renderUnclaimedRewardsBox(wrapper, colors) {
+    const settings = this.plugin.settings;
+    const pending = settings.pendingRewards || [];
+    if (pending.length === 0) return;
+
+    const box = wrapper.createDiv({
+      attr: {
+        style: `
+          margin: 8px auto;
+          max-width: 360px;
+          padding: 10px 14px;
+          background: rgba(26, 20, 16, 0.8);
+          border: 1px solid ${colors.leather};
+          box-shadow: 1px 0 0 ${colors.buccaneer}, -1px 0 0 ${colors.buccaneer}, 0 1px 0 ${colors.buccaneer}, 0 -1px 0 ${colors.buccaneer}, 2px 2px 0 rgba(97, 49, 52, 0.3);
+          z-index: 1;
+          position: relative;
+        `
+      }
+    });
+
+    box.createEl("div", {
+      text: "UNCLAIMED REWARDS",
+      attr: {
+        style: `
+          font-family: "Times New Roman", serif;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 2px;
+          color: ${colors.leather};
+          margin-bottom: 6px;
+        `
+      }
+    });
+
+    const typeLabels = { activity: 'Activity', streak: 'Streak', boss: 'Boss' };
+    const list = box.createDiv({ attr: { style: "display: flex; flex-wrap: wrap; gap: 6px;" } });
+
+    pending.forEach((reward) => {
+      const expiresAt = new Date(reward.expiresAt);
+      const now = new Date(getEffectiveNow(settings));
+      const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1e3));
+      const urgent = daysLeft <= 2;
+
+      const chip = list.createDiv({
         attr: {
           style: `
-            font-family: "Georgia", serif;
-            font-size: 8px;
-            color: ${colors.leather};
-            text-align: center;
-            margin-top: 4px;
-            letter-spacing: 0.5px;
-            z-index: 1;
-            position: relative;
+            padding: 4px 8px;
+            background: ${urgent ? `rgba(150, 123, 77, 0.15)` : `rgba(26, 20, 16, 0.5)`};
+            border: 1px solid ${urgent ? colors.leather : colors.buccaneer};
+            cursor: pointer;
+            transition: border-color 0.2s ease;
           `
         }
       });
-    }
+
+      chip.createEl("span", {
+        text: `${typeLabels[reward.rewardType] || 'Reward'} \u2022 ${reward.rewardTier}`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 10px;
+            color: ${colors.peachYellow};
+          `
+        }
+      });
+
+      chip.createEl("span", {
+        text: ` (${daysLeft}d)`,
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 9px;
+            color: ${urgent ? colors.leather : colors.naturalGrey};
+          `
+        }
+      });
+
+      chip.onclick = () => {
+        new RewardSelectionModal(this.plugin.app, this.plugin, reward, () => {
+          this.plugin.refreshRankView();
+        }).open();
+      };
+    });
   }
 
   /**
@@ -3444,7 +3648,9 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
     const settings = this.plugin.settings;
     contentEl.empty();
     const pool = settings.rewardPools.find((p) => p.tier === this.pendingReward.rewardTier);
-    const options = pool?.options || [];
+    const allOptions = pool?.options || [];
+    // Filter by reward type: only show rewards matching the earned type
+    const options = allOptions.filter(o => !o.type || o.type === this.pendingReward.rewardType);
     const tierDisplayNames = {
       micro: "Micro",
       mini: "Mini",
@@ -4970,7 +5176,11 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     const tartarusBody = this.createCollapsibleSection(containerEl, "Tartarus & Penance", "\u{1F525}", false);
     this.renderTartarusSection(tartarusBody);
 
-    // ===== 6. SYSTEM =====
+    // ===== 6. TEMPLE UPKEEP =====
+    const templeBody = this.createCollapsibleSection(containerEl, "Temple Upkeep", "\u{1F3DB}", false);
+    this.renderTempleUpkeepSection(templeBody);
+
+    // ===== 7. SYSTEM =====
     const systemBody = this.createCollapsibleSection(containerEl, "System & Tools", "\u2699\uFE0F", false);
     this.renderSystemSection(systemBody);
   }
@@ -4991,14 +5201,15 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     };
 
     // Preset selector
-    new import_obsidian.Setting(body).setName("Theme preset").setDesc("Choose a preset color theme").addDropdown(
+    new import_obsidian.Setting(body).setName("Theme preset").setDesc("Choose a color theme or pick your own primary color").addDropdown(
       (d) => {
+        d.addOption("auto", "Auto (from your color)");
         Object.keys(THEME_PRESETS).forEach(k => d.addOption(k, THEME_PRESETS[k].label));
-        d.addOption("custom", "Custom");
-        d.setValue(this.plugin.settings.activeTheme || "age-of-concern");
+        d.addOption("custom", "Custom (4 colors)");
+        d.setValue(this.plugin.settings.activeTheme || "auto");
         d.onChange(async (v) => {
           this.plugin.settings.activeTheme = v;
-          if (v !== "custom") {
+          if (v !== "custom" && v !== "auto") {
             const preset = THEME_PRESETS[v];
             this.plugin.settings.customTheme = { primary: preset.primary, secondary: preset.secondary, accent: preset.accent, muted: preset.muted };
           }
@@ -5009,8 +5220,76 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       }
     );
 
-    // Preview swatches
-    const theme = this.plugin.settings.customTheme || THEME_PRESETS["age-of-concern"];
+    // Auto theme: single primary color picker
+    if (this.plugin.settings.activeTheme === "auto") {
+      body.createEl("div", { text: "YOUR COLOR", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin-bottom: 8px; color: var(--text-muted);" } });
+      body.createEl("div", {
+        text: "Pick one color and the entire theme will be derived from it.",
+        attr: { style: "font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;" }
+      });
+      const colorRow = body.createDiv({ attr: { style: "display: flex; gap: 12px; align-items: center; margin-bottom: 12px;" } });
+      const colorInput = colorRow.createEl("input", {
+        attr: {
+          type: "color",
+          value: this.plugin.settings.userPrimaryColor || "#613134",
+          style: "width: 48px; height: 48px; border: none; padding: 0; cursor: pointer; background: none;"
+        }
+      });
+      const hexLabel = colorRow.createEl("span", {
+        text: this.plugin.settings.userPrimaryColor || "#613134",
+        attr: { style: "font-family: monospace; font-size: 14px; color: var(--text-normal);" }
+      });
+      colorInput.addEventListener("input", async (e) => {
+        const val = e.target.value;
+        hexLabel.textContent = val;
+        this.plugin.settings.userPrimaryColor = val;
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
+      });
+      // Also allow typing hex directly
+      new import_obsidian.Setting(body).setName("Or type hex code").addText(
+        (t) => {
+          t.setPlaceholder("#613134")
+            .setValue(this.plugin.settings.userPrimaryColor || "#613134")
+            .onChange(async (v) => {
+              if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+                this.plugin.settings.userPrimaryColor = v;
+                colorInput.value = v;
+                hexLabel.textContent = v;
+                await this.plugin.saveSettings();
+                this.plugin.refreshRankView();
+              }
+            });
+          t.inputEl.style.fontFamily = "monospace";
+          t.inputEl.style.width = "90px";
+        }
+      );
+    }
+
+    // Preview swatches - show derived colors
+    const lightenHex2 = (hex, factor) => {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      const lr = Math.min(255, Math.round(r + (255 - r) * factor));
+      const lg = Math.min(255, Math.round(g + (255 - g) * factor));
+      const lb = Math.min(255, Math.round(b + (255 - b) * factor));
+      return `#${lr.toString(16).padStart(2,'0')}${lg.toString(16).padStart(2,'0')}${lb.toString(16).padStart(2,'0')}`;
+    };
+    const desaturateHex2 = (hex, factor) => {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      const grey = Math.round(r * 0.299 + g * 0.587 + b * 0.114);
+      return `#${Math.round(r + (grey - r) * factor).toString(16).padStart(2,'0')}${Math.round(g + (grey - g) * factor).toString(16).padStart(2,'0')}${Math.round(b + (grey - b) * factor).toString(16).padStart(2,'0')}`;
+    };
+    let theme;
+    if (this.plugin.settings.activeTheme === "auto") {
+      const p = this.plugin.settings.userPrimaryColor || "#613134";
+      theme = { primary: p, secondary: lightenHex2(p, 0.82), accent: lightenHex2(desaturateHex2(p, 0.3), 0.45), muted: desaturateHex2(lightenHex2(p, 0.4), 0.6) };
+    } else {
+      theme = this.plugin.settings.customTheme || THEME_PRESETS["age-of-concern"];
+    }
     const swatchRow = body.createDiv({
       attr: { style: "display: flex; gap: 8px; margin: 8px 0 16px 0; align-items: center;" }
     });
@@ -5670,6 +5949,133 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     });
+  }
+
+  /**
+   * Temple Upkeep section — manage maintenance tasks (bathing, grooming, etc.)
+   */
+  renderTempleUpkeepSection(body) {
+    body.createEl("div", {
+      text: "Personal maintenance tasks with recurring intervals. Mark them complete and they'll reset on schedule.",
+      attr: { style: "font-size: 0.8em; color: var(--text-muted); margin-bottom: 12px;" }
+    });
+
+    const tasks = this.plugin.settings.templeTasks || DEFAULT_SETTINGS.templeTasks;
+    const now = new Date(getEffectiveNow(this.plugin.settings));
+
+    tasks.forEach((task, index) => {
+      const lastDone = task.lastCompleted ? new Date(task.lastCompleted) : null;
+      const daysSince = lastDone ? Math.floor((now.getTime() - lastDone.getTime()) / (24 * 60 * 60 * 1e3)) : null;
+      const isOverdue = daysSince !== null && daysSince >= task.intervalDays;
+      const isDue = daysSince !== null && daysSince >= task.intervalDays - 1;
+      const statusText = lastDone === null ? "Never done" : isOverdue ? `Overdue (${daysSince}d ago)` : `${daysSince}d ago`;
+
+      const taskRow = body.createDiv({
+        attr: {
+          style: `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: var(--background-secondary);
+            border-radius: 6px;
+            border-left: 3px solid ${isOverdue ? 'var(--text-error)' : isDue ? 'var(--interactive-accent)' : 'var(--background-modifier-border)'};
+          `
+        }
+      });
+
+      // Emoji
+      taskRow.createEl("span", { text: task.emoji || "", attr: { style: "font-size: 18px; width: 24px;" } });
+
+      // Info
+      const info = taskRow.createDiv({ attr: { style: "flex: 1;" } });
+      info.createEl("div", { text: task.name, attr: { style: "font-weight: 600; font-size: 0.95em;" } });
+      info.createEl("div", {
+        text: `Every ${task.intervalDays}d \u2022 ${statusText}`,
+        attr: { style: `font-size: 0.8em; color: ${isOverdue ? 'var(--text-error)' : 'var(--text-muted)'};` }
+      });
+
+      // Complete button
+      const completeBtn = taskRow.createEl("button", {
+        text: isOverdue || lastDone === null ? "Do" : "Done",
+        attr: {
+          style: `
+            padding: 4px 12px; min-height: 32px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.85em; font-weight: 600;
+            ${isOverdue || lastDone === null ? 'background: var(--interactive-accent); color: var(--text-on-accent);' : 'background: var(--background-modifier-border); color: var(--text-muted);'}
+          `
+        }
+      });
+      completeBtn.onclick = async () => {
+        this.plugin.settings.templeTasks[index].lastCompleted = new Date().toISOString();
+        await this.plugin.saveSettings();
+        this.display();
+        new import_obsidian.Notice(`${task.emoji} ${task.name} completed!`);
+      };
+    });
+
+    // Customize intervals
+    body.createEl("div", { text: "CUSTOMIZE INTERVALS", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
+
+    tasks.forEach((task, index) => {
+      new import_obsidian.Setting(body).setName(`${task.emoji} ${task.name} interval (days)`).addText(
+        (t) => {
+          t.setPlaceholder(String(task.intervalDays))
+            .setValue(String(task.intervalDays))
+            .onChange(async (v) => {
+              const num = parseInt(v);
+              if (!isNaN(num) && num > 0) {
+                this.plugin.settings.templeTasks[index].intervalDays = num;
+                await this.plugin.saveSettings();
+              }
+            });
+          t.inputEl.style.width = "60px";
+          t.inputEl.type = "number";
+        }
+      );
+    });
+
+    // Add custom task
+    body.createEl("div", { text: "ADD CUSTOM TASK", attr: { style: "font-size: 0.75em; font-weight: 600; letter-spacing: 1.5px; margin: 16px 0 8px 0; color: var(--text-muted);" } });
+    const addRow = body.createDiv({ attr: { style: "display: flex; gap: 8px; align-items: center; margin-bottom: 8px;" } });
+    let newName = "";
+    let newInterval = 7;
+    let newEmoji = "";
+
+    new import_obsidian.Setting(body).setName("Task name").addText(
+      (t) => t.setPlaceholder("e.g., Laundry").onChange((v) => { newName = v; })
+    );
+    new import_obsidian.Setting(body).setName("Interval (days)").addText(
+      (t) => {
+        t.setPlaceholder("7").onChange((v) => { newInterval = parseInt(v) || 7; });
+        t.inputEl.style.width = "60px";
+        t.inputEl.type = "number";
+      }
+    );
+    new import_obsidian.Setting(body).setName("Emoji").addText(
+      (t) => {
+        t.setPlaceholder("").onChange((v) => { newEmoji = v; });
+        t.inputEl.style.width = "60px";
+      }
+    );
+    new import_obsidian.Setting(body).addButton(
+      (btn) => btn.setButtonText("+ Add Task").setCta().onClick(async () => {
+        if (!newName.trim()) {
+          new import_obsidian.Notice("Enter a task name");
+          return;
+        }
+        this.plugin.settings.templeTasks.push({
+          id: `custom-${Date.now()}`,
+          name: newName.trim(),
+          lastCompleted: null,
+          intervalDays: newInterval,
+          emoji: newEmoji || ""
+        });
+        await this.plugin.saveSettings();
+        this.display();
+        new import_obsidian.Notice(`Added "${newName.trim()}" to temple upkeep`);
+      })
+    );
   }
 
   /**
