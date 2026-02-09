@@ -5426,37 +5426,19 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
                 `
               }
             });
-            // Preview figure
             let figSrc = tierFigure.image;
             if (!figSrc.startsWith('http://') && !figSrc.startsWith('https://') && !figSrc.startsWith('data:')) {
               try { figSrc = this.plugin.app.vault.adapter.getResourcePath(figSrc); } catch (e) {}
             }
-            const curScale = tierFigure.scale || 1.0;
-            const curOffX = tierFigure.offsetX || 0;
-            const curOffY = tierFigure.offsetY || 0;
-            const curPos = tierFigure.position || 'left';
-            const previewSize = Math.round(100 * curScale);
-            const previewMaxH = Math.round(160 * curScale);
+            let liveScale = tierFigure.scale || 1.0;
+            let liveOffX = tierFigure.offsetX || 0;
+            let liveOffY = tierFigure.offsetY || 0;
+            let livePos = tierFigure.position || 'left';
 
-            const previewFig = previewBox.createEl("img", {
-              attr: {
-                src: figSrc,
-                style: `
-                  position: absolute;
-                  bottom: ${10 + curOffY * 0.5}px;
-                  ${curPos === 'right' ? `right: ${10 + curOffX * 0.5}px;` : `left: ${10 + curOffX * 0.5}px;`}
-                  max-width: ${previewSize}px;
-                  max-height: ${previewMaxH}px;
-                  object-fit: contain;
-                  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-                `
-              }
-            });
+            const previewFig = previewBox.createEl("img", { attr: { src: figSrc } });
             previewFig.onerror = () => previewFig.remove();
 
-            // Position label
-            previewBox.createEl("div", {
-              text: `${curPos.toUpperCase()} \u2022 ${Math.round(curScale * 100)}% \u2022 X:${curOffX} Y:${curOffY}`,
+            const previewLabel = previewBox.createEl("div", {
               attr: {
                 style: `
                   position: absolute;
@@ -5469,74 +5451,99 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
               }
             });
 
+            // Helper: update preview image position/size without re-rendering
+            const updatePreview = () => {
+              const pSize = Math.round(100 * liveScale);
+              const pMaxH = Math.round(160 * liveScale);
+              const posCSS = livePos === 'right'
+                ? `right: ${10 + liveOffX * 0.5}px; left: auto;`
+                : `left: ${10 + liveOffX * 0.5}px; right: auto;`;
+              previewFig.style.cssText = `
+                position: absolute;
+                bottom: ${10 + liveOffY * 0.5}px;
+                ${posCSS}
+                max-width: ${pSize}px;
+                max-height: ${pMaxH}px;
+                object-fit: contain;
+                filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+                transition: all 0.15s ease;
+              `;
+              previewLabel.textContent = `${livePos.toUpperCase()} \u2022 ${Math.round(liveScale * 100)}% \u2022 X:${liveOffX} Y:${liveOffY}`;
+            };
+            updatePreview();
+
             // Position (left/right)
             new import_obsidian.Setting(figureContent).setName("Side").setDesc("Left or right side of the dashboard").addDropdown(
-              (d) => d.addOption("left", "Left").addOption("right", "Right").setValue(curPos).onChange(async (v) => {
+              (d) => d.addOption("left", "Left").addOption("right", "Right").setValue(livePos).onChange(async (v) => {
+                livePos = v;
                 this.updateTierFigure(tier, 'position', v);
                 await this.plugin.saveSettings();
                 this.plugin.refreshRankView();
-                this.display();
+                updatePreview();
               })
             );
 
             // Scale slider
             const scaleRow = figureContent.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-            scaleRow.createEl("div", { text: `Size: ${Math.round(curScale * 100)}%`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
+            const scaleLabel = scaleRow.createEl("div", { text: `Size: ${Math.round(liveScale * 100)}%`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
             const scaleSlider = scaleRow.createEl("input", {
               attr: {
-                type: "range",
-                min: "0.3",
-                max: "3.0",
-                step: "0.1",
-                value: String(curScale),
+                type: "range", min: "0.3", max: "3.0", step: "0.1",
+                value: String(liveScale),
                 style: "width: 100%; accent-color: var(--interactive-accent);"
               }
+            });
+            scaleSlider.addEventListener("input", (e) => {
+              liveScale = parseFloat(e.target.value);
+              scaleLabel.textContent = `Size: ${Math.round(liveScale * 100)}%`;
+              updatePreview();
             });
             scaleSlider.addEventListener("change", async (e) => {
               this.updateTierFigure(tier, 'scale', parseFloat(e.target.value));
               await this.plugin.saveSettings();
               this.plugin.refreshRankView();
-              this.display();
             });
 
             // Horizontal offset slider
             const xRow = figureContent.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-            xRow.createEl("div", { text: `Horizontal offset: ${curOffX}px`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
+            const xLabel = xRow.createEl("div", { text: `Horizontal offset: ${liveOffX}px`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
             const xSlider = xRow.createEl("input", {
               attr: {
-                type: "range",
-                min: "-50",
-                max: "100",
-                step: "2",
-                value: String(curOffX),
+                type: "range", min: "-50", max: "100", step: "2",
+                value: String(liveOffX),
                 style: "width: 100%; accent-color: var(--interactive-accent);"
               }
+            });
+            xSlider.addEventListener("input", (e) => {
+              liveOffX = parseInt(e.target.value);
+              xLabel.textContent = `Horizontal offset: ${liveOffX}px`;
+              updatePreview();
             });
             xSlider.addEventListener("change", async (e) => {
               this.updateTierFigure(tier, 'offsetX', parseInt(e.target.value));
               await this.plugin.saveSettings();
               this.plugin.refreshRankView();
-              this.display();
             });
 
             // Vertical offset slider
             const yRow = figureContent.createDiv({ attr: { style: "margin-bottom: 12px;" } });
-            yRow.createEl("div", { text: `Vertical offset: ${curOffY}px`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
+            const yLabel = yRow.createEl("div", { text: `Vertical offset: ${liveOffY}px`, attr: { style: "font-size: 0.85em; margin-bottom: 4px;" } });
             const ySlider = yRow.createEl("input", {
               attr: {
-                type: "range",
-                min: "-50",
-                max: "150",
-                step: "2",
-                value: String(curOffY),
+                type: "range", min: "-50", max: "150", step: "2",
+                value: String(liveOffY),
                 style: "width: 100%; accent-color: var(--interactive-accent);"
               }
+            });
+            ySlider.addEventListener("input", (e) => {
+              liveOffY = parseInt(e.target.value);
+              yLabel.textContent = `Vertical offset: ${liveOffY}px`;
+              updatePreview();
             });
             ySlider.addEventListener("change", async (e) => {
               this.updateTierFigure(tier, 'offsetY', parseInt(e.target.value));
               await this.plugin.saveSettings();
               this.plugin.refreshRankView();
-              this.display();
             });
 
             // Hide tier title toggle
