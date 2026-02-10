@@ -96,105 +96,105 @@ var DebugLogger = class _DebugLogger {
 var debugLog = DebugLogger.getInstance();
 var BOSSES = [
   {
-    tier: [1, 2],
+    tier: 1,
     name: "Shadow of Apathy",
-    ranks: ["Doomscroller", "Redditor"],
+    rank: "Doomscroller",
     description: "The weight of inertia that keeps you scrolling instead of starting",
     lore: "Born from forgotten promises and unopened gym bags, the Shadow feeds on potential unrealized.",
     hpFormula: "weeklyTarget \xD7 1.1"
   },
   {
-    tier: [3, 4],
+    tier: 2,
     name: "Siren's Call",
-    ranks: ["Armchair General", "NPC"],
+    rank: "Armchair General",
     description: "Distraction's sweet song that pulls focus from committed work",
     lore: "She sings of easier paths, of just one more video, of starting tomorrow instead.",
     hpFormula: "weeklyTarget \xD7 1.2"
   },
   {
-    tier: [5, 6],
+    tier: 3,
     name: "Hydra of Habits",
-    ranks: ["Apprentice", "Journeyman"],
+    rank: "Apprentice",
     description: "The complexity of managing multiple routines simultaneously",
     lore: "Cut one head and two grow back. Each habit demands its own attention.",
     hpFormula: "weeklyTarget \xD7 1.3"
   },
   {
-    tier: [7, 8],
+    tier: 4,
     name: "Minotaur's Maze",
-    ranks: ["Citizen", "Athlete"],
+    rank: "Citizen",
     description: "The confusion and routine that traps even dedicated practitioners",
     lore: "Lost in corridors of habit, the path forward is never clear.",
     hpFormula: "weeklyTarget \xD7 1.7"
   },
   {
-    tier: [9, 10],
+    tier: 5,
     name: "Medusa's Gaze",
-    ranks: ["Scholar", "Huskarl"],
+    rank: "Scholar",
     description: "The paralysis that comes from overthinking or fear of failure",
     lore: "One glance and you are frozen, unable to act, unable to move.",
     hpFormula: "weeklyTarget \xD7 1.9"
   },
   {
-    tier: [11, 12],
+    tier: 6,
     name: "Nemean Lion",
-    ranks: ["Samurai", "Spartan"],
+    rank: "Samurai",
     description: "Seemingly invulnerable obstacles that require persistent effort",
     lore: "Its hide cannot be pierced by ordinary means. Only discipline cuts through.",
     hpFormula: "weeklyTarget \xD7 2.1"
   },
   {
-    tier: [13, 14],
+    tier: 7,
     name: "Chimera",
-    ranks: ["Templar", "Renaissance Man"],
+    rank: "Templar",
     description: "Multi-headed beast requiring balanced attention across all domains",
     lore: "Lion, goat, and serpent - each head demands mastery of a different art.",
     hpFormula: "weeklyTarget \xD7 2.3"
   },
   {
-    tier: [15, 16],
+    tier: 8,
     name: "Cerberus",
-    ranks: ["Stoic", "Berserker"],
+    rank: "Stoic",
     description: "Guardian of transformation testing if habits have become identity",
     lore: "Three heads, three tests. Past the gate lies transformation.",
     hpFormula: "weeklyTarget \xD7 2.5"
   },
   {
-    tier: [17, 18],
+    tier: 9,
     name: "Scylla & Charybdis",
-    ranks: ["Olympian", "Jarl"],
+    rank: "Olympian",
     description: "The impossible choice between competing priorities",
     lore: "Between the rock and the whirlpool, both must somehow be honored.",
     hpFormula: "weeklyTarget \xD7 2.7"
   },
   {
-    tier: [19, 20],
+    tier: 10,
     name: "The Furies",
-    ranks: ["Sage", "Polymath"],
+    rank: "Sage",
     description: "Internal voices of guilt and shame attacking even the successful",
     lore: "They whisper your failures, remind you of every skip, every weakness.",
     hpFormula: "weeklyTarget \xD7 2.9"
   },
   {
-    tier: [21, 22],
+    tier: 11,
     name: "Typhon",
-    ranks: ["Titan", "Grand Master"],
+    rank: "Titan",
     description: "The force of chaos threatening to undo all progress",
     lore: "Father of all monsters, he seeks to return you to the beginning.",
     hpFormula: "weeklyTarget \xD7 3.1"
   },
   {
-    tier: [23, 24],
+    tier: 12,
     name: "Kronos",
-    ranks: ["Archon", "Einherjar"],
+    rank: "Archon",
     description: "Time itself as an enemy, testing sustained intensity",
     lore: "The Titan who devours his children. Can you maintain as weeks become months?",
     hpFormula: "weeklyTarget \xD7 3.3"
   },
   {
-    tier: [25, 26],
+    tier: 13,
     name: "Chaos Primordial",
-    ranks: ["Jack of All Trades", "Master of All"],
+    rank: "Master of All",
     description: "The ultimate test of unshakeable discipline",
     lore: "Before creation, before order, only Chaos. To master it is to master yourself.",
     hpFormula: "weeklyTarget \xD7 3.6"
@@ -202,45 +202,31 @@ var BOSSES = [
 ];
 var RANK_TIER_COLORS = {
   1: "#6B7280",
-  2: "#6B7280",
-  3: "#EF4444",
-  4: "#EF4444",
-  5: "#F59E0B",
-  6: "#F59E0B",
-  7: "#10B981",
-  8: "#10B981",
-  9: "#3B82F6",
-  10: "#3B82F6",
-  11: "#8B5CF6",
-  12: "#8B5CF6",
-  13: "#EC4899",
-  14: "#EC4899",
-  15: "#F97316",
-  16: "#F97316",
-  17: "#06B6D4",
-  18: "#06B6D4",
-  19: "#A855F7",
-  20: "#A855F7",
-  21: "#DC2626",
-  22: "#DC2626",
-  23: "#7C3AED",
-  24: "#7C3AED",
-  25: "#c9a227",  // Royal gold - excellent
-  26: "#c9a227"   // Royal gold - excellent
+  2: "#EF4444",
+  3: "#F59E0B",
+  4: "#10B981",
+  5: "#3B82F6",
+  6: "#8B5CF6",
+  7: "#EC4899",
+  8: "#F97316",
+  9: "#06B6D4",
+  10: "#A855F7",
+  11: "#DC2626",
+  12: "#7C3AED",
+  13: "#c9a227"   // Royal gold
 };
 function getBossForTier(tier) {
-  return BOSSES.find((b) => tier >= b.tier[0] && tier <= b.tier[1]) || null;
+  return BOSSES.find((b) => b.tier === tier) || null;
 }
 function getCustomizedBossForTier(tier, settings) {
   const baseBoss = getBossForTier(tier);
   if (!baseBoss) return null;
-  const bossIndex = Math.ceil(tier / 2);
-  const override = settings.customBosses?.find((c) => c.tier === bossIndex);
+  const override = settings.customBosses?.find((c) => c.tier === tier);
   if (!override) return baseBoss;
   return {
     ...baseBoss,
     name: override.name || baseBoss.name,
-    ranks: override.ranks || baseBoss.ranks,
+    rank: override.rank || baseBoss.rank,
     description: override.description || baseBoss.description,
     lore: override.lore || baseBoss.lore,
     image: override.image || baseBoss.image
@@ -249,11 +235,10 @@ function getCustomizedBossForTier(tier, settings) {
 function getRankNameForTier(tier, settings) {
   const boss = settings ? getCustomizedBossForTier(tier, settings) : getBossForTier(tier);
   if (!boss) return "Unranked";
-  const isFirstTier = tier === boss.tier[0];
-  return isFirstTier ? boss.ranks[0] : boss.ranks[1];
+  return boss.rank;
 }
 function calculateBossHP(weeklyTarget, tier, settings, lowestWeeklyTarget) {
-  const maxTier = settings?.maxTier ?? 14;
+  const maxTier = settings?.maxTier ?? 13;
   if (settings?.useAutoDynamicHP && lowestWeeklyTarget !== void 0) {
     const tier1HP = lowestWeeklyTarget * 4;
     const maxTierHP = weeklyTarget * (settings.autoDynamicHPMaxMultiplier ?? 1.5);
@@ -269,21 +254,21 @@ function calculateBossHP(weeklyTarget, tier, settings, lowestWeeklyTarget) {
 }
 var REWARD_THRESHOLDS = {
   micro: { activityInterval: 1, streakInterval: 1 },
-  // Tiers 1-4
+  // Tiers 1-2
   mini: { activityInterval: 3, streakInterval: 2 },
-  // Tiers 5-10
+  // Tiers 3-5
   standard: { activityInterval: 8, streakInterval: 3 },
-  // Tiers 11-16
+  // Tiers 6-8
   quality: { activityInterval: 15, streakInterval: 4 },
-  // Tiers 17-22
+  // Tiers 9-11
   premium: { activityInterval: 30, streakInterval: 5 }
-  // Tiers 23-26
+  // Tiers 12-13
 };
 function getRewardTierForPlayerTier(playerTier) {
-  if (playerTier <= 4) return "micro";
-  if (playerTier <= 10) return "mini";
-  if (playerTier <= 16) return "standard";
-  if (playerTier <= 22) return "quality";
+  if (playerTier <= 2) return "micro";
+  if (playerTier <= 5) return "mini";
+  if (playerTier <= 8) return "standard";
+  if (playerTier <= 11) return "quality";
   return "premium";
 }
 function getRewardPoolsForType(settings, rewardType) {
@@ -294,7 +279,7 @@ function getRewardPoolsForType(settings, rewardType) {
   return settings.rewardPools || [];
 }
 function canBankRewards(playerTier) {
-  return playerTier >= 11;
+  return playerTier >= 6;
 }
 function getMaxBankedRewards() {
   return 3;
@@ -306,7 +291,6 @@ var DEFAULT_SETTINGS = {
   currentTier: 1,
   bossMaxHP: 35,
   bossCurrentHP: 35,
-  tierAdvancedAt50Percent: false,
   consecutivePerfectWeeks: 0,
   disciplineTokens: 0,
   disciplineCompletionCount: 0,
@@ -348,8 +332,8 @@ var DEFAULT_SETTINGS = {
   // Tier 1 = weeklyTarget × 1.1 (manual mode)
   bossHPMultiplierMax: 2.4,
   // Max tier = weeklyTarget × 2.4 (manual mode)
-  maxTier: 14,
-  // 7 bosses × 2 tiers each = 14
+  maxTier: 13,
+  // 13 bosses, 1 tier each
   rankGraceHP: 20,
   rankGraceDays: 3,
   rankBelowSince: null,
@@ -516,7 +500,7 @@ function getProgressBarColor(tier, inTartarus) {
 
 /**
  * Get tier-based HP bar color scheme
- * Tiers 1-4: Sickly green, 5-8: Yellow/gold, 9-12: Purple, 13+: Crimson
+ * Tiers 1-3: Sickly green, 4-6: Yellow/gold, 7-9: Purple, 10-12: Crimson, 13: Royal gold
  */
 function getTierHPBarColors(tier, inTartarus) {
   if (inTartarus) {
@@ -528,32 +512,32 @@ function getTierHPBarColors(tier, inTartarus) {
     };
   }
 
-  if (tier <= 4) {
-    // Sickly green
+  if (tier <= 3) {
+    // Sickly green (tiers 1-3)
     return {
       fill: 'linear-gradient(180deg, #6a8a5a 0%, #4a6a3a 30%, #3a5a2a 70%, #2a4a1a 100%)',
       border: '#3a4a30',
       glow: 'rgba(106, 138, 90, 0.3)',
       accent: '#6a8a5a'
     };
-  } else if (tier <= 8) {
-    // Yellow/gold
+  } else if (tier <= 6) {
+    // Yellow/gold (tiers 4-6)
     return {
       fill: 'linear-gradient(180deg, #b8a070 0%, #9a8860 30%, #8a7850 70%, #6a5840 100%)',
       border: '#4a4030',
       glow: 'rgba(184, 160, 112, 0.3)',
       accent: '#b8a070'
     };
-  } else if (tier <= 12) {
-    // Purple
+  } else if (tier <= 9) {
+    // Purple (tiers 7-9)
     return {
       fill: 'linear-gradient(180deg, #8a6a9a 0%, #6a4a7a 30%, #5a3a6a 70%, #4a2a5a 100%)',
       border: '#4a3050',
       glow: 'rgba(138, 106, 154, 0.3)',
       accent: '#8a6a9a'
     };
-  } else if (tier <= 24) {
-    // Crimson (tier 13-24)
+  } else if (tier <= 12) {
+    // Crimson (tiers 10-12)
     return {
       fill: 'linear-gradient(180deg, #9a4a4a 0%, #7a3030 30%, #6a2020 70%, #5a1010 100%)',
       border: '#4a2020',
@@ -561,7 +545,7 @@ function getTierHPBarColors(tier, inTartarus) {
       accent: '#9a4a4a'
     };
   } else {
-    // Tier 25-26: Excellent but Dangerous - Royal gold with dark crimson undertones
+    // Tier 13: Royal gold with dark crimson undertones
     return {
       fill: 'linear-gradient(180deg, #c9a227 0%, #a08020 20%, #8b6914 40%, #6a3010 60%, #5a2010 80%, #4a1510 100%)',
       border: '#5a3010',
@@ -812,7 +796,7 @@ var DEFAULT_TARTARUS_TASKS = {
 };
 function getTierRange(tier) {
   if (tier <= 4) return "low";
-  if (tier <= 12) return "mid";
+  if (tier <= 9) return "mid";
   return "high";
 }
 function getPenanceTasksForTier(tier, settings) {
@@ -1625,8 +1609,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
     } else {
       // Get HP-threshold appropriate boss image
       const hpPercent = settings.bossCurrentHP / settings.bossMaxHP;
-      const bossIndex = Math.ceil(settings.currentTier / 2);
-      const bossOverride = settings.customBosses?.find((c) => c.tier === bossIndex);
+      const bossOverride = settings.customBosses?.find((c) => c.tier === settings.currentTier);
       let bossImage = boss?.image;
       if (bossOverride) {
         if (hpPercent <= 0.2 && bossOverride.image20) {
@@ -4563,7 +4546,7 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
     const rankName = getRankNameForTier(settings.currentTier, settings);
     const hpPercent = Math.round(settings.bossCurrentHP / settings.bossMaxHP * 100);
     const rows = [
-      ["Current Tier", `${settings.currentTier}/26`],
+      ["Current Tier", `${settings.currentTier}/${settings.maxTier || 13}`],
       ["Boss Name", boss?.name || "Unknown"],
       ["Rank Title", rankName],
       ["HP State", `${settings.bossCurrentHP}/${settings.bossMaxHP} (${hpPercent}%)`],
@@ -4783,7 +4766,7 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
     });
 
     // Add tier options
-    for (let t = 1; t <= 26; t++) {
+    for (let t = 1; t <= (settings.maxTier || 13); t++) {
       const boss = getCustomizedBossForTier(t, settings);
       const opt = tierSelect.createEl("option", {
         text: `Tier ${t}: ${boss?.name || 'Unknown'}`,
@@ -5143,7 +5126,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         `
       }
     });
-    statusBar.createEl("span", { text: `Tier ${this.plugin.settings.currentTier}/26` });
+    statusBar.createEl("span", { text: `Tier ${this.plugin.settings.currentTier}/${this.plugin.settings.maxTier || 13}` });
     statusBar.createEl("span", { text: `HP ${this.plugin.settings.bossCurrentHP}/${this.plugin.settings.bossMaxHP} (${hpPercent}%)` });
     statusBar.createEl("span", {
       text: this.plugin.settings.systemState === "paused" ? "PAUSED" : this.plugin.settings.inTartarus ? "TARTARUS" : "ACTIVE",
@@ -5356,16 +5339,14 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
 
     if (this.plugin.settings.showTierFigure) {
       for (let tier = 1; tier <= this.plugin.settings.maxTier; tier++) {
-        if (tier % 2 === 1 || tier === this.plugin.settings.maxTier) {
           const tierFigure = this.plugin.settings.tierFigures?.find(f => f.tier === tier);
-          const pairEnd = Math.min(tier + 1, this.plugin.settings.maxTier);
           const figureContainer = body.createDiv({
             attr: { style: "margin-top: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden;" }
           });
           const figHeader = figureContainer.createDiv({
             attr: { style: "display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--background-secondary); cursor: pointer; user-select: none;" }
           });
-          figHeader.createEl("span", { text: `Tiers ${tier}-${pairEnd}${tierFigure?.image ? ' \u2713' : ''}`, attr: { style: "font-size: 0.85em; font-weight: 500;" } });
+          figHeader.createEl("span", { text: `Tier ${tier}${tierFigure?.image ? ' \u2713' : ''}`, attr: { style: "font-size: 0.85em; font-weight: 500;" } });
           const figArrow = figHeader.createEl("span", { text: "\u25B6", attr: { style: "font-size: 9px;" } });
           const figureContent = figureContainer.createDiv({ attr: { style: "display: none; padding: 8px 12px;" } });
           figHeader.addEventListener("click", () => {
@@ -5530,7 +5511,6 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
               })
             );
           }
-        }
       }
     }
   }
@@ -5811,8 +5791,8 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     }
-    new import_obsidian.Setting(containerEl).setName("Maximum tier").setDesc("The highest tier in the progression system (default 14 = 7 bosses \xD7 2 tiers)").addText(
-      (t) => t.setPlaceholder("14").setValue(String(this.plugin.settings.maxTier)).onChange(async (v) => {
+    new import_obsidian.Setting(containerEl).setName("Maximum tier").setDesc("The highest tier in the progression system (default 13 = 13 bosses)").addText(
+      (t) => t.setPlaceholder("13").setValue(String(this.plugin.settings.maxTier)).onChange(async (v) => {
         const num = parseInt(v);
         if (!isNaN(num) && num >= 2 && num <= 100) {
           this.plugin.settings.maxTier = num;
@@ -5839,7 +5819,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.autoDynamicHPMaxMultiplier = 1.5;
         this.plugin.settings.bossHPMultiplierMin = 1.1;
         this.plugin.settings.bossHPMultiplierMax = 2.4;
-        this.plugin.settings.maxTier = 14;
+        this.plugin.settings.maxTier = 13;
         const stats2 = this.getWeeklyTargetStats();
         const newMaxHP = calculateBossHP(
           stats2.total,
@@ -5866,7 +5846,6 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.consecutivePerfectWeeks = 0;
         this.plugin.settings.disciplineTokens = 0;
         this.plugin.settings.disciplineCompletionCount = 0;
-        this.plugin.settings.tierAdvancedAt50Percent = false;
         this.plugin.settings.inTartarus = false;
         await this.plugin.saveSettings();
         this.plugin.refreshRankView();
@@ -5912,10 +5891,9 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         }
       });
       const currentName = customOverride?.name || boss.name;
-      const tierRange = `Tiers ${boss.tier[0]}-${boss.tier[1]}`;
       const isCustomized = customOverride ? " \u270F\uFE0F" : "";
       header.createEl("span", {
-        text: `${tierRange}: ${currentName}${isCustomized}`,
+        text: `Tier ${boss.tier}: ${currentName}${isCustomized}`,
         attr: {
           style: "font-weight: 600;"
         }
@@ -5948,20 +5926,9 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
           this.plugin.refreshRankView();
         })
       );
-      new import_obsidian.Setting(content).setName(`Rank at Tier ${boss.tier[0]}`).addText(
-        (t) => t.setPlaceholder(boss.ranks[0]).setValue(customOverride?.ranks?.[0] || "").onChange(async (v) => {
-          const currentRanks = customOverride?.ranks || [...boss.ranks];
-          const newRanks = [v || boss.ranks[0], currentRanks[1]];
-          this.updateBossOverride(bossIndex, "ranks", newRanks);
-          await this.plugin.saveSettings();
-          this.plugin.refreshRankView();
-        })
-      );
-      new import_obsidian.Setting(content).setName(`Rank at Tier ${boss.tier[1]}`).addText(
-        (t) => t.setPlaceholder(boss.ranks[1]).setValue(customOverride?.ranks?.[1] || "").onChange(async (v) => {
-          const currentRanks = customOverride?.ranks || [...boss.ranks];
-          const newRanks = [currentRanks[0], v || boss.ranks[1]];
-          this.updateBossOverride(bossIndex, "ranks", newRanks);
+      new import_obsidian.Setting(content).setName("Rank Title").addText(
+        (t) => t.setPlaceholder(boss.rank).setValue(customOverride?.rank || "").onChange(async (v) => {
+          this.updateBossOverride(bossIndex, "rank", v || void 0);
           await this.plugin.saveSettings();
           this.plugin.refreshRankView();
         })
@@ -6037,8 +6004,8 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
 
     const tartarusRanges = [
       { range: "early", label: "Early (Tiers 1-4)", tiers: [1, 4] },
-      { range: "mid", label: "Mid (Tiers 5-12)", tiers: [5, 12] },
-      { range: "late", label: "Late (Tiers 13+)", tiers: [13, 26] }
+      { range: "mid", label: "Mid (Tiers 5-9)", tiers: [5, 9] },
+      { range: "late", label: "Late (Tiers 10+)", tiers: [10, 13] }
     ];
     tartarusRanges.forEach(({ range, label }) => {
       const rangeContainer = containerEl.createDiv({ attr: { style: "margin-top: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden;" } });
@@ -6257,11 +6224,11 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     ];
 
     const tierDisplayNames = {
-      micro: "Micro (Tiers 1-4)",
-      mini: "Mini (Tiers 5-10)",
-      standard: "Standard (Tiers 11-16)",
-      quality: "Quality (Tiers 17-22)",
-      premium: "Premium (Tiers 23-26)"
+      micro: "Micro (Tiers 1-2)",
+      mini: "Mini (Tiers 3-5)",
+      standard: "Standard (Tiers 6-8)",
+      quality: "Quality (Tiers 9-11)",
+      premium: "Premium (Tiers 12-13)"
     };
     const tiers = ["micro", "mini", "standard", "quality", "premium"];
 
@@ -6570,13 +6537,13 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     }
     if (field === "tier") return;
     if (field === "name") override.name = value;
-    else if (field === "ranks") override.ranks = value;
+    else if (field === "rank") override.rank = value;
     else if (field === "description") override.description = value;
     else if (field === "lore") override.lore = value;
     else if (field === "image") override.image = value;
     else if (field === "image50") override.image50 = value;
     else if (field === "image20") override.image20 = value;
-    const hasCustomizations = override.name || override.ranks || override.description || override.lore || override.image || override.image50 || override.image20;
+    const hasCustomizations = override.name || override.rank || override.description || override.lore || override.image || override.image50 || override.image20;
     if (!hasCustomizations) {
       this.plugin.settings.customBosses = this.plugin.settings.customBosses.filter(
         (c) => c.tier !== bossIndex
@@ -6598,17 +6565,6 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     }
     if (field === "tier") return;
     figure[field] = value;
-
-    // Also apply to the paired tier
-    const pairedTier = tier % 2 === 1 ? tier + 1 : tier - 1;
-    if (pairedTier >= 1 && pairedTier <= 26) {
-      let pairedFigure = this.plugin.settings.tierFigures.find((f) => f.tier === pairedTier);
-      if (!pairedFigure) {
-        pairedFigure = { tier: pairedTier, position: 'left', hideTierTitle: false, image: '', scale: 1.0, offsetX: 0, offsetY: 0 };
-        this.plugin.settings.tierFigures.push(pairedFigure);
-      }
-      pairedFigure[field] = value;
-    }
 
     // Remove entries with no image
     this.plugin.settings.tierFigures = this.plugin.settings.tierFigures.filter(f => f.image);
@@ -6926,6 +6882,60 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
         bossHP: `${this.settings.bossCurrentHP}/${this.settings.bossMaxHP}`
       });
     }
+    // Migrate from 2-tier-per-boss system to 1-tier-per-boss
+    if (!this.settings._tierSystemMigrated && this.settings.currentTier > 13) {
+      // Old system: 26 tiers (2 per boss). New system: 13 tiers (1 per boss).
+      this.settings.currentTier = Math.ceil(this.settings.currentTier / 2);
+      if (this.settings.maxTier === 14 || this.settings.maxTier === 26) {
+        this.settings.maxTier = 13;
+      }
+      // Clean up removed setting
+      delete this.settings.tierAdvancedAt50Percent;
+      // Migrate tier figures to new tier numbers
+      if (this.settings.tierFigures?.length) {
+        const migratedFigures = [];
+        this.settings.tierFigures.forEach(f => {
+          const newTier = Math.ceil(f.tier / 2);
+          if (!migratedFigures.find(m => m.tier === newTier)) {
+            migratedFigures.push({ ...f, tier: newTier });
+          }
+        });
+        this.settings.tierFigures = migratedFigures;
+      }
+      // Migrate custom boss overrides to new tier numbers
+      if (this.settings.customBosses?.length) {
+        this.settings.customBosses.forEach(c => {
+          if (c.tier > 13) c.tier = Math.ceil(c.tier / 2);
+          // Migrate ranks array to single rank
+          if (c.ranks && !c.rank) {
+            c.rank = c.ranks[0];
+            delete c.ranks;
+          }
+        });
+      }
+      this.settings._tierSystemMigrated = true;
+      // Recalculate boss HP for new tier
+      const stats = this.getWeeklyTargetStats();
+      this.settings.bossMaxHP = calculateBossHP(stats.total, this.settings.currentTier, this.settings, stats.lowest);
+      this.settings.bossCurrentHP = this.settings.bossMaxHP;
+    }
+    // Also handle users who are on tier <= 13 but still have old maxTier
+    if (!this.settings._tierSystemMigrated) {
+      if (this.settings.maxTier === 14 || this.settings.maxTier === 26) {
+        this.settings.maxTier = 13;
+      }
+      delete this.settings.tierAdvancedAt50Percent;
+      // Migrate custom boss rank arrays to single rank
+      if (this.settings.customBosses?.length) {
+        this.settings.customBosses.forEach(c => {
+          if (c.ranks && !c.rank) {
+            c.rank = c.ranks[0];
+            delete c.ranks;
+          }
+        });
+      }
+      this.settings._tierSystemMigrated = true;
+    }
     // Migrate old shared rewardPools to 3 separate pools
     if (this.settings.rewardPools && Array.isArray(this.settings.rewardPools) && !this.settings._rewardPoolsMigrated) {
       const oldPools = this.settings.rewardPools;
@@ -7167,25 +7177,10 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
   async checkBossDefeated() {
     const currentTier = this.settings.currentTier;
     const currentHP = this.settings.bossCurrentHP;
-    const maxHP = this.settings.bossMaxHP;
-    const isFirstTierOfBoss = currentTier % 2 === 1;
-    const hpBelow50Percent = currentHP > 0 && currentHP <= maxHP * 0.5;
-    if (isFirstTierOfBoss && hpBelow50Percent && !this.settings.tierAdvancedAt50Percent && currentTier < 26) {
-      this.settings.currentTier = currentTier + 1;
-      this.settings.tierAdvancedAt50Percent = true;
-      const newRank = getRankNameForTier(this.settings.currentTier, this.settings);
-      const boss = getCustomizedBossForTier(this.settings.currentTier, this.settings);
-      await this.saveSettings();
-      new import_obsidian.Notice(`\u2694\uFE0F Rank Up! You are now ${newRank}! Keep fighting ${boss?.name}!`);
-      return;
-    }
-    if (currentHP <= 0 && currentTier < 26) {
+    const maxTier = this.settings.maxTier || 13;
+    if (currentHP <= 0 && currentTier < maxTier) {
       const oldTier = this.settings.currentTier;
-      const isOddTier = oldTier % 2 === 1;
-      // If on first tier of boss and 50% advance didn't fire, skip to next boss (advance 2)
-      const advance = (isOddTier && !this.settings.tierAdvancedAt50Percent) ? 2 : 1;
-      this.settings.currentTier = Math.min(26, oldTier + advance);
-      this.settings.tierAdvancedAt50Percent = false;
+      this.settings.currentTier = oldTier + 1;
       const stats = this.getWeeklyTargetStats();
       this.settings.bossMaxHP = calculateBossHP(stats.total, this.settings.currentTier, this.settings, stats.lowest);
       this.settings.bossCurrentHP = this.settings.bossMaxHP;
