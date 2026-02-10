@@ -1521,42 +1521,51 @@ var TrackRankView = class extends import_obsidian.ItemView {
         if (!tartarusImage.startsWith('http://') && !tartarusImage.startsWith('https://') && !tartarusImage.startsWith('data:')) {
           try { resolvedTartImg = this.app.vault.adapter.getResourcePath(tartarusImage); } catch (e) {}
         }
-        const imgContainer = tartarusContent.createDiv({
+        // Full-width Tartarus image with heavy gradient fade (same as boss image)
+        const tartImgWrap = wrapper.createDiv({
           attr: {
             style: `
-              margin-bottom: 24px;
-              display: flex;
-              justify-content: center;
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              z-index: 0;
+              overflow: hidden;
+              pointer-events: none;
             `
           }
         });
-        const img = imgContainer.createEl("img", {
+        tartImgWrap.createEl("img", {
           attr: {
             src: resolvedTartImg,
             alt: "Tartarus",
             style: `
-              max-width: 200px;
-              max-height: 200px;
-              border: 2px solid rgba(150, 123, 77, 0.3);
-              border-radius: 4px;
+              width: 100%;
+              display: block;
               object-fit: cover;
-              filter: contrast(1.1) brightness(0.9) sepia(0.1);
-              box-shadow: 0 0 20px rgba(26, 20, 16, 0.4), inset 0 0 30px rgba(0, 0, 0, 0.3);
-              transition: all 0.4s ease;
+              filter: contrast(1.1) brightness(0.7) sepia(0.15);
+              animation: fadeSlideIn 0.8s ease-out;
+            `
+          }
+        }).onerror = function() { tartImgWrap.remove(); };
+        // Heavy gradient fade from below
+        tartImgWrap.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 80%;
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f0 15%, ${colors.bg}cc 35%, ${colors.bg}88 55%, transparent 100%);
+              pointer-events: none;
             `
           }
         });
-        img.onmouseenter = () => {
-          img.style.filter = 'contrast(1.15) brightness(0.95) sepia(0.05)';
-          img.style.boxShadow = '0 0 30px rgba(150, 123, 77, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.2)';
-        };
-        img.onmouseleave = () => {
-          img.style.filter = 'contrast(1.1) brightness(0.9) sepia(0.1)';
-          img.style.boxShadow = '0 0 20px rgba(26, 20, 16, 0.4), inset 0 0 30px rgba(0, 0, 0, 0.3)';
-        };
-        img.onerror = () => {
-          imgContainer.remove();
-        };
+        // Spacer to push content below the image
+        tartarusContent.createDiv({
+          attr: { style: "width: 100%; padding-top: 45%; pointer-events: none;" }
+        });
       }
 
       // TARTARUS title - Gothic elegance
@@ -1603,6 +1612,43 @@ var TrackRankView = class extends import_obsidian.ItemView {
           `
         }
       });
+
+      // Fire animation from below — lightweight CSS-only embers
+      const fireOverlay = wrapper.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            z-index: 2;
+            pointer-events: none;
+            overflow: hidden;
+          `
+        }
+      });
+      for (let i = 0; i < 8; i++) {
+        const x = 5 + Math.random() * 90;
+        const size = 20 + Math.random() * 30;
+        const delay = Math.random() * 3;
+        const dur = 2 + Math.random() * 2;
+        fireOverlay.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              bottom: -10px;
+              left: ${x}%;
+              width: ${size}px;
+              height: ${size * 1.5}px;
+              background: radial-gradient(ellipse at center bottom, rgba(180, 80, 20, 0.5) 0%, rgba(200, 100, 30, 0.3) 40%, transparent 70%);
+              border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+              animation: fireRise ${dur}s ${delay}s ease-out infinite;
+              filter: blur(3px);
+            `
+          }
+        });
+      }
 
       // Note: No boss info, HP bar, or rewards shown in Tartarus
       // User can only see penance tasks via the warning box below
@@ -1661,7 +1707,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
             `
           }
         }).onerror = function() { bossImgWrap.remove(); };
-        // Heavy gradient fade from below
+        // Heavy gradient fade from below — smoother multi-stop
         bossImgWrap.createDiv({
           attr: {
             style: `
@@ -1669,8 +1715,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
               bottom: 0;
               left: 0;
               right: 0;
-              height: 70%;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}ee 20%, ${colors.bg}aa 45%, transparent 100%);
+              height: 85%;
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f5 10%, ${colors.bg}e0 20%, ${colors.bg}cc 30%, ${colors.bg}99 45%, ${colors.bg}55 60%, ${colors.bg}22 75%, transparent 100%);
               pointer-events: none;
             `
           }
@@ -1978,30 +2024,6 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Tartarus image (if set)
-      if (settings.tartarusImage) {
-        let tartWarningImg = settings.tartarusImage;
-        if (!tartWarningImg.startsWith('http://') && !tartWarningImg.startsWith('https://') && !tartWarningImg.startsWith('data:')) {
-          try { tartWarningImg = this.app.vault.adapter.getResourcePath(tartWarningImg); } catch (e) {}
-        }
-        const tartImgEl = warningBox.createEl("img", {
-          attr: {
-            src: tartWarningImg,
-            alt: "Tartarus",
-            style: `
-              max-width: 48px;
-              max-height: 48px;
-              border-radius: 2px;
-              object-fit: cover;
-              margin-bottom: 8px;
-              opacity: 0.85;
-              filter: contrast(1.05) brightness(0.9);
-            `
-          }
-        });
-        tartImgEl.onerror = () => tartImgEl.remove();
-      }
-
       warningBox.createEl("div", {
         text: "YOU ARE IN TARTARUS",
         cls: "track-habit-rank-warning-title",
@@ -2019,7 +2041,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
       const effectiveNow = getEffectiveNow(settings);
       const daysIn = settings.tartarusStartDate ? Math.floor((effectiveNow.getTime() - new Date(settings.tartarusStartDate).getTime()) / (24 * 60 * 60 * 1e3)) : 0;
-      const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 12 ? 4 : 5;
+      const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
       const completedTasks = settings.tartarusPenanceTasks.filter((t) => t.completed).length;
       const remainingTasks = requiredTasks - completedTasks;
       warningBox.createEl("div", {
@@ -2347,6 +2369,12 @@ var TrackRankView = class extends import_obsidian.ItemView {
         @keyframes borderGlow {
           0%, 100% { border-color: rgba(150, 123, 77, 0.2); }
           50% { border-color: rgba(150, 123, 77, 0.5); }
+        }
+        @keyframes fireRise {
+          0% { transform: translateY(0) scaleX(1); opacity: 0.6; }
+          30% { transform: translateY(-20px) scaleX(1.1); opacity: 0.45; }
+          60% { transform: translateY(-50px) scaleX(0.9); opacity: 0.25; }
+          100% { transform: translateY(-90px) scaleX(0.7); opacity: 0; }
         }
       `;
       document.head.appendChild(style);
@@ -3230,7 +3258,7 @@ var PenanceModal = class extends import_obsidian.Modal {
     if (settings.tartarusPenanceTasks.length === 0) {
       settings.tartarusPenanceTasks = getPenanceTasksForTier(settings.currentTier, settings);
     }
-    const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 12 ? 4 : 5;
+    const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
     contentEl.createEl("div", {
       text: `Complete ${requiredTasks} tasks to escape Tartarus`,
       attr: {
@@ -4722,7 +4750,7 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
     const { content } = this.createCollapsibleSection(parent, "tartarus", "Tartarus State");
     const effectiveNow = getEffectiveNow(settings);
     const daysIn = settings.tartarusStartDate ? Math.floor((effectiveNow.getTime() - new Date(settings.tartarusStartDate).getTime()) / (24 * 60 * 60 * 1e3)) : 0;
-    const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 12 ? 4 : 5;
+    const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
     const completedTasks = settings.tartarusPenanceTasks.filter((t) => t.completed).length;
     const rows = [
       ["Days in Tartarus", `${daysIn}`],
@@ -4792,8 +4820,9 @@ var DeveloperDashboardView = class extends import_obsidian.ItemView {
       }
     });
 
-    // Add tier options
-    for (let t = 1; t <= (settings.maxTier || 13); t++) {
+    // Add tier options — capped to actual number of bosses
+    const maxTierOpt = Math.min(settings.maxTier || 13, BOSSES.length);
+    for (let t = 1; t <= maxTierOpt; t++) {
       const boss = getCustomizedBossForTier(t, settings);
       const opt = tierSelect.createEl("option", {
         text: `Tier ${t}: ${boss?.name || 'Unknown'}`,
@@ -6030,9 +6059,9 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     );
 
     const tartarusRanges = [
-      { range: "early", label: "Early (Tiers 1-4)", tiers: [1, 4] },
+      { range: "low", label: "Low (Tiers 1-4)", tiers: [1, 4] },
       { range: "mid", label: "Mid (Tiers 5-9)", tiers: [5, 9] },
-      { range: "late", label: "Late (Tiers 10+)", tiers: [10, 13] }
+      { range: "high", label: "High (Tiers 10+)", tiers: [10, 13] }
     ];
     tartarusRanges.forEach(({ range, label }) => {
       const rangeContainer = containerEl.createDiv({ attr: { style: "margin-top: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden;" } });
@@ -6046,7 +6075,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         rangeArrow.textContent = isOpen ? "\u25B6" : "\u25BC";
       });
 
-      const defaultTasks = getDefaultTartarusTasks(range);
+      const defaultTasks = (DEFAULT_TARTARUS_TASKS[range] || []).map(t => t.description);
       const customTasks = this.plugin.settings.customTartarusTasks?.filter(t => t.tierRange === range) || [];
       const tasks = customTasks.length > 0 ? customTasks.map(t => t.description) : defaultTasks;
 
@@ -7250,7 +7279,7 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
     const effectiveNow = getEffectiveNow(this.settings);
     const daysInTartarus = this.settings.tartarusStartDate ? Math.floor((effectiveNow.getTime() - new Date(this.settings.tartarusStartDate).getTime()) / (24 * 60 * 60 * 1e3)) : 0;
     const completedCount = this.settings.tartarusPenanceTasks.filter((t) => t.completed).length;
-    const requiredTasks = this.settings.currentTier <= 4 ? 3 : this.settings.currentTier <= 12 ? 4 : 5;
+    const requiredTasks = this.settings.currentTier <= 4 ? 3 : this.settings.currentTier <= 9 ? 4 : 5;
     if (daysInTartarus >= 3 && completedCount < requiredTasks) {
       debugLog.log("THRESH", "HADES WRATH TRIGGERED - Tasks doubled!", { daysInTartarus, completedCount, requiredTasks });
       const incompleteTasks = this.settings.tartarusPenanceTasks.filter((t) => !t.completed);
