@@ -2366,16 +2366,15 @@ var TrackRankView = class extends import_obsidian.ItemView {
     const streakClaimable = streakRemaining <= 0;
     const bossPending = (settings.pendingRewards || []).filter(r => r.rewardType === 'boss').length;
 
-    // Look up the first reward option from each pool to show its image
-    const getPoolPreview = (poolType) => {
+    // Get all reward options from the pool for the current tier
+    const getPoolOptions = (poolType) => {
       const pools = getRewardPoolsForType(settings, poolType);
       const pool = pools.find(p => p.tier === rewardProgress.rewardTier);
-      const firstOpt = pool?.options?.[0];
-      return { image: firstOpt?.image || "", emoji: firstOpt?.emoji || "" };
+      return pool?.options || [];
     };
-    const actPreview = getPoolPreview("activity");
-    const strPreview = getPoolPreview("streak");
-    const bossPreview = getPoolPreview("boss");
+    const actOptions = getPoolOptions("activity");
+    const strOptions = getPoolOptions("streak");
+    const bossOptions = getPoolOptions("boss");
 
     const container = wrapper.createDiv({
       attr: {
@@ -2393,7 +2392,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
     });
 
     // Create rough-edge reward box helper
-    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type, subtitle, previewImage, previewEmoji }) => {
+    const createRewardBox = (parent, { title, current, total, remaining, isClaimable, type, subtitle, poolOptions }) => {
       const box = parent.createDiv({
         attr: {
           style: `
@@ -2408,38 +2407,61 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Reward preview image/emoji
-      if (previewImage) {
-        let resolvedImg = previewImage;
-        if (!previewImage.startsWith('http://') && !previewImage.startsWith('https://') && !previewImage.startsWith('data:')) {
-          try { resolvedImg = this.plugin.app.vault.adapter.getResourcePath(previewImage); } catch (e) {}
-        }
-        const rwdImg = box.createEl("img", {
-          attr: {
-            src: resolvedImg,
-            style: `
-              width: 100%;
-              max-height: 48px;
-              object-fit: contain;
-              margin-bottom: 4px;
-              opacity: ${isClaimable ? '1' : '0.5'};
-              filter: ${isClaimable ? 'none' : 'grayscale(0.5)'};
-            `
+      // Reward preview area — cycles through all pool options on click
+      const previewArea = box.createDiv({
+        attr: { style: "min-height: 28px; text-align: center; margin-bottom: 4px;" }
+      });
+
+      let previewIndex = 0;
+      const renderPreview = (idx) => {
+        previewArea.empty();
+        if (!poolOptions || poolOptions.length === 0) return;
+        const opt = poolOptions[idx % poolOptions.length];
+        const opacityStyle = isClaimable ? '1' : '0.5';
+        const filterStyle = isClaimable ? 'none' : 'grayscale(0.5)';
+        if (opt.image) {
+          let resolvedImg = opt.image;
+          if (!opt.image.startsWith('http://') && !opt.image.startsWith('https://') && !opt.image.startsWith('data:')) {
+            try { resolvedImg = this.plugin.app.vault.adapter.getResourcePath(opt.image); } catch (e) {}
           }
-        });
-        rwdImg.onerror = () => {
-          rwdImg.remove();
-          if (previewEmoji) box.insertBefore(
-            Object.assign(document.createElement('div'), { textContent: previewEmoji, style: `font-size: 20px; text-align: center; margin-bottom: 4px; opacity: ${isClaimable ? '1' : '0.5'};` }),
-            box.firstChild
-          );
-        };
-      } else if (previewEmoji) {
-        box.createEl("div", {
-          text: previewEmoji,
-          attr: { style: `font-size: 20px; text-align: center; margin-bottom: 4px; opacity: ${isClaimable ? '1' : '0.5'};` }
-        });
-      }
+          const rwdImg = previewArea.createEl("img", {
+            attr: {
+              src: resolvedImg,
+              style: `width: 100%; max-height: 48px; object-fit: contain; opacity: ${opacityStyle}; filter: ${filterStyle};`
+            }
+          });
+          rwdImg.onerror = () => {
+            rwdImg.remove();
+            if (opt.emoji) previewArea.createEl("div", {
+              text: opt.emoji,
+              attr: { style: `font-size: 20px; opacity: ${opacityStyle};` }
+            });
+          };
+        } else if (opt.emoji) {
+          previewArea.createEl("div", {
+            text: opt.emoji,
+            attr: { style: `font-size: 20px; opacity: ${opacityStyle};` }
+          });
+        }
+        // Show description below image if available
+        if (opt.description && opt.description !== `[${type} ${poolOptions[0]?.id?.split('-')[1] || ''} reward]`) {
+          previewArea.createEl("div", {
+            text: opt.description,
+            attr: { style: `font-size: 7px; color: ${colors.naturalGrey}; opacity: 0.8; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;` }
+          });
+        }
+        // Page indicator dots
+        if (poolOptions.length > 1) {
+          const dots = previewArea.createDiv({ attr: { style: "margin-top: 3px;" } });
+          for (let i = 0; i < poolOptions.length; i++) {
+            dots.createEl("span", {
+              text: "\u2022",
+              attr: { style: `font-size: 8px; color: ${i === idx % poolOptions.length ? colors.leather : colors.naturalGrey}; margin: 0 1px; opacity: ${i === idx % poolOptions.length ? '1' : '0.4'};` }
+            });
+          }
+        }
+      };
+      renderPreview(0);
 
       // Title row
       box.createEl("div", {
@@ -2457,7 +2479,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
 
       // Progress text
-      box.createEl("div", {
+      const progressEl = box.createEl("div", {
         text: isClaimable ? "CLAIM" : subtitle || `${current}/${total}`,
         attr: {
           style: `
@@ -2485,21 +2507,29 @@ var TrackRankView = class extends import_obsidian.ItemView {
         });
       }
 
-      // Click handler
-      box.onclick = async () => {
-        if (isClaimable) {
+      // Click handler — cycle through rewards, claim opens modal
+      box.onclick = async (e) => {
+        if (isClaimable && e.target === progressEl) {
+          // Tapping "CLAIM" text opens the selection modal
           const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
           if (pendingReward) {
             new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
               this.plugin.refreshRankView();
             }).open();
           }
-        } else {
-          const hints = { activity: 'activities', streak: 'weeks', boss: '' };
-          if (type === 'boss') {
-            new import_obsidian.Notice('Defeat the boss to earn loot!');
-          } else {
-            new import_obsidian.Notice(`${remaining} more ${hints[type]} needed`);
+          return;
+        }
+        // Cycle to next reward preview
+        if (poolOptions && poolOptions.length > 1) {
+          previewIndex++;
+          renderPreview(previewIndex);
+        } else if (isClaimable) {
+          // Only 1 or 0 options, fall through to claim
+          const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
+          if (pendingReward) {
+            new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
+              this.plugin.refreshRankView();
+            }).open();
           }
         }
       };
@@ -2512,8 +2542,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       remaining: activityRemaining,
       isClaimable: activityClaimable,
       type: 'activity',
-      previewImage: actPreview.image,
-      previewEmoji: actPreview.emoji
+      poolOptions: actOptions
     });
 
     createRewardBox(container, {
@@ -2523,8 +2552,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       remaining: streakRemaining,
       isClaimable: streakClaimable,
       type: 'streak',
-      previewImage: strPreview.image,
-      previewEmoji: strPreview.emoji
+      poolOptions: strOptions
     });
 
     createRewardBox(container, {
@@ -2535,8 +2563,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       isClaimable: bossPending > 0,
       type: 'boss',
       subtitle: bossPending > 0 ? `${bossPending} LOOT` : 'Defeat boss',
-      previewImage: bossPreview.image,
-      previewEmoji: bossPreview.emoji
+      poolOptions: bossOptions
     });
 
     // Unclaimed rewards chest
