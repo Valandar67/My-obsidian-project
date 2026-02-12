@@ -1601,38 +1601,88 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Fire animation from below — lightweight CSS-only embers
-      const fireOverlay = wrapper.createDiv({
+      // Tartarus fire — layered flames and floating embers
+      const fireContainer = wrapper.createDiv({
         attr: {
           style: `
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 120px;
+            height: 160px;
             z-index: 2;
             pointer-events: none;
             overflow: hidden;
           `
         }
       });
-      for (let i = 0; i < 8; i++) {
-        const x = 5 + Math.random() * 90;
-        const size = 20 + Math.random() * 30;
-        const delay = Math.random() * 3;
-        const dur = 2 + Math.random() * 2;
-        fireOverlay.createDiv({
+
+      // Layer 1: Base glow — warm ambient light at the bottom edge
+      fireContainer.createDiv({
+        attr: {
+          style: `
+            position: absolute;
+            bottom: 0;
+            left: -10%;
+            right: -10%;
+            height: 40px;
+            background: radial-gradient(ellipse at 50% 100%, rgba(200, 80, 20, 0.35) 0%, rgba(150, 50, 10, 0.15) 50%, transparent 80%);
+            animation: fireGlow 3s ease-in-out infinite;
+            filter: blur(12px);
+          `
+        }
+      });
+
+      // Layer 2: Flame tongues — irregular shapes that flicker
+      const flameColors = [
+        'rgba(220, 90, 20, 0.5)',
+        'rgba(200, 60, 10, 0.4)',
+        'rgba(255, 140, 30, 0.35)',
+        'rgba(180, 40, 10, 0.45)',
+        'rgba(240, 100, 20, 0.3)',
+      ];
+      for (let i = 0; i < 5; i++) {
+        const x = 8 + i * 18 + (Math.random() * 10 - 5);
+        const w = 30 + Math.random() * 40;
+        const h = 40 + Math.random() * 50;
+        const delay = Math.random() * 2;
+        const dur = 1.5 + Math.random() * 1.5;
+        fireContainer.createDiv({
           attr: {
             style: `
               position: absolute;
-              bottom: -10px;
+              bottom: -5px;
+              left: ${x}%;
+              width: ${w}px;
+              height: ${h}px;
+              background: radial-gradient(ellipse at 50% 100%, ${flameColors[i]} 0%, transparent 70%);
+              border-radius: 50% 50% 20% 20% / 70% 70% 30% 30%;
+              transform-origin: center bottom;
+              animation: fireFlicker ${dur}s ${delay}s ease-in-out infinite;
+              filter: blur(6px);
+            `
+          }
+        });
+      }
+
+      // Layer 3: Floating embers — small bright sparks rising
+      for (let i = 0; i < 6; i++) {
+        const x = 10 + Math.random() * 80;
+        const delay = Math.random() * 4;
+        const dur = 2.5 + Math.random() * 2;
+        const size = 2 + Math.random() * 3;
+        fireContainer.createDiv({
+          attr: {
+            style: `
+              position: absolute;
+              bottom: 10px;
               left: ${x}%;
               width: ${size}px;
-              height: ${size * 1.5}px;
-              background: radial-gradient(ellipse at center bottom, rgba(180, 80, 20, 0.5) 0%, rgba(200, 100, 30, 0.3) 40%, transparent 70%);
-              border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-              animation: fireRise ${dur}s ${delay}s ease-out infinite;
-              filter: blur(3px);
+              height: ${size}px;
+              background: rgba(255, ${160 + Math.floor(Math.random() * 80)}, ${40 + Math.floor(Math.random() * 60)}, 0.9);
+              border-radius: 50%;
+              animation: emberFloat ${dur}s ${delay}s ease-out infinite;
+              box-shadow: 0 0 ${size + 2}px rgba(255, 160, 40, 0.6);
             `
           }
         });
@@ -2346,11 +2396,21 @@ var TrackRankView = class extends import_obsidian.ItemView {
           0%, 100% { border-color: rgba(150, 123, 77, 0.2); }
           50% { border-color: rgba(150, 123, 77, 0.5); }
         }
-        @keyframes fireRise {
-          0% { transform: translateY(0) scaleX(1); opacity: 0.6; }
-          30% { transform: translateY(-20px) scaleX(1.1); opacity: 0.45; }
-          60% { transform: translateY(-50px) scaleX(0.9); opacity: 0.25; }
-          100% { transform: translateY(-90px) scaleX(0.7); opacity: 0; }
+        @keyframes fireFlicker {
+          0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.7; }
+          25% { transform: scaleY(1.3) scaleX(0.85); opacity: 0.5; }
+          50% { transform: scaleY(0.8) scaleX(1.15); opacity: 0.8; }
+          75% { transform: scaleY(1.1) scaleX(0.9); opacity: 0.55; }
+        }
+        @keyframes emberFloat {
+          0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+          10% { opacity: 0.8; }
+          50% { transform: translateY(-60px) translateX(15px) scale(0.6); opacity: 0.5; }
+          100% { transform: translateY(-120px) translateX(-10px) scale(0.2); opacity: 0; }
+        }
+        @keyframes fireGlow {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
         }
       `;
       document.head.appendChild(style);
@@ -2401,24 +2461,30 @@ var TrackRankView = class extends import_obsidian.ItemView {
         attr: {
           style: `
             flex: 1;
-            padding: 8px 10px;
+            padding: 10px 8px 8px;
             background: rgba(26, 20, 16, 0.7);
             border: 1px solid ${isClaimable ? colors.leather : colors.buccaneer};
             box-shadow: 1px 0 0 ${colors.buccaneer}, -1px 0 0 ${colors.buccaneer}, 0 1px 0 ${colors.buccaneer}, 0 -1px 0 ${colors.buccaneer}, 2px 2px 0 rgba(97, 49, 52, 0.3), -1px -1px 0 rgba(97, 49, 52, 0.2);
             cursor: pointer;
             transition: border-color 0.2s ease, transform 0.15s ease;
+            text-align: center;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
           `
         }
       });
 
-      // Reward preview area — fixed height so images don't enlarge the box
-      const previewArea = box.createDiv({
-        attr: { style: "height: 28px; text-align: center; margin-bottom: 4px; overflow: hidden;" }
+      // Icon slot — fixed 24x24, shows image or emoji
+      const iconSlot = box.createDiv({
+        attr: { style: "width: 24px; height: 24px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" }
       });
 
       let previewIndex = 0;
-      const renderPreview = (idx) => {
-        previewArea.empty();
+      const renderIcon = (idx) => {
+        iconSlot.empty();
         if (!poolOptions || poolOptions.length === 0) return;
         const opt = poolOptions[idx % poolOptions.length];
         const opacityStyle = isClaimable ? '1' : '0.5';
@@ -2428,46 +2494,29 @@ var TrackRankView = class extends import_obsidian.ItemView {
           if (!opt.image.startsWith('http://') && !opt.image.startsWith('https://') && !opt.image.startsWith('data:')) {
             try { resolvedImg = this.plugin.app.vault.adapter.getResourcePath(opt.image); } catch (e) {}
           }
-          const rwdImg = previewArea.createEl("img", {
+          const rwdImg = iconSlot.createEl("img", {
             attr: {
               src: resolvedImg,
-              style: `height: 22px; width: auto; max-width: 100%; object-fit: contain; opacity: ${opacityStyle}; filter: ${filterStyle}; vertical-align: middle;`
+              style: `width: 24px; height: 24px; object-fit: cover; border-radius: 50%; opacity: ${opacityStyle}; filter: ${filterStyle};`
             }
           });
           rwdImg.onerror = () => {
             rwdImg.remove();
-            if (opt.emoji) previewArea.createEl("div", {
+            if (opt.emoji) iconSlot.createEl("span", {
               text: opt.emoji,
-              attr: { style: `font-size: 20px; opacity: ${opacityStyle};` }
+              attr: { style: `font-size: 18px; line-height: 24px; opacity: ${opacityStyle};` }
             });
           };
         } else if (opt.emoji) {
-          previewArea.createEl("div", {
+          iconSlot.createEl("span", {
             text: opt.emoji,
-            attr: { style: `font-size: 20px; opacity: ${opacityStyle};` }
+            attr: { style: `font-size: 18px; line-height: 24px; opacity: ${opacityStyle};` }
           });
-        }
-        // Show description below image if available
-        if (opt.description && opt.description !== `[${type} ${poolOptions[0]?.id?.split('-')[1] || ''} reward]`) {
-          previewArea.createEl("div", {
-            text: opt.description,
-            attr: { style: `font-size: 7px; color: ${colors.naturalGrey}; opacity: 0.8; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;` }
-          });
-        }
-        // Page indicator dots
-        if (poolOptions.length > 1) {
-          const dots = previewArea.createDiv({ attr: { style: "margin-top: 3px;" } });
-          for (let i = 0; i < poolOptions.length; i++) {
-            dots.createEl("span", {
-              text: "\u2022",
-              attr: { style: `font-size: 8px; color: ${i === idx % poolOptions.length ? colors.leather : colors.naturalGrey}; margin: 0 1px; opacity: ${i === idx % poolOptions.length ? '1' : '0.4'};` }
-            });
-          }
         }
       };
-      renderPreview(0);
+      renderIcon(0);
 
-      // Title row
+      // Title
       box.createEl("div", {
         text: title.toUpperCase(),
         attr: {
@@ -2477,12 +2526,12 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-weight: 600;
             letter-spacing: 2px;
             color: ${colors.naturalGrey};
-            margin-bottom: 4px;
+            margin-bottom: 3px;
           `
         }
       });
 
-      // Progress text
+      // Progress / Claim
       const progressEl = box.createEl("div", {
         text: isClaimable ? "CLAIM" : subtitle || `${current}/${total}`,
         attr: {
@@ -2496,7 +2545,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Remaining text
+      // Remaining
       if (!isClaimable && remaining !== undefined) {
         box.createEl("div", {
           text: `${remaining} to go`,
@@ -2511,32 +2560,48 @@ var TrackRankView = class extends import_obsidian.ItemView {
         });
       }
 
-      // Click handler — cycle through rewards, claim opens modal
-      box.onclick = async (e) => {
-        if (isClaimable && e.target === progressEl) {
-          // Tapping "CLAIM" text opens the selection modal
-          const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
-          if (pendingReward) {
-            new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
-              this.plugin.refreshRankView();
-            }).open();
+      // Dots indicator
+      if (poolOptions && poolOptions.length > 1) {
+        const dots = box.createDiv({ attr: { style: "margin-top: 3px;" } });
+        const updateDots = (idx) => {
+          dots.empty();
+          for (let i = 0; i < poolOptions.length; i++) {
+            dots.createEl("span", {
+              text: "\u2022",
+              attr: { style: `font-size: 7px; color: ${i === idx % poolOptions.length ? colors.leather : colors.naturalGrey}; margin: 0 1px; opacity: ${i === idx % poolOptions.length ? '1' : '0.3'};` }
+            });
           }
-          return;
-        }
-        // Cycle to next reward preview
-        if (poolOptions && poolOptions.length > 1) {
+        };
+        updateDots(0);
+
+        // Click cycles icon + dots
+        box.onclick = async (e) => {
+          if (isClaimable && e.target === progressEl) {
+            const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
+            if (pendingReward) {
+              new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
+                this.plugin.refreshRankView();
+              }).open();
+            }
+            return;
+          }
           previewIndex++;
-          renderPreview(previewIndex);
-        } else if (isClaimable) {
-          // Only 1 or 0 options, fall through to claim
-          const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
-          if (pendingReward) {
-            new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
-              this.plugin.refreshRankView();
-            }).open();
+          renderIcon(previewIndex);
+          updateDots(previewIndex);
+        };
+      } else {
+        // Single or no options — click claims or shows notice
+        box.onclick = async () => {
+          if (isClaimable) {
+            const pendingReward = settings.pendingRewards?.find(r => r.rewardType === type);
+            if (pendingReward) {
+              new RewardSelectionModal(this.plugin.app, this.plugin, pendingReward, () => {
+                this.plugin.refreshRankView();
+              }).open();
+            }
           }
-        }
-      };
+        };
+      }
     };
 
     createRewardBox(container, {
