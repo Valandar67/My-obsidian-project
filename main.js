@@ -1633,39 +1633,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Layer 2: Flame tongues — irregular shapes that flicker
-      const flameColors = [
-        'rgba(220, 90, 20, 0.5)',
-        'rgba(200, 60, 10, 0.4)',
-        'rgba(255, 140, 30, 0.35)',
-        'rgba(180, 40, 10, 0.45)',
-        'rgba(240, 100, 20, 0.3)',
-      ];
-      for (let i = 0; i < 5; i++) {
-        const x = 8 + i * 18 + (Math.random() * 10 - 5);
-        const w = 30 + Math.random() * 40;
-        const h = 40 + Math.random() * 50;
-        const delay = Math.random() * 2;
-        const dur = 1.5 + Math.random() * 1.5;
-        fireContainer.createDiv({
-          attr: {
-            style: `
-              position: absolute;
-              bottom: -5px;
-              left: ${x}%;
-              width: ${w}px;
-              height: ${h}px;
-              background: radial-gradient(ellipse at 50% 100%, ${flameColors[i]} 0%, transparent 70%);
-              border-radius: 50% 50% 20% 20% / 70% 70% 30% 30%;
-              transform-origin: center bottom;
-              animation: fireFlicker ${dur}s ${delay}s ease-in-out infinite;
-              filter: blur(6px);
-            `
-          }
-        });
-      }
-
-      // Layer 3: Floating embers — small bright sparks rising
+      // Layer 2: Floating embers — small bright sparks rising
       for (let i = 0; i < 6; i++) {
         const x = 10 + Math.random() * 80;
         const delay = Math.random() * 4;
