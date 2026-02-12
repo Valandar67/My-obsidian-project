@@ -1532,6 +1532,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
               z-index: 0;
               overflow: hidden;
               pointer-events: none;
+              -webkit-mask-image: linear-gradient(to bottom, white 0%, white 25%, transparent 100%);
+              mask-image: linear-gradient(to bottom, white 0%, white 25%, transparent 100%);
             `
           }
         });
@@ -1548,20 +1550,6 @@ var TrackRankView = class extends import_obsidian.ItemView {
             `
           }
         }).onerror = function() { tartImgWrap.remove(); };
-        // Full-height gradient fade — starts from zero opacity at top
-        tartImgWrap.createDiv({
-          attr: {
-            style: `
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg} 25%, ${colors.bg}f5 35%, ${colors.bg}dd 45%, ${colors.bg}99 58%, ${colors.bg}55 70%, ${colors.bg}22 82%, transparent 100%);
-              pointer-events: none;
-            `
-          }
-        });
         // Spacer to push content below the image
         tartarusContent.createDiv({
           attr: { style: "width: 100%; padding-top: 45%; pointer-events: none;" }
@@ -1691,6 +1679,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
               z-index: 0;
               overflow: hidden;
               pointer-events: none;
+              -webkit-mask-image: linear-gradient(to bottom, white 0%, white 25%, transparent 100%);
+              mask-image: linear-gradient(to bottom, white 0%, white 25%, transparent 100%);
             `
           }
         });
@@ -1707,20 +1697,6 @@ var TrackRankView = class extends import_obsidian.ItemView {
             `
           }
         }).onerror = function() { bossImgWrap.remove(); };
-        // Full-height gradient fade — starts from zero opacity at top
-        bossImgWrap.createDiv({
-          attr: {
-            style: `
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg} 25%, ${colors.bg}f5 35%, ${colors.bg}dd 45%, ${colors.bg}99 58%, ${colors.bg}55 70%, ${colors.bg}22 82%, transparent 100%);
-              pointer-events: none;
-            `
-          }
-        });
         // Click the boss image area to show boss reward
         bossImgWrap.style.pointerEvents = "auto";
         bossImgWrap.style.cursor = "pointer";
