@@ -1557,7 +1557,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
               left: 0;
               right: 0;
               bottom: 0;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f0 12%, ${colors.bg}cc 28%, ${colors.bg}88 45%, ${colors.bg}44 62%, ${colors.bg}18 78%, transparent 100%);
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg} 25%, ${colors.bg}f5 35%, ${colors.bg}dd 45%, ${colors.bg}99 58%, ${colors.bg}55 70%, ${colors.bg}22 82%, transparent 100%);
               pointer-events: none;
             `
           }
@@ -1716,7 +1716,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
               left: 0;
               right: 0;
               bottom: 0;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f0 12%, ${colors.bg}cc 28%, ${colors.bg}88 45%, ${colors.bg}44 62%, ${colors.bg}18 78%, transparent 100%);
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg} 25%, ${colors.bg}f5 35%, ${colors.bg}dd 45%, ${colors.bg}99 58%, ${colors.bg}55 70%, ${colors.bg}22 82%, transparent 100%);
               pointer-events: none;
             `
           }
