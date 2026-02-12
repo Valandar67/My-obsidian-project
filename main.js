@@ -317,6 +317,7 @@ var DEFAULT_SETTINGS = {
   customBosses: [],
   customTartarusTasks: [],
   tartarusImage: null,
+  tartarusBackgroundImage: null,
   hadesWrathApplied: false,
   // HP threshold boss images
   bossStartOfDayHP: null,
@@ -1438,9 +1439,10 @@ var TrackRankView = class extends import_obsidian.ItemView {
       // Add gothic background
       wrapper.createDiv({ cls: 'tartarus-gothic-bg' });
 
-      // 9:16 Background image with vignette (same as boss dashboard)
-      if (settings.dashboardBgImage) {
-        let tartBgUrl = settings.dashboardBgImage;
+      // 9:16 Background image with vignette (Tartarus-specific or fallback to dashboard)
+      const tartarusBgSrc = settings.tartarusBackgroundImage || settings.dashboardBgImage;
+      if (tartarusBgSrc) {
+        let tartBgUrl = tartarusBgSrc;
         if (!tartBgUrl.startsWith('http://') && !tartBgUrl.startsWith('https://') && !tartBgUrl.startsWith('data:')) {
           try { tartBgUrl = this.app.vault.adapter.getResourcePath(tartBgUrl); } catch (e) {}
         }
@@ -2069,7 +2071,8 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
       const effectiveNow = getEffectiveNow(settings);
       const daysIn = settings.tartarusStartDate ? Math.floor((effectiveNow.getTime() - new Date(settings.tartarusStartDate).getTime()) / (24 * 60 * 60 * 1e3)) : 0;
-      const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
+      const baseReq = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
+      const requiredTasks = settings.hadesWrathApplied ? settings.tartarusPenanceTasks.length : baseReq;
       const completedTasks = settings.tartarusPenanceTasks.filter((t) => t.completed).length;
       const remainingTasks = requiredTasks - completedTasks;
       warningBox.createEl("div", {
@@ -3292,6 +3295,7 @@ var PenanceModal = class extends import_obsidian.Modal {
         settings.inTartarus = false;
         settings.tartarusPenanceTasks = [];
         settings.tartarusStartDate = null;
+        settings.hadesWrathApplied = false;
         await this.plugin.saveSettings();
         this.plugin.refreshRankView();
         new import_obsidian.Notice("You have escaped Tartarus using 3 discipline tokens!");
@@ -3301,7 +3305,8 @@ var PenanceModal = class extends import_obsidian.Modal {
     if (settings.tartarusPenanceTasks.length === 0) {
       settings.tartarusPenanceTasks = getPenanceTasksForTier(settings.currentTier, settings);
     }
-    const requiredTasks = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
+    const baseRequired = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
+    const requiredTasks = settings.hadesWrathApplied ? settings.tartarusPenanceTasks.length : baseRequired;
     contentEl.createEl("div", {
       text: `Complete ${requiredTasks} tasks to escape Tartarus`,
       attr: {
@@ -3452,6 +3457,7 @@ var PenanceModal = class extends import_obsidian.Modal {
         settings.inTartarus = false;
         settings.tartarusPenanceTasks = [];
         settings.tartarusStartDate = null;
+        settings.hadesWrathApplied = false;
         await this.plugin.saveSettings();
         this.plugin.refreshRankView();
         new import_obsidian.Notice("You have escaped Tartarus! The boss awaits...");
@@ -5179,7 +5185,7 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       attr: { style: "font-size: 10px; transition: transform 0.2s; width: 12px;" }
     });
     header.createEl("span", {
-      text: `${icon}  ${title}`,
+      text: icon ? `${icon}  ${title}` : title,
       attr: { style: "font-weight: 600; font-size: 0.95em;" }
     });
     const body = section.createDiv({
@@ -5232,32 +5238,32 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
       attr: { style: `font-weight: 600; color: ${this.plugin.settings.inTartarus ? 'var(--text-error)' : 'var(--text-normal)'};` }
     });
 
-    // ===== 1. THEME & APPEARANCE =====
-    const themeBody = this.createCollapsibleSection(containerEl, "Theme & Appearance", "\u{1F3A8}", false);
+    // ===== 1. APPEARANCE =====
+    const themeBody = this.createCollapsibleSection(containerEl, "Appearance", "", false);
     this.renderThemeSection(themeBody);
 
-    // ===== 2. ACTIVITIES & HABITS =====
-    const activitiesBody = this.createCollapsibleSection(containerEl, "Activities & Habits", "\u2694\uFE0F", false);
+    // ===== 2. HABITS & ACTIVITIES =====
+    const activitiesBody = this.createCollapsibleSection(containerEl, "Habits & Activities", "", false);
     this.renderActivitiesSection(activitiesBody);
 
     // ===== 3. BOSS PROGRESSION =====
-    const bossBody = this.createCollapsibleSection(containerEl, "Boss Progression", "\u{1F409}", false);
+    const bossBody = this.createCollapsibleSection(containerEl, "Boss Progression", "", false);
     this.renderBossProgressionSection(bossBody);
 
     // ===== 4. REWARDS =====
-    const rewardsBody = this.createCollapsibleSection(containerEl, "Rewards", "\u{1F3C6}", false);
+    const rewardsBody = this.createCollapsibleSection(containerEl, "Rewards", "", false);
     this.renderRewardPoolsSection(rewardsBody);
 
     // ===== 5. TARTARUS =====
-    const tartarusBody = this.createCollapsibleSection(containerEl, "Tartarus & Penance", "\u{1F525}", false);
+    const tartarusBody = this.createCollapsibleSection(containerEl, "Tartarus", "", false);
     this.renderTartarusSection(tartarusBody);
 
     // ===== 6. TEMPLE UPKEEP =====
-    const templeBody = this.createCollapsibleSection(containerEl, "Temple Upkeep", "\u{1F3DB}", false);
+    const templeBody = this.createCollapsibleSection(containerEl, "Temple Upkeep", "", false);
     this.renderTempleUpkeepSection(templeBody);
 
     // ===== 7. SYSTEM =====
-    const systemBody = this.createCollapsibleSection(containerEl, "System & Tools", "\u2699\uFE0F", false);
+    const systemBody = this.createCollapsibleSection(containerEl, "System", "", false);
     this.renderSystemSection(systemBody);
   }
 
@@ -6089,6 +6095,13 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
     new import_obsidian.Setting(containerEl).setName("Tartarus image").setDesc("Custom image shown when in Tartarus (URL or vault path)").addText(
       (t) => t.setPlaceholder("https://... or vault/path/to/image.png").setValue(this.plugin.settings.tartarusImage || "").onChange(async (v) => {
         this.plugin.settings.tartarusImage = v || null;
+        await this.plugin.saveSettings();
+        this.plugin.refreshRankView();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Tartarus background image").setDesc("Separate background for Tartarus view (falls back to dashboard background if empty)").addText(
+      (t) => t.setPlaceholder("https://... or vault/path/to/image.png").setValue(this.plugin.settings.tartarusBackgroundImage || "").onChange(async (v) => {
+        this.plugin.settings.tartarusBackgroundImage = v || null;
         await this.plugin.saveSettings();
         this.plugin.refreshRankView();
       })
