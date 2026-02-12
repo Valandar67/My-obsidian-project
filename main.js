@@ -770,7 +770,7 @@ function enterTartarus(settings) {
   settings.inTartarus = true;
   settings.tartarusStartDate = getEffectiveTodayISO(settings);
   settings.bossCurrentHP = settings.bossMaxHP;
-  settings.tartarusPenanceTasks = [];
+  settings.tartarusPenanceTasks = getPenanceTasksForTier(settings.currentTier, settings);
   settings.failedThresholdDays = 0;
   settings.hadesWrathApplied = false;
   new import_obsidian.Notice("You have entered TARTARUS. Complete penance to escape.");
@@ -6131,27 +6131,34 @@ var TrackRankSettingTab = class extends import_obsidian.PluginSettingTab {
         rangeArrow.textContent = isOpen ? "\u25B6" : "\u25BC";
       });
 
-      const defaultTasks = (DEFAULT_TARTARUS_TASKS[range] || []).map(t => t.description);
-      const customTasks = this.plugin.settings.customTartarusTasks?.filter(t => t.tierRange === range) || [];
-      const tasks = customTasks.length > 0 ? customTasks.map(t => t.description) : defaultTasks;
+      // Get tasks from the correct format: { tierRange, tasks: [{id, description}] }
+      const customEntry = this.plugin.settings.customTartarusTasks?.find(t => t.tierRange === range && t.tasks);
+      const tasks = customEntry?.tasks?.length ? customEntry.tasks : (DEFAULT_TARTARUS_TASKS[range] || []);
 
       tasks.forEach((task, taskIndex) => {
-        new import_obsidian.Setting(content).setName(`Task ${taskIndex + 1}`).addText(
-          (t) => t.setValue(task).onChange(async (v) => {
-            let customForRange = this.plugin.settings.customTartarusTasks?.filter(ct => ct.tierRange === range) || [];
-            if (customForRange.length === 0) {
-              customForRange = defaultTasks.map(dt => ({ tierRange: range, description: dt }));
-              this.plugin.settings.customTartarusTasks = [...(this.plugin.settings.customTartarusTasks || []).filter(ct => ct.tierRange !== range), ...customForRange];
-            }
-            const updated = this.plugin.settings.customTartarusTasks.filter(ct => ct.tierRange === range);
-            if (updated[taskIndex]) updated[taskIndex].description = v;
+        const row = new import_obsidian.Setting(content).setName(`Task ${taskIndex + 1}`).addText(
+          (t) => t.setValue(task.description).onChange(async (v) => {
+            this.updateTartarusTask(range, taskIndex, v);
             await this.plugin.saveSettings();
           })
         );
+        row.addButton((btn) => btn.setButtonText("Remove").setWarning().onClick(async () => {
+          this.removeTartarusTask(range, taskIndex);
+          await this.plugin.saveSettings();
+          this.display();
+        }));
       });
-      new import_obsidian.Setting(content).addButton(
+      const btnRow = new import_obsidian.Setting(content);
+      btnRow.addButton(
+        (btn) => btn.setButtonText("Add Task").onClick(async () => {
+          this.addTartarusTask(range);
+          await this.plugin.saveSettings();
+          this.display();
+        })
+      );
+      btnRow.addButton(
         (btn) => btn.setButtonText("Reset to Defaults").onClick(async () => {
-          this.plugin.settings.customTartarusTasks = this.plugin.settings.customTartarusTasks?.filter((t) => t.tierRange !== range) || [];
+          this.plugin.settings.customTartarusTasks = (this.plugin.settings.customTartarusTasks || []).filter((t) => t.tierRange !== range);
           await this.plugin.saveSettings();
           this.display();
         })
@@ -7086,6 +7093,24 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
       this.settings._rewardPoolsMigrated = true;
       delete this.settings.rewardPools;
       debugLog.log("META", "Migrated shared rewardPools to 3 separate pools");
+    }
+    // Migrate flat-format customTartarusTasks to grouped format
+    if (this.settings.customTartarusTasks?.length > 0 && !this.settings.customTartarusTasks[0]?.tasks) {
+      const flatEntries = this.settings.customTartarusTasks;
+      const grouped = {};
+      flatEntries.forEach(entry => {
+        if (!entry.tierRange) return;
+        if (!grouped[entry.tierRange]) grouped[entry.tierRange] = [];
+        grouped[entry.tierRange].push({
+          id: entry.id || `migrated-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          description: entry.description || "Penance task"
+        });
+      });
+      this.settings.customTartarusTasks = Object.entries(grouped).map(([tierRange, tasks]) => ({
+        tierRange,
+        tasks
+      }));
+      debugLog.log("META", "Migrated flat customTartarusTasks to grouped format");
     }
     await this.saveSettings();
   }
