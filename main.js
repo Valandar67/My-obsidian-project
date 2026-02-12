@@ -1548,16 +1548,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
             `
           }
         }).onerror = function() { tartImgWrap.remove(); };
-        // Heavy gradient fade from below
+        // Full-height gradient fade — starts from zero opacity at top
         tartImgWrap.createDiv({
           attr: {
             style: `
               position: absolute;
-              bottom: 0;
+              top: 0;
               left: 0;
               right: 0;
-              height: 80%;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f0 15%, ${colors.bg}cc 35%, ${colors.bg}88 55%, transparent 100%);
+              bottom: 0;
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f0 12%, ${colors.bg}cc 28%, ${colors.bg}88 45%, ${colors.bg}44 62%, ${colors.bg}18 78%, transparent 100%);
               pointer-events: none;
             `
           }
@@ -1707,16 +1707,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
             `
           }
         }).onerror = function() { bossImgWrap.remove(); };
-        // Heavy gradient fade from below — smoother multi-stop
+        // Full-height gradient fade — starts from zero opacity at top
         bossImgWrap.createDiv({
           attr: {
             style: `
               position: absolute;
-              bottom: 0;
+              top: 0;
               left: 0;
               right: 0;
-              height: 85%;
-              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f5 10%, ${colors.bg}e0 20%, ${colors.bg}cc 30%, ${colors.bg}99 45%, ${colors.bg}55 60%, ${colors.bg}22 75%, transparent 100%);
+              bottom: 0;
+              background: linear-gradient(to top, ${colors.bg} 0%, ${colors.bg}f0 12%, ${colors.bg}cc 28%, ${colors.bg}88 45%, ${colors.bg}44 62%, ${colors.bg}18 78%, transparent 100%);
               pointer-events: none;
             `
           }
@@ -2435,9 +2435,9 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Reward preview area — cycles through all pool options on click
+      // Reward preview area — fixed height so images don't enlarge the box
       const previewArea = box.createDiv({
-        attr: { style: "min-height: 28px; text-align: center; margin-bottom: 4px;" }
+        attr: { style: "height: 28px; text-align: center; margin-bottom: 4px; overflow: hidden;" }
       });
 
       let previewIndex = 0;
@@ -2455,7 +2455,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           const rwdImg = previewArea.createEl("img", {
             attr: {
               src: resolvedImg,
-              style: `width: 100%; max-height: 48px; object-fit: contain; opacity: ${opacityStyle}; filter: ${filterStyle};`
+              style: `height: 22px; width: auto; max-width: 100%; object-fit: contain; opacity: ${opacityStyle}; filter: ${filterStyle}; vertical-align: middle;`
             }
           });
           rwdImg.onerror = () => {
