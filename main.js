@@ -1633,27 +1633,61 @@ var TrackRankView = class extends import_obsidian.ItemView {
         }
       });
 
-      // Layer 2: Floating embers — small bright sparks rising
-      for (let i = 0; i < 6; i++) {
-        const x = 10 + Math.random() * 80;
-        const delay = Math.random() * 4;
-        const dur = 2.5 + Math.random() * 2;
+      // Layer 2: Dynamic embers — spawned by JS, drift with changing wind
+      let windX = 0;
+      const windInterval = setInterval(() => {
+        windX = -30 + Math.random() * 60; // -30 to +30 px drift
+      }, 5000);
+      // Clean up interval when view is destroyed
+      this.register(() => clearInterval(windInterval));
+
+      const spawnEmber = () => {
         const size = 2 + Math.random() * 3;
-        fireContainer.createDiv({
+        const x = 5 + Math.random() * 90;
+        const rise = 80 + Math.random() * 60;
+        const dur = 2000 + Math.random() * 2000;
+        const drift = windX + (Math.random() * 20 - 10);
+        const r = 255, g = 150 + Math.floor(Math.random() * 90), b = 30 + Math.floor(Math.random() * 60);
+
+        const ember = fireContainer.createDiv({
           attr: {
             style: `
               position: absolute;
-              bottom: 10px;
+              bottom: 5px;
               left: ${x}%;
               width: ${size}px;
               height: ${size}px;
-              background: rgba(255, ${160 + Math.floor(Math.random() * 80)}, ${40 + Math.floor(Math.random() * 60)}, 0.9);
+              background: rgba(${r}, ${g}, ${b}, 0.9);
               border-radius: 50%;
-              animation: emberFloat ${dur}s ${delay}s ease-out infinite;
-              box-shadow: 0 0 ${size + 2}px rgba(255, 160, 40, 0.6);
+              opacity: 0;
+              box-shadow: 0 0 ${size + 2}px rgba(${r}, ${g}, ${b}, 0.6);
+              pointer-events: none;
             `
           }
         });
+
+        const anim = ember.animate([
+          { transform: 'translateY(0) translateX(0) scale(1)', opacity: 0 },
+          { opacity: 0.85, offset: 0.08 },
+          { opacity: 0.6, offset: 0.4 },
+          { transform: `translateY(-${rise}px) translateX(${drift}px) scale(0.3)`, opacity: 0 }
+        ], { duration: dur, easing: 'ease-out', fill: 'forwards' });
+
+        anim.onfinish = () => ember.remove();
+      };
+
+      // Spawn embers at staggered intervals
+      const emberInterval = setInterval(() => {
+        if (fireContainer.isConnected) {
+          spawnEmber();
+        } else {
+          clearInterval(emberInterval);
+        }
+      }, 350);
+      this.register(() => clearInterval(emberInterval));
+      // Seed a few immediately at random progress
+      for (let i = 0; i < 4; i++) {
+        setTimeout(() => spawnEmber(), i * 80);
       }
 
       // Note: No boss info, HP bar, or rewards shown in Tartarus
