@@ -1099,10 +1099,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
     return "Boss Dashboard";
   }
   async onOpen() {
+    this._renderIntervals = [];
     this.render();
     return Promise.resolve();
   }
   render() {
+    // Clear previous animation intervals to prevent stacking on re-render
+    if (this._renderIntervals) {
+      this._renderIntervals.forEach(id => clearInterval(id));
+      this._renderIntervals = [];
+    }
     const content = this.contentEl;
     content.empty();
     const settings = this.plugin.settings;
@@ -1197,14 +1203,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
       accent: themeColors.accent
     };
 
-    // Check and reset start-of-day HP tracking
-    const effectiveToday = getEffectiveTodayISO(settings);
-    if (settings.lastHPResetDate !== effectiveToday) {
-      settings.bossStartOfDayHP = settings.bossCurrentHP;
-      settings.lastHPResetDate = effectiveToday;
-      this.plugin.saveSettings();
-    }
-
+    // HP reset check is handled in the data layer (refresh), not here
     const wrapper = content.createDiv({
       cls: "track-habit-rank-container",
       attr: {
@@ -1781,12 +1780,16 @@ var TrackRankView = class extends import_obsidian.ItemView {
       });
 
       // Layer 2: Dynamic embers — spawned by JS, drift with changing wind
+      // Reduced spawn rate on mobile to save battery
+      const isMobile = this.app.isMobile;
+      const emberSpawnRate = isMobile ? 800 : 350;
+      const seedCount = isMobile ? 2 : 4;
+
       let windX = 0;
       const windInterval = setInterval(() => {
-        windX = -30 + Math.random() * 60; // -30 to +30 px drift
+        windX = -30 + Math.random() * 60;
       }, 5000);
-      // Clean up interval when view is destroyed
-      this.register(() => clearInterval(windInterval));
+      this._renderIntervals.push(windInterval);
 
       const spawnEmber = () => {
         const size = 2 + Math.random() * 3;
@@ -1823,17 +1826,17 @@ var TrackRankView = class extends import_obsidian.ItemView {
         anim.onfinish = () => ember.remove();
       };
 
-      // Spawn embers at staggered intervals
+      // Spawn embers at staggered intervals (tracked for cleanup on re-render)
       const emberInterval = setInterval(() => {
         if (fireContainer.isConnected) {
           spawnEmber();
         } else {
           clearInterval(emberInterval);
         }
-      }, 350);
-      this.register(() => clearInterval(emberInterval));
-      // Seed a few immediately at random progress
-      for (let i = 0; i < 4; i++) {
+      }, emberSpawnRate);
+      this._renderIntervals.push(emberInterval);
+      // Seed a few immediately
+      for (let i = 0; i < seedCount; i++) {
         setTimeout(() => spawnEmber(), i * 80);
       }
 
@@ -6943,6 +6946,12 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
     );
     const refresh = (0, import_obsidian.debounce)(async () => {
       debugLog.log("META", "Metadata cache changed - running checks");
+      // Reset start-of-day HP tracking (once per day)
+      const effectiveToday = getEffectiveTodayISO(this.settings);
+      if (this.settings.lastHPResetDate !== effectiveToday) {
+        this.settings.bossStartOfDayHP = this.settings.bossCurrentHP;
+        this.settings.lastHPResetDate = effectiveToday;
+      }
       await this.processNewCompletions();
       await this.checkBossDefeated();
       await this.checkDeathThreshold();
@@ -7607,9 +7616,15 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
       const pendingReward = this.createPendingReward(rewardTier, "activity");
       this.settings.pendingRewards.push(pendingReward);
       debugLog.log("DMG", "Activity reward earned!", { rewardTier, type: "activity" });
-      new RewardSelectionModal(this.app, this, pendingReward, () => {
-        this.refreshRankView();
-      }).open();
+      if (!this._rewardModalOpen) {
+        this._rewardModalOpen = true;
+        const modal = new RewardSelectionModal(this.app, this, pendingReward, () => {
+          this._rewardModalOpen = false;
+          this.refreshRankView();
+        });
+        modal.onClose = () => { this._rewardModalOpen = false; };
+        modal.open();
+      }
     }
   }
   /**
@@ -7623,9 +7638,15 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
     this.settings.pendingRewards.push(pendingReward);
     debugLog.log("DMG", "Boss reward earned!", { rewardTier, type: "boss", defeatedAtTier });
     setTimeout(() => {
-      new RewardSelectionModal(this.app, this, pendingReward, () => {
-        this.refreshRankView();
-      }).open();
+      if (!this._rewardModalOpen) {
+        this._rewardModalOpen = true;
+        const modal = new RewardSelectionModal(this.app, this, pendingReward, () => {
+          this._rewardModalOpen = false;
+          this.refreshRankView();
+        });
+        modal.onClose = () => { this._rewardModalOpen = false; };
+        modal.open();
+      }
     }, 1500);
   }
   /**
@@ -7642,9 +7663,15 @@ var TrackHabitRankPlugin = class extends import_obsidian.Plugin {
       const pendingReward = this.createPendingReward(rewardTier, "streak");
       this.settings.pendingRewards.push(pendingReward);
       debugLog.log("DMG", "Streak reward earned!", { rewardTier, type: "streak", weeks: this.settings.consecutivePerfectWeeks });
-      new RewardSelectionModal(this.app, this, pendingReward, () => {
-        this.refreshRankView();
-      }).open();
+      if (!this._rewardModalOpen) {
+        this._rewardModalOpen = true;
+        const modal = new RewardSelectionModal(this.app, this, pendingReward, () => {
+          this._rewardModalOpen = false;
+          this.refreshRankView();
+        });
+        modal.onClose = () => { this._rewardModalOpen = false; };
+        modal.open();
+      }
     }
   }
   /**
