@@ -4064,7 +4064,10 @@ var RewardSelectionModal = class extends import_obsidian.Modal {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const claimed = {
       id: `claimed-${Date.now()}`,
+      selectedOptionId: option.id,
       description: option.description,
+      emoji: option.emoji || "",
+      image: option.image || "",
       rewardTier: this.pendingReward.rewardTier,
       rewardType: this.pendingReward.rewardType,
       claimedAt: now,
@@ -4143,7 +4146,7 @@ var BossRewardModal = class extends import_obsidian.Modal {
 
     // Check if boss reward is available
     const bossDefeated = settings.bossCurrentHP <= 0;
-    const pendingBossReward = settings.pendingRewards?.find(r => r.type === 'boss');
+    const pendingBossReward = settings.pendingRewards?.find(r => r.rewardType === 'boss');
 
     if (pendingBossReward || bossDefeated) {
       // Show claimable boss reward
@@ -4384,14 +4387,22 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
       carousel.style.scrollbarWidth = "none";
 
       earnedRewards.forEach((reward) => {
-        const rwdPools = getRewardPoolsForType(settings, reward.rewardType || "activity");
-        const pool = rwdPools.find(p => p.tier === reward.rewardTier);
-        const option = pool?.options?.find(o => o.id === reward.selectedOptionId);
+        // Look up option: try stored selectedOptionId first, then fall back to pool lookup
+        let option = null;
+        if (reward.selectedOptionId) {
+          const rwdPools = getRewardPoolsForType(settings, reward.rewardType || "activity");
+          const pool = rwdPools.find(p => p.tier === reward.rewardTier);
+          option = pool?.options?.find(o => o.id === reward.selectedOptionId) || null;
+        }
+        // For claimed rewards without pool match, reconstruct from stored data
+        if (!option && reward.description) {
+          option = { description: reward.description, emoji: reward.emoji || "", image: reward.image || "" };
+        }
 
         const statusColors = {
           pending: "#967b4d",
           banked: "#928d85",
-          active: colors.green
+          active: "#6a9a5d"
         };
 
         const card = carousel.createDiv({
@@ -4642,7 +4653,12 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
     }
 
     // Empty state
-    if (earnedRewards.length === 0 && (!currentPool || currentPool.options.length === 0)) {
+    const rewardProgressCheck = this.plugin.getRewardProgress ? this.plugin.getRewardProgress() : null;
+    const hasAvailableRewards = rewardProgressCheck && ["activity", "streak", "boss"].some(type => {
+      const pools = getRewardPoolsForType(settings, type);
+      return pools.some(p => p.options && p.options.length > 0);
+    });
+    if (earnedRewards.length === 0 && !hasAvailableRewards) {
       contentEl.createEl("div", {
         text: "No rewards yet. Keep completing activities to earn rewards!",
         attr: {
