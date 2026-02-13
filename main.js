@@ -1512,7 +1512,7 @@ var TrackRankView = class extends import_obsidian.ItemView {
           style: `
             position: relative;
             z-index: 3;
-            padding-top: 24px;
+            padding: 40px 16px 60px 16px;
           `
         }
       });
@@ -1597,8 +1597,153 @@ var TrackRankView = class extends import_obsidian.ItemView {
             font-size: 12px;
             font-style: italic;
             letter-spacing: 2px;
-            margin-bottom: 24px;
+            margin-bottom: 32px;
             color: ${colors.naturalGrey};
+          `
+        }
+      });
+
+      // Penance progress — inline on the dashboard
+      const effectiveNowTart = getEffectiveNow(settings);
+      const daysInTart = settings.tartarusStartDate ? Math.floor((effectiveNowTart.getTime() - new Date(settings.tartarusStartDate).getTime()) / (24 * 60 * 60 * 1e3)) : 0;
+      const baseReqTart = settings.currentTier <= 4 ? 3 : settings.currentTier <= 9 ? 4 : 5;
+      const reqTart = settings.hadesWrathApplied ? settings.tartarusPenanceTasks.length : baseReqTart;
+      const completedTart = settings.tartarusPenanceTasks.filter((t) => t.completed).length;
+
+      // Days counter
+      tartarusContent.createEl("div", {
+        text: `Day ${daysInTart}`,
+        attr: {
+          style: `
+            font-family: "Times New Roman", serif;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            margin-bottom: 6px;
+            color: ${colors.peachYellow};
+            text-shadow: 0 0 12px rgba(200, 80, 20, 0.3);
+          `
+        }
+      });
+      tartarusContent.createEl("div", {
+        text: "of imprisonment",
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 10px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+            color: ${colors.naturalGrey};
+            opacity: 0.7;
+          `
+        }
+      });
+
+      // Task progress bar
+      const progressFraction = reqTart > 0 ? completedTart / reqTart : 0;
+      const progressBox = tartarusContent.createDiv({
+        attr: {
+          style: `
+            margin: 0 auto 10px auto;
+            max-width: 260px;
+          `
+        }
+      });
+      const progressTrack = progressBox.createDiv({
+        attr: {
+          style: `
+            width: 100%;
+            height: 6px;
+            background: rgba(150, 123, 77, 0.15);
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(150, 123, 77, 0.2);
+          `
+        }
+      });
+      progressTrack.createDiv({
+        attr: {
+          style: `
+            width: ${Math.round(progressFraction * 100)}%;
+            height: 100%;
+            background: linear-gradient(90deg, ${colors.danger}, ${colors.leather});
+            border-radius: 3px;
+            transition: width 0.4s ease;
+          `
+        }
+      });
+      progressBox.createEl("div", {
+        text: `${completedTart} of ${reqTart} tasks completed`,
+        attr: {
+          style: `
+            font-family: "Times New Roman", serif;
+            font-size: 11px;
+            letter-spacing: 1px;
+            margin-top: 6px;
+            color: ${colors.naturalGrey};
+          `
+        }
+      });
+
+      // Hades' Wrath warning if active
+      if (settings.hadesWrathApplied) {
+        tartarusContent.createEl("div", {
+          text: "HADES' WRATH \u2014 Tasks have been doubled",
+          attr: {
+            style: `
+              font-family: "Times New Roman", serif;
+              font-size: 10px;
+              letter-spacing: 2px;
+              text-transform: uppercase;
+              margin-top: 12px;
+              padding: 8px 16px;
+              color: ${colors.danger};
+              border: 1px solid ${colors.danger};
+              background: rgba(97, 49, 52, 0.1);
+            `
+          }
+        });
+      } else if (daysInTart >= 2 && completedTart < reqTart && settings.systemState !== "paused") {
+        tartarusContent.createEl("div", {
+          text: `Hades' Wrath in ${3 - daysInTart} day(s)`,
+          attr: {
+            style: `
+              font-family: "Times New Roman", serif;
+              font-size: 10px;
+              letter-spacing: 2px;
+              text-transform: uppercase;
+              margin-top: 12px;
+              padding: 8px 16px;
+              color: ${colors.leather};
+              border: 1px solid rgba(150, 123, 77, 0.3);
+              background: rgba(150, 123, 77, 0.05);
+            `
+          }
+        });
+      }
+
+      // Atmospheric lore
+      const tartarusLore = [
+        "Here the wicked are purified through suffering, that they may ascend once more.",
+        "No soul escapes Tartarus unchanged. The fire burns away weakness.",
+        "The gates will open only for those who endure what they once fled.",
+        "Even the Titans were cast here. Only discipline breaks the chains.",
+        "Deeper than Hades, darker than night. Redemption is earned in agony."
+      ];
+      const loreIndex = daysInTart % tartarusLore.length;
+      tartarusContent.createEl("div", {
+        text: tartarusLore[loreIndex],
+        attr: {
+          style: `
+            font-family: "Georgia", serif;
+            font-size: 11px;
+            font-style: italic;
+            line-height: 1.6;
+            max-width: 280px;
+            margin: 28px auto 0 auto;
+            color: ${colors.naturalGrey};
+            opacity: 0.6;
           `
         }
       });
