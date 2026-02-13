@@ -4505,8 +4505,10 @@ var RewardLogModal = class _RewardLogModal extends import_obsidian.Modal {
               new _RewardLogModal(this.app, this.plugin).open();
             }).open();
           } else if (reward.status === 'active') {
-            reward.used = true;
+            const claimedRef = settings.claimedRewards.find(r => r.id === reward.id);
+            if (claimedRef) claimedRef.used = true;
             this.plugin.saveSettings();
+            this.plugin.refreshRankView();
             this.onOpen();
             new import_obsidian.Notice("Reward marked as used");
           }
