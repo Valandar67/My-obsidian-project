@@ -1,10 +1,10 @@
-# MORPHEUS — Unified Obsidian Mobile Plugin Prompt
+# OLEN — Unified Obsidian Mobile Plugin Prompt
 
 ## Vision
 
-Build a single, self-contained Obsidian plugin called **Morpheus** that replaces the current fragmented system (separate `Home.md` dataviewjs, `Drawing hub.md`, `Drawing Session.md`, and the `TrackHabitRank` main.js plugin) into **one cohesive app-like experience** on Obsidian Mobile.
+Build a single, self-contained Obsidian plugin called **Olen** that replaces the current fragmented system (separate `Home.md` dataviewjs, `Drawing hub.md`, `Drawing Session.md`, and the `TrackHabitRank` main.js plugin) into **one cohesive app-like experience** on Obsidian Mobile.
 
-Morpheus is a mythological life-operating system. It is your personal oracle — part habit tracker, part day planner, part progress dashboard, part session manager for creative activities. It should feel like opening a premium native app, not browsing a note.
+Olen is a mythological life-operating system. It is your personal oracle — part habit tracker, part day planner, part progress dashboard, part session manager for creative activities. Prophetic clarity, not passive nudges. It should feel like opening a premium native app, not browsing a note.
 
 ---
 
@@ -12,17 +12,17 @@ Morpheus is a mythological life-operating system. It is your personal oracle —
 
 ### Single Plugin, Multiple Views
 
-The plugin registers **one Obsidian `ItemView`** as its main interface (the "Morpheus Dashboard"), opened via a ribbon icon or command. All UI is rendered programmatically in TypeScript/JS — **no dataviewjs blocks, no embedded markdown, no separate `.md` pages for UI**. Markdown files are used only as data storage (session logs, daily notes, skill trees).
+The plugin registers **one Obsidian `ItemView`** as its main interface (the "Olen Dashboard"), opened via a ribbon icon or command. All UI is rendered programmatically in TypeScript/JS — **no dataviewjs blocks, no embedded markdown, no separate `.md` pages for UI**. Markdown files are used only as data storage (session logs, daily notes, skill trees).
 
 ```
-morpheus-plugin/
+olen-plugin/
 ├── main.ts              → Plugin entry point, registers views + commands
 ├── views/
 │   ├── DashboardView.ts → Main scrollable home (the "app")
 │   ├── SessionView.ts   → Active session screen (drawing, workout, etc.)
 │   └── OnboardingView.ts→ First-launch setup flow
 ├── engines/
-│   ├── MorpheusEngine.ts→ Priority logic, day-map generation, suggestions
+│   ├── OlenEngine.ts→ Priority logic, day-map generation, suggestions
 │   ├── BossEngine.ts    → Boss HP, tiers, Tartarus, damage calculations
 │   ├── RewardEngine.ts  → Reward pools, claiming, banking
 │   └── CalendarEngine.ts→ Calendar integration (read/write daily tasks)
@@ -37,12 +37,12 @@ morpheus-plugin/
 │   ├── SessionCard.ts   → Photo collage of recent sessions
 │   └── QuoteFooter.ts   → Rotating stoic quote at bottom
 ├── modals/
-│   ├── MorpheusDirectiveModal.ts → "The Directive" full-screen suggestion
+│   ├── OlenOracleModal.ts   → "The Oracle" full-screen suggestion
 │   ├── LogModal.ts      → Discipline/Flow/Skip logging
 │   ├── SkillPickerModal.ts → Add skills to a session
 │   └── TaskModal.ts     → Add/edit/reschedule a task
 ├── settings/
-│   └── MorpheusSettings.ts → Unified settings tab
+│   └── OlenSettings.ts → Unified settings tab
 ├── data/
 │   ├── bosses.ts        → Boss definitions (13 tiers)
 │   ├── defaultActivities.ts → Pre-built activity catalog with categories
@@ -74,7 +74,7 @@ Resolve the current 3-way color clash (green Home / red-gold plugin / gray Drawi
 ### Typography
 
 - **Display/Greeting**: A serif face for the large "Good evening, Valantis" — use `"Playfair Display", "Georgia", serif` at 32-40px, light weight
-- **Headings**: `"Times New Roman", serif` — small caps, letter-spacing 3px, uppercase, 11-13px — for labels like "THE DIRECTIVE", "WEEKLY RHYTHM"
+- **Headings**: `"Times New Roman", serif` — small caps, letter-spacing 3px, uppercase, 11-13px — for labels like "THE ORACLE", "WEEKLY RHYTHM"
 - **Body**: `"Georgia", serif` — 14px, italic for descriptions, regular for data
 - **Data/Numbers**: `"SF Mono", "Courier New", monospace` — for stats, timers, HP values
 
@@ -82,7 +82,7 @@ Resolve the current 3-way color clash (green Home / red-gold plugin / gray Drawi
 
 1. **Hero Background**: A user-selectable blurred image (from vault) covering the top ~40% of the dashboard, with heavy vignette (`radial-gradient`) and dark overlay. The greeting text floats over it. Exactly like the "Good evening, Marcus" screenshot.
 
-2. **Decorative Corners**: Keep your existing corner motif but use it sparingly — only on the main hero card and the Morpheus directive card. Gold (`#c9a84c`) lines, 16px.
+2. **Decorative Corners**: Keep your existing corner motif but use it sparingly — only on the main hero card and the Oracle card. Gold (`#c9a84c`) lines, 16px.
 
 3. **No harsh borders**: Cards use the frosted glass effect, not 1px solid borders. Corners and dividers are subtle gradient lines: `linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.3), transparent)`.
 
@@ -132,16 +132,16 @@ Within each chosen category, show the pre-built activities as toggle chips. The 
 For each chosen activity, set:
 - **Weekly target** (1-7 days)
 - **Preferred time** (Morning / Afternoon / Evening / Anytime)
-- **Neglect threshold** (days before Morpheus warns — default 3)
+- **Neglect threshold** (days before Olen warns — default 3)
 - **Priority level** (1-10 scale, labeled: 1-3 = Foundation, 4-6 = Growth, 7-10 = Aspiration)
 - **Has sessions?** (toggle — if yes, this activity opens a session view like Drawing currently does)
 
 ### Screen 5: Ready
 
 > **"The Oracle awakens."**
-> *Morpheus will guide your days. Trust the process.*
+> *Olen has spoken. Trust the process.*
 
-CTA button: **"Enter the Arena"** → Opens the dashboard.
+CTA button: **"Enter the Arena"** → Opens the dashboard. The oracle is ready.
 
 ---
 
@@ -163,7 +163,7 @@ Below the greeting, a subtitle pulled from context:
 - If streak is active: *"12 days strong. Keep the flame."*
 - If Tartarus: *"The underworld awaits your penance."*
 - If boss nearly dead: *"One final blow remains."*
-- Default: *"Step by step, you shape your path."*
+- Default: *"The path is clear. Walk it."*
 
 ### Section 2: Identity & Eudaimonia Bar
 
@@ -185,7 +185,7 @@ Category XP is earned by completing activities in that category. Every 100 XP = 
 
 **Eudaimonia Index**: A horizontal XP bar spanning the card width. The "Eudaimonia Index" is the overall level calculated from all category levels combined. Roman numeral suffix (Eudaimonia Index XXI). Progress toward next "chapter" (every 10 levels = 1 chapter).
 
-### Section 3: The Day Map (Morpheus Timeline)
+### Section 3: The Day Map (Olen Timeline)
 
 **This is the core daily planning feature.** Inspired by the "Your day at a glance" screenshot.
 
@@ -198,7 +198,7 @@ A vertical timeline with colored blocks showing the day's planned activities. Ea
 
 **How the Day Map is built:**
 
-1. Morpheus Engine runs at plugin load and generates a suggested schedule based on:
+1. Olen Engine runs at plugin load and generates a suggested schedule based on:
    - **Time-based overrides** (Workout always 6-9am)
    - **Priority + neglect** (highest priority neglected activities placed first)
    - **Blocking rules** (if Activity A blocks B, B doesn't appear until A is done)
@@ -208,7 +208,7 @@ A vertical timeline with colored blocks showing the day's planned activities. Ea
    - **User's preferred times** per activity
 2. The user sees the suggested day and can:
    - **Accept** an activity → opens the session view or marks as done
-   - **Skip** → moves to "skipped" state, Morpheus adjusts
+   - **Skip** → moves to "skipped" state, Olen adjusts
    - **Reschedule** → drag/tap to move to another time slot or another day
    - **Add task** → opens a quick-add modal (title, time, duration)
 3. **Midday check-in**: If the user opens the dashboard midday, they see what's done (strikethrough + checkmark), what's current (highlighted), and what's upcoming (dimmed).
@@ -219,13 +219,13 @@ End of day: 6 hrs, 23 min remaining
 [+ Create event]
 ```
 
-### Section 4: Morpheus Directive Card
+### Section 4: The Oracle Card
 
-A standout card (with decorative corners) showing the **current top suggestion** from the Morpheus Engine. Not a modal — it lives on the dashboard, always visible.
+A standout card (with decorative corners) showing the **current top suggestion** from the Olen Engine. Not a modal — it lives on the dashboard, always visible. When Olen speaks, it speaks here.
 
 ```
 ┌─────────────────────────────────────┐
-│  THE DIRECTIVE                      │
+│  THE ORACLE                         │
 │                                     │
 │  DRAWING                            │
 │  4 days since you last practiced.   │
@@ -331,7 +331,7 @@ Tapping [FINISH] opens a modal:
 
 ---
 
-## VI. Morpheus Engine — Priority & Scheduling Logic
+## VI. Olen Engine — Priority & Scheduling Logic
 
 ### Configuration Schema
 
@@ -428,13 +428,13 @@ The Day Map is generated once per day (or on manual refresh) by the engine:
 
 ## VII. Calendar Integration
 
-Morpheus integrates with the user's existing task/calendar workflow:
+Olen integrates with the user's existing task/calendar workflow:
 
 ### Option A: Daily Notes Integration
 - Read tasks from the user's Daily Note (`YYYY-MM-DD.md`) in a configured folder
 - Parse `- [ ] Task name @time` format
 - Display these as events on the Day Map
-- When user checks off a task on the Day Map, Morpheus writes the completion back to the daily note
+- When user checks off a task on the Day Map, Olen writes the completion back to the daily note
 
 ### Option B: Tasks Plugin Integration
 - If the Tasks plugin is installed, read tasks with due dates
@@ -442,10 +442,10 @@ Morpheus integrates with the user's existing task/calendar workflow:
 - Support "postpone to tomorrow" (updates the due date)
 
 ### Option C: Built-in Quick Tasks
-- Morpheus has its own simple task system stored in settings
+- Olen has its own simple task system stored in settings
 - Tasks have: title, date, time, duration, done status
 - UI for quick-add, drag to reschedule, postpone to tomorrow
-- These appear on the Day Map alongside Morpheus's activity suggestions
+- These appear on the Day Map alongside Olen's activity suggestions
 
 All three options can coexist. The Day Map merges them into one unified timeline.
 
@@ -523,7 +523,7 @@ A single settings tab with collapsible sections:
 1. **Profile**: Name, "My Why", background image, theme color override
 2. **Activities**: Add/edit/remove activities, set all config fields from §VI
 3. **Categories**: Rename categories, reorder, assign colors
-4. **Morpheus Rules**: Global neglect threshold, blocking rules, chains, alternates
+4. **Olen Rules**: Global neglect threshold, blocking rules, chains, alternates
 5. **Boss Progression**: Current tier, HP scaling, custom boss names/lore/images
 6. **Rewards**: Edit reward pools
 7. **Calendar**: Choose integration mode (Daily Notes / Tasks plugin / Built-in)
@@ -554,8 +554,8 @@ Since this is primarily used on Obsidian Mobile:
 |---|---|
 | **3 different color palettes** (green, red-gold, gray) | One unified "Elysian Dark" palette: warm blacks + burnished gold + category accent colors |
 | **Home.md is a markdown file with dataviewjs** | Dashboard is a plugin `ItemView` — no markdown rendering, pure programmatic UI |
-| **Drawing is a separate set of .md files** | Drawing becomes one activity within Morpheus. Session creation/tracking is handled by the plugin. Skill tree is rendered in-plugin. |
-| **Morpheus is only a command/modal** | Morpheus is the entire app. The Directive is a persistent card on the dashboard, not just a popup |
+| **Drawing is a separate set of .md files** | Drawing becomes one activity within Olen. Session creation/tracking is handled by the plugin. Skill tree is rendered in-plugin. |
+| **Olen is only a command/modal** | Olen is the entire app. The Oracle is a persistent card on the dashboard, not just a popup |
 | **No onboarding** | Full 5-step first-launch flow with identity, categories, activity selection |
 | **No day planning** | Day Map timeline is the central feature |
 | **No calendar** | Three integration options, all feeding into the Day Map |
@@ -563,7 +563,7 @@ Since this is primarily used on Obsidian Mobile:
 | **No progress analytics** | D/W/M/Y views with charts, heatmaps, trends |
 | **Each activity hub is a separate .md** | Activity hubs are views within the plugin — tap a grid card to see that activity's stats + sessions + skill tree |
 | **Settings scattered across plugin + localStorage** | One unified settings object, one settings tab |
-| **Decorative corners everywhere** | Corners used sparingly — hero card + directive card only. Rest uses frosted glass |
+| **Decorative corners everywhere** | Corners used sparingly — hero card + Oracle card only. Rest uses frosted glass |
 
 ---
 
@@ -595,11 +595,11 @@ For users with existing data:
 | "Create event" button | Day Planner app | Task Modal (§IV.3) |
 | D / W / M / Y tab switcher | Purposa | Progress View tabs (§VIII) |
 | Streak counter + "Today is your next 1%" | Purposa | Hero subtitle (§IV.1) |
-| Daily Mission card | Purposa | Morpheus Directive (§IV.4) |
+| Daily Mission card | Purposa | The Oracle (§IV.4) |
 | Tools grid (Dream Board, Focus Timer, etc.) | Purposa | Activity Grid (§IV.7) |
 | Monthly progress chart (Hours/Productivity/Mood) | Purposa | Monthly Overview (§IV.8) |
 | Best day / Average / Total stats | Purposa | Monthly Overview footer (§IV.8) |
-| "Not Today" concept | Purposa | "NOT NOW" on Directive + skip on Day Map |
+| "Not Today" concept | Purposa | "NOT NOW" on Oracle + skip on Day Map |
 | "My Why" + personalized goals | Goals app | Onboarding (§III) + Profile settings |
 | Goals as colored category cards | Goals app | Category cards in onboarding + identity section |
 | Study hours trend + daily focus bars | Study dashboard | Weekly Rhythm (§IV.6) |
@@ -613,7 +613,7 @@ For users with existing data:
 ## XVI. Development Order (Suggested)
 
 1. **Phase 1 — Core Shell**: Plugin scaffold, DashboardView, settings migration, Hero Greeting, basic activity list
-2. **Phase 2 — Morpheus Engine**: Priority system, suggestion algorithm, Directive card
+2. **Phase 2 — Olen Engine**: Priority system, suggestion algorithm, Oracle card
 3. **Phase 3 — Day Map**: Timeline component, accept/skip/reschedule, midday view
 4. **Phase 4 — Sessions**: Session creation, timer, skill picker, finish flow, session collage
 5. **Phase 5 — Progress**: Eudaimonia Index, category levels, D/W/M/Y analytics, charts
