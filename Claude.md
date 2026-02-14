@@ -2,7 +2,7 @@
 
 ## Vision
 
-Build a single, self-contained Obsidian plugin called **Olen** that replaces the current fragmented system (separate `Home.md` dataviewjs, `Drawing hub.md`, `Drawing Session.md`, and the `TrackHabitRank` main.js plugin) into **one cohesive app-like experience** on Obsidian Mobile.
+Build a single, self-contained Obsidian plugin called **Olen** that unifies the current fragmented UI layer (separate `Home.md` dataviewjs, `Drawing hub.md`, `Drawing Session.md`) into **one cohesive app-like experience** on Obsidian Mobile. **`TrackHabitRank` remains a separate, untouched plugin** — Olen reads from it and connects to its data, but does not absorb, replace, or modify it.
 
 Olen is a mythological life-operating system. It is your personal oracle — part habit tracker, part day planner, part progress dashboard, part session manager for creative activities. Prophetic clarity, not passive nudges. It should feel like opening a premium native app, not browsing a note.
 
@@ -52,7 +52,7 @@ olen-plugin/
 
 ### Data Model
 
-All state lives in `plugin.settings` (persisted via Obsidian's `saveData`). Session files remain as markdown notes in the vault (they are the user's creative output). The plugin reads/writes these vault files for session tracking.
+Olen's own state (UI preferences, category XP, skill tree, onboarding data) lives in `plugin.settings` (persisted via Obsidian's `saveData`). Boss HP, streaks, rewards, and habit data remain owned by `TrackHabitRank` — Olen reads that plugin's settings at runtime. Session files remain as markdown notes in the vault (they are the user's creative output). The plugin reads/writes these vault files for session tracking.
 
 ---
 
@@ -562,18 +562,20 @@ Since this is primarily used on Obsidian Mobile:
 | **Activities are not categorized** | 5 identity categories with colors, levels, and composite Eudaimonia Index |
 | **No progress analytics** | D/W/M/Y views with charts, heatmaps, trends |
 | **Each activity hub is a separate .md** | Activity hubs are views within the plugin — tap a grid card to see that activity's stats + sessions + skill tree |
-| **Settings scattered across plugin + localStorage** | One unified settings object, one settings tab |
+| **Settings scattered across plugin + localStorage** | Olen has one unified settings tab for its own config; TrackHabitRank keeps its own settings untouched |
 | **Decorative corners everywhere** | Corners used sparingly — hero card + Oracle card only. Rest uses frosted glass |
 
 ---
 
-## XIV. Migration Path
+## XIV. Migration Path & Coexistence
+
+**TrackHabitRank is NOT merged into Olen.** The two plugins coexist side by side. TrackHabitRank continues to own boss logic, habit tracking, streaks, rewards, and all its existing data. Olen acts as a connected front-end — it reads TrackHabitRank's state to display it, and calls into it when the user takes actions (e.g. logging a session triggers TrackHabitRank's damage calculation). Neither plugin depends on the other to function, but together they form the full experience.
 
 For users with existing data:
 
-1. On first load, detect existing `TrackHabitRank` settings → import all state (boss HP, tier, streaks, rewards, etc.)
+1. On first load, detect existing `TrackHabitRank` settings → **read** state (boss HP, tier, streaks, rewards, etc.) for display — do not duplicate or migrate it
 2. Detect existing session folders (`Home/Starts/Drawing/Sessions/`) → index them for the session collage
-3. Detect existing `localStorage` skill-tree settings → migrate to plugin settings
+3. Detect existing `localStorage` skill-tree settings → migrate to Olen's own settings (skill tree UI is Olen's responsibility)
 4. The old `Home.md`, `Drawing hub.md`, `Drawing Session.md` files remain in the vault but are no longer needed for UI — they become archival
 
 ---
@@ -612,7 +614,7 @@ For users with existing data:
 
 ## XVI. Development Order (Suggested)
 
-1. **Phase 1 — Core Shell**: Plugin scaffold, DashboardView, settings migration, Hero Greeting, basic activity list
+1. **Phase 1 — Core Shell**: Plugin scaffold, DashboardView, TrackHabitRank read bridge, Hero Greeting, basic activity list
 2. **Phase 2 — Olen Engine**: Priority system, suggestion algorithm, Oracle card
 3. **Phase 3 — Day Map**: Timeline component, accept/skip/reschedule, midday view
 4. **Phase 4 — Sessions**: Session creation, timer, skill picker, finish flow, session collage
