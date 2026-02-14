@@ -12,7 +12,11 @@ Morpheus is a mythological life-operating system. It is your personal oracle —
 
 ### Single Plugin, Multiple Views
 
-The plugin registers **one Obsidian `ItemView`** as its main interface (the "Morpheus Dashboard"), opened via a ribbon icon or command. All UI is rendered programmatically in TypeScript/JS — **no dataviewjs blocks, no embedded markdown, no separate `.md` pages for UI**. Markdown files are used only as data storage (session logs, daily notes, skill trees).
+The plugin registers **one Obsidian `ItemView`** as its main interface (the "Morpheus Dashboard"), opened via a ribbon icon or command. All primary UI is rendered programmatically in TypeScript/JS. Markdown files are used as data storage (session logs, daily notes, skill trees).
+
+**Two access modes:**
+- **Mode A: Standalone App** — Open the full Morpheus Dashboard via ribbon icon or command palette. This is the primary experience.
+- **Mode B: Embedded Widget** — For users who want to keep their `Home.md` as their entry point, Morpheus provides a lightweight **codeblock widget** (e.g., `` ```morpheus-dashboard``` ``) that renders a compact version of the dashboard directly inside any `.md` page. This lets users embed Morpheus into their existing homepage without abandoning it. The widget shows the Hero Greeting, Directive Card, and Day Map summary; tapping any section opens the full Morpheus `ItemView` for that context.
 
 ```
 morpheus-plugin/
@@ -37,7 +41,7 @@ morpheus-plugin/
 │   ├── SessionCard.ts   → Photo collage of recent sessions
 │   └── QuoteFooter.ts   → Rotating stoic quote at bottom
 ├── modals/
-│   ├── MorpheusDirectiveModal.ts → "The Directive" full-screen suggestion
+│   ├── MorpheusDirectiveCard.ts  → "The Directive" dashboard card (expands to full-screen on tap)
 │   ├── LogModal.ts      → Discipline/Flow/Skip logging
 │   ├── SkillPickerModal.ts → Add skills to a session
 │   └── TaskModal.ts     → Add/edit/reschedule a task
@@ -45,7 +49,8 @@ morpheus-plugin/
 │   └── MorpheusSettings.ts → Unified settings tab
 ├── data/
 │   ├── bosses.ts        → Boss definitions (13 tiers)
-│   ├── defaultActivities.ts → Pre-built activity catalog with categories
+│   ├── defaultActivities.ts → Pre-built activity catalog (Body / Mind / Spirit)
+│   ├── titles.ts        → Dynamic title definitions (Body/Mind/Spirit combinations × tiers)
 │   └── themes.ts        → Theme definitions
 └── styles.css           → Global plugin styles
 ```
@@ -63,7 +68,7 @@ All state lives in `plugin.settings` (persisted via Obsidian's `saveData`). Sess
 Resolve the current 3-way color clash (green Home / red-gold plugin / gray Drawing) into a **single warm-dark aesthetic** inspired by the Stoica/Eudaimonia app screenshots:
 
 **Background**: Deep warm black with subtle noise texture — `#0c0a09` base, never pure `#000`
-**Cards**: Frosted glass effect — `rgba(20, 18, 16, 0.85)` with `backdrop-filter: blur(40px)` and subtle `1px solid rgba(255, 255, 255, 0.06)` borders
+**Cards**: Frosted glass effect — `rgba(20, 18, 16, 0.85)` with `backdrop-filter: blur(40px)`, no solid borders
 **Primary text**: Warm white — `#f5f0e8`
 **Secondary text**: Muted gold — `#928d85`
 **Accent (interactive/highlight)**: Burnished gold — `#c9a84c`
@@ -84,7 +89,7 @@ Resolve the current 3-way color clash (green Home / red-gold plugin / gray Drawi
 
 2. **Decorative Corners**: Keep your existing corner motif but use it sparingly — only on the main hero card and the Morpheus directive card. Gold (`#c9a84c`) lines, 16px.
 
-3. **No harsh borders**: Cards use the frosted glass effect, not 1px solid borders. Corners and dividers are subtle gradient lines: `linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.3), transparent)`.
+3. **No borders**: Cards rely entirely on the frosted glass effect — no solid borders of any kind. Separation is achieved through spacing and subtle gradient dividers: `linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.3), transparent)`.
 
 4. **Glow indicators**: Active streaks, boss damage, and urgency states use subtle box-shadows: `box-shadow: 0 0 20px rgba(201, 168, 76, 0.15)`.
 
@@ -107,21 +112,40 @@ Below, a **"My Why"** card — a gold-bordered text input where the user writes 
 
 ### Screen 2: Choose Your Domains
 
-Present 5 **identity categories** as large tappable cards with icons. The user toggles ON the ones they identify with. Each category has a set of pre-built activities:
+Present 3 **root categories** as large tappable cards with icons. These are the fundamental pillars of growth — the user toggles ON the ones they identify with. Each category has pre-built activities, and users can add custom activities to any category:
 
 | Category | Icon | Color | Pre-built Activities |
 |----------|------|-------|---------------------|
-| **Warrior** (Body) | ⚔️ | `#c9a84c` gold | Workout, Cardio, Stretching, Sports |
-| **Scholar** (Mind) | 📜 | `#6b8cce` blue | Reading, Study, Language, Writing |
-| **Artisan** (Craft) | 🔨 | `#b07d56` bronze | Drawing, Music, Photography, Coding |
-| **Sage** (Spirit) | 🏛️ | `#8b7ec8` purple | Meditation, Journaling, Philosophy, Prayer |
-| **Herald** (Social) | 🤝 | `#c76b6b` rose | Social, Family, Networking, Mentoring |
+| **Body** | ⚔️ | `#c9a84c` gold | Workout, Cardio, Stretching, Sports, Dance, Martial Arts |
+| **Mind** | 📜 | `#6b8cce` blue | Reading, Study, Language, Writing, Drawing, Music, Photography, Coding |
+| **Spirit** | 🏛️ | `#8b7ec8` purple | Meditation, Journaling, Philosophy, Prayer, Social, Family, Volunteering |
 
-The user's combination determines their **title** shown on the dashboard. Examples:
-- Warrior + Scholar = "Philosopher-King"
-- Artisan + Sage = "Renaissance Soul"
-- All five = "Polymath"
-- Warrior only = "Spartan"
+The user's **dynamic title** on the dashboard is generated based on which categories they use and how much activity they have in each. Titles reflect the user's actual engagement pattern, not just a static choice.
+
+**Title generation logic:**
+
+The system calculates each category's **weight** (percentage of total activity completions). A category is "dominant" if it holds ≥ 40% of total activity, "present" if ≥ 15%, and "minor" if < 15%.
+
+**Single-category dominant titles (one category ≥ 70%):**
+| Dominant | Light (< 50 sessions) | Mid (50-200) | Heavy (200+) |
+|----------|----------------------|--------------|--------------|
+| Body | Athlete | Warrior | Titan |
+| Mind | Student | Scholar | Polymath |
+| Spirit | Seeker | Sage | Oracle |
+
+**Two-category combination titles (two categories each ≥ 30%):**
+| Combination | Light | Mid | Heavy |
+|-------------|-------|-----|-------|
+| Body + Mind | Disciplined Thinker | Philosopher-King | Renaissance Titan |
+| Body + Spirit | Ascetic | Templar | Olympian Monk |
+| Mind + Spirit | Contemplative | Mystic Scholar | Enlightened One |
+
+**Balanced titles (all three categories ≥ 25%):**
+| Light | Mid | Heavy |
+|-------|-----|-------|
+| Initiate of Balance | Renaissance Soul | Eudaimon |
+
+These title tables are the defaults. Users can override their title in Settings if desired.
 
 ### Screen 3: Pick Activities
 
@@ -171,10 +195,12 @@ Inspired directly by the Stoica screenshot. A frosted glass card showing:
 
 **Top row**: The user's active categories with level progress:
 ```
-♥ Warrior    📜 Scholar    🔨 Artisan
+⚔️ Body       📜 Mind       🏛️ Spirit
 lv 4  62/100   lv 2  34/100   lv 7  89/100
 ```
 Category XP is earned by completing activities in that category. Every 100 XP = 1 level.
+
+**Dynamic title**: Below the categories, the user's current title is displayed (e.g., "Philosopher-King" for a Body+Mind user). The title updates automatically as activity distribution shifts over time.
 
 **Middle row**: Three stat pills:
 ```
@@ -183,7 +209,7 @@ Category XP is earned by completing activities in that category. Every 100 XP = 
 
 **Bottom**: Two buttons — `Your Progress` | `Reflect` (Reflect opens a journaling prompt or daily note)
 
-**Eudaimonia Index**: A horizontal XP bar spanning the card width. The "Eudaimonia Index" is the overall level calculated from all category levels combined. Roman numeral suffix (Eudaimonia Index XXI). Progress toward next "chapter" (every 10 levels = 1 chapter).
+**Eudaimonia Index**: A horizontal XP bar spanning the card width. The "Eudaimonia Index" is the overall level calculated from all category levels combined. Roman numeral suffix (Eudaimonia Index XXI). Progress toward next **chapter** (every 10 levels = 1 chapter). Chapters have themed names (see §VIII).
 
 ### Section 3: The Day Map (Morpheus Timeline)
 
@@ -221,8 +247,18 @@ End of day: 6 hrs, 23 min remaining
 
 ### Section 4: Morpheus Directive Card
 
-A standout card (with decorative corners) showing the **current top suggestion** from the Morpheus Engine. Not a modal — it lives on the dashboard, always visible.
+A standout card (with decorative corners) showing the **current top suggestion** from the Morpheus Engine. It lives on the dashboard as a **compact persistent card**, always visible. Tapping it expands into a **full-screen view** with the full lore text, motivational quote, and action buttons.
 
+**Compact state** (on dashboard):
+```
+┌─────────────────────────────────────┐
+│  THE DIRECTIVE              🟠      │
+│  DRAWING — 4 days neglected         │
+│  [BEGIN SESSION]     [NOT NOW]      │
+└─────────────────────────────────────┘
+```
+
+**Expanded state** (full-screen, on tap):
 ```
 ┌─────────────────────────────────────┐
 │  THE DIRECTIVE                      │
@@ -341,7 +377,7 @@ Each activity has these configurable rules (editable in Settings):
 interface ActivityConfig {
   id: string;
   name: string;
-  category: "warrior" | "scholar" | "artisan" | "sage" | "herald";
+  category: "body" | "mind" | "spirit";
   enabled: boolean;
   
   // Tracking
@@ -462,20 +498,20 @@ Category Level = floor(categoryXP / 100)
 Category XP = (completions in that category × 10) + (streak bonus) + (discipline bonus)
 ```
 
-Displayed as: **"Explorer · Eudaimonia Index XXI"** (rank title changes every 10 levels)
+Displayed as: **"Chapter II: Explorer · Eudaimonia Index XXI"** (chapter title changes every 10 levels)
 
-Rank titles progression:
+Chapter progression:
 ```
-1-10: Initiate
-11-20: Explorer  
-21-30: Journeyman
-31-40: Adept
-41-50: Philosopher
-51-60: Master
-61-70: Sage
-71-80: Oracle
-81-90: Titan
-91-100: Olympian
+Chapter I   (1-10):   Initiate
+Chapter II  (11-20):  Explorer
+Chapter III (21-30):  Journeyman
+Chapter IV  (31-40):  Adept
+Chapter V   (41-50):  Philosopher
+Chapter VI  (51-60):  Master
+Chapter VII (61-70):  Sage
+Chapter VIII(71-80):  Oracle
+Chapter IX  (81-90):  Titan
+Chapter X   (91-100): Olympian
 ```
 
 ### Progress View (Tab within Dashboard or separate scrollable section)
@@ -522,7 +558,7 @@ A single settings tab with collapsible sections:
 
 1. **Profile**: Name, "My Why", background image, theme color override
 2. **Activities**: Add/edit/remove activities, set all config fields from §VI
-3. **Categories**: Rename categories, reorder, assign colors
+3. **Categories**: Assign colors to Body / Mind / Spirit, override dynamic title
 4. **Morpheus Rules**: Global neglect threshold, blocking rules, chains, alternates
 5. **Boss Progression**: Current tier, HP scaling, custom boss names/lore/images
 6. **Rewards**: Edit reward pools
@@ -553,13 +589,13 @@ Since this is primarily used on Obsidian Mobile:
 | Previous Contradiction | Resolution |
 |---|---|
 | **3 different color palettes** (green, red-gold, gray) | One unified "Elysian Dark" palette: warm blacks + burnished gold + category accent colors |
-| **Home.md is a markdown file with dataviewjs** | Dashboard is a plugin `ItemView` — no markdown rendering, pure programmatic UI |
+| **Home.md is a markdown file with dataviewjs** | Dashboard is a plugin `ItemView` (Mode A). Users can also keep `Home.md` as their entry point via an embedded Morpheus codeblock widget (Mode B) |
 | **Drawing is a separate set of .md files** | Drawing becomes one activity within Morpheus. Session creation/tracking is handled by the plugin. Skill tree is rendered in-plugin. |
-| **Morpheus is only a command/modal** | Morpheus is the entire app. The Directive is a persistent card on the dashboard, not just a popup |
+| **Morpheus is only a command/modal** | Morpheus is the entire app. The Directive is a persistent compact card on the dashboard that expands to full-screen on tap — both a card and a detail view, never a disruptive popup |
 | **No onboarding** | Full 5-step first-launch flow with identity, categories, activity selection |
 | **No day planning** | Day Map timeline is the central feature |
 | **No calendar** | Three integration options, all feeding into the Day Map |
-| **Activities are not categorized** | 5 identity categories with colors, levels, and composite Eudaimonia Index |
+| **Activities are not categorized** | 3 root categories (Body / Mind / Spirit) with colors, levels, dynamic combination titles, and composite Eudaimonia Index |
 | **No progress analytics** | D/W/M/Y views with charts, heatmaps, trends |
 | **Each activity hub is a separate .md** | Activity hubs are views within the plugin — tap a grid card to see that activity's stats + sessions + skill tree |
 | **Settings scattered across plugin + localStorage** | One unified settings object, one settings tab |
@@ -583,7 +619,7 @@ For users with existing data:
 | Feature | Source App | Implementation |
 |---|---|---|
 | Blurred hero image with "Good evening, Name" | Stoica/Eudaimonia | Hero Greeting (§IV.1) |
-| Category levels (Discipline lv2, Science lv8) | Stoica | Identity Categories (§IV.2) |
+| Category levels (Discipline lv2, Science lv8) | Stoica | Body / Mind / Spirit categories with dynamic titles (§IV.2) |
 | Eudaimonia Index XXI with XP bar | Stoica | Eudaimonia Bar (§IV.2) |
 | Objectives / Streak / Consistency trio | Stoica | Stats Row (§IV.2) |
 | XP Growth This Week chart | Stoica | Weekly Rhythm (§IV.6) |
@@ -601,7 +637,7 @@ For users with existing data:
 | Best day / Average / Total stats | Purposa | Monthly Overview footer (§IV.8) |
 | "Not Today" concept | Purposa | "NOT NOW" on Directive + skip on Day Map |
 | "My Why" + personalized goals | Goals app | Onboarding (§III) + Profile settings |
-| Goals as colored category cards | Goals app | Category cards in onboarding + identity section |
+| Goals as colored category cards | Goals app | Body / Mind / Spirit cards in onboarding + identity section |
 | Study hours trend + daily focus bars | Study dashboard | Weekly Rhythm (§IV.6) |
 | Monthly calendar heatmap | Study dashboard | Monthly Overview (§IV.8) |
 | Focus score / Focus vs Break / Active days | Study dashboard | Stats Row + Weekly Rhythm |
@@ -624,4 +660,4 @@ For users with existing data:
 
 
 
-Somehow it needs to be compatible with home.md 's so people won't feel like they're leaving their homepage behind
+**Home.md compatibility** is addressed via Mode B (Embedded Widget) — see §I. Users who prefer their `Home.md` as a homepage can embed the Morpheus dashboard widget directly into it using a codeblock, so they never feel like they're leaving their familiar workspace.
